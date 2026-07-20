@@ -75,25 +75,29 @@ Comandos de validacao da fatia:
 
 ## 2. Clientes e oportunidades
 
-- [ ] CRUD de clientes.
-- [ ] CRUD de oportunidades.
-- [ ] Etapa, situação, responsável e próxima ação.
-- [ ] Histórico de mudanças.
-- [ ] Busca e filtros.
-- [ ] Lista e ficha detalhada.
+- [x] CRUD de clientes.
+- [x] CRUD de oportunidades.
+- [x] Etapa, situação, responsável e próxima ação.
+- [x] Histórico de mudanças por auditoria de INSERT/UPDATE.
+- [x] Busca e filtros nas APIs.
+- [x] Lista operacional com criação, aprovação, perda e arquivamento.
 
 Critério de aceite: cadastrar cliente, criar oportunidade e acompanhar sua linha do tempo.
+
+Status em 2026-07-20: concluido no codigo e validado por typecheck, testes e build. A homologacao conectada depende de aplicar a migration `0007_complete_customers_opportunities_flow.sql` com `CRM_DATABASE_URL`, validar dados reais no Supabase e confirmar memberships reais.
 
 ## 3. Funil, follow-ups e agenda
 
 - [ ] Kanban com alternativa por ações rápidas.
-- [ ] Follow-ups de hoje e vencidos.
-- [ ] Concluir/reagendar com resultado.
+- [x] Follow-ups de hoje e vencidos como proximas acoes filtraveis.
+- [x] Concluir/reagendar/cancelar com resultado e historico.
 - [ ] Agenda comercial.
 - [ ] Central Comercial.
-- [ ] Detecção de oportunidade sem próxima ação.
+- [x] Detecção de oportunidade ativa sem próxima ação pendente no backend.
 
 Critério de aceite: nenhuma oportunidade ativa fica esquecida sem alerta.
+
+Status em 2026-07-20: marco Atividades + Proximas Acoes concluido no codigo. Foram criadas APIs, tela operacional de acompanhamento e linha do tempo funcional. Homologacao conectada depende de aplicar migrations `0007` e `0008` no Supabase real.
 
 ## 4. Notificações
 
@@ -157,3 +161,4 @@ Critério de aceite: valores comerciais são mensuráveis sem qualquer lançamen
 - 2026-07-20: Auvo fica bloqueado ate fundacao persistente, Clientes, Oportunidades, proximas acoes, auditoria e Central Comercial serem aprovados. Impacto: sem mocks nem simulacao de integracao.
 - 2026-07-20: Backend real da Fundacao usa Fastify dentro de `server`. Impacto: frontend envia `Authorization: Bearer`; backend valida o token Supabase, consulta `crm.user_memberships` e deriva permissoes.
 - 2026-07-20: Health check definitivo mudou para o backend em `GET /api/health`. Impacto: Vite mantem apenas proxy local para `/api`.
+- 2026-07-20: Backend operacional passa a usar Prisma Client 7 com `@prisma/adapter-pg` para conexao, repositories e health check. Impacto: migrations SQL, runner proprio, checksum, advisory lock e `crm_internal.migration_history` continuam como fonte oficial de evolucao do banco; Prisma Migrate nao foi introduzido.

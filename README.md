@@ -11,6 +11,9 @@ CRM comercial independente da Artec Ambientes Climatizados. Este projeto nao dev
 - `npm run start:server`: executa o backend compilado.
 - `npm run typecheck`: valida TypeScript.
 - `npm run test`: executa testes automatizados.
+- `npm run prisma:generate`: gera o Prisma Client usado pelo backend.
+- `npm run prisma:validate`: valida `prisma/schema.prisma`.
+- `npm run prisma:format`: formata `prisma/schema.prisma`.
 - `npm run db:migrate`: aplica migrations do CRM.
 - `npm run db:migrate:status`: consulta status das migrations.
 
@@ -26,10 +29,43 @@ Copie `.env.example` para `.env.local` no ambiente local e nunca versione segred
 
 - Autenticacao: Supabase Auth.
 - Autorizacao real: backend, consultando `crm.user_memberships`.
+- Runtime do backend: Prisma Client com driver adapter PostgreSQL.
+- Migrations: runner SQL proprio com `pg`, checksum, advisory lock e `crm_internal.migration_history`.
 - Schemas permitidos: `crm` e `crm_internal`.
 - `crm_internal` nao deve receber grants diretos para frontend.
 - Sem integracao financeira.
 - Sem Auvo nesta fase.
+
+## Prisma e migrations
+
+O Prisma ORM e a camada oficial de conexao e acesso a dados do backend operacional. O schema Prisma mapeia somente `crm` e `crm_internal`, sem mapear schemas financeiros ou tabelas do Supabase Auth como entidades editaveis.
+
+As migrations SQL existentes em `database/migrations` continuam sendo o mecanismo oficial de evolucao do banco. Nao usar Prisma Migrate, `prisma migrate`, `prisma db push`, pasta `prisma/migrations` ou tabela `_prisma_migrations` nesta fase. O runner SQL existente permanece usando `pg` porque controla advisory lock, checksums e historico proprio.
+
+## APIs do marco Clientes e Oportunidades
+
+Todas exigem `Authorization: Bearer TOKEN_SUPABASE` e membership ativa no CRM.
+
+- `GET /api/customers`, `POST /api/customers`, `GET/PATCH /api/customers/:id`.
+- `POST /api/customers/:id/archive` e `POST /api/customers/:id/restore`.
+- `GET /api/opportunities`, `POST /api/opportunities`, `GET/PATCH /api/opportunities/:id`.
+- `POST /api/opportunities/:id/approve`, `POST /api/opportunities/:id/lose`, `POST /api/opportunities/:id/archive`.
+- `GET /api/pipeline-stages` e `GET /api/loss-reasons`.
+
+Oportunidades ativas exigem responsavel, proxima acao e data da proxima acao no frontend, na API e no banco. Aprovacao comercial exige valor aprovado, forma de pagamento, parcelas e previsao de execucao, sem criar qualquer registro financeiro.
+
+## APIs do marco Atividades e Proximas Acoes
+
+Todas exigem token Supabase valido e membership ativa.
+
+- `GET /api/customers/:id/activities` e `GET /api/opportunities/:id/activities`.
+- `POST /api/activities`, `PATCH /api/activities/:id`, `POST /api/activities/:id/archive`.
+- `GET /api/next-actions`, `GET /api/next-actions/:id`, `POST /api/next-actions`, `PATCH /api/next-actions/:id`.
+- `POST /api/next-actions/:id/complete`, `POST /api/next-actions/:id/postpone`, `POST /api/next-actions/:id/cancel`.
+
+`crm.next_actions` preserva historico de acoes pendentes, concluidas, reagendadas e canceladas. Durante a compatibilidade com o marco anterior, `crm.oportunidades.current_next_action_id` aponta para a acao pendente atual e os campos legados `proxima_acao`/`proxima_acao_em` sao mantidos sincronizados pelo backend.
+
+Auditoria tecnica usa `created_by` e `updated_by` definidos exclusivamente pelo backend a partir do usuario autenticado. O frontend nao envia o autor da auditoria.
 
 ## Homologacao
 

@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 dist/
 dist-server/
 coverage/
@@ -7,3 +7,6 @@ coverage/
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+*.env.local

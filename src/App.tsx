@@ -1,8 +1,42 @@
-import { AlertCircle, LogIn, LogOut, Search, Settings, ShieldCheck, UserRound, UsersRound } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { AlertCircle, Archive, CheckCircle2, Clock, Edit3, LogIn, LogOut, Plus, Search, UserRound, XCircle } from "lucide-react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
+import {
+  approveOpportunity,
+  archiveOpportunity,
+  archiveCustomer,
+  createCustomer,
+  createActivity,
+  createNextAction,
+  createOpportunity,
+  completeNextAction,
+  cancelNextAction,
+  loadCrmSnapshot,
+  loadCustomerActivities,
+  loadOpportunityActivities,
+  loseOpportunity,
+  postponeNextAction,
+  updateCustomer,
+  updateOpportunity,
+  type Activity,
+  type CrmSnapshot,
+  type Customer,
+  type NextAction,
+  type Opportunity,
+} from "./domain/crm";
 
-const baseNavItems = ["Inicio"];
+type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
+
+type ActionOperation = {
+  mode: "complete" | "postpone" | "cancel";
+  action: NextAction;
+  completionResult: string;
+  dueAt: string;
+  cancellationReason: string;
+  nextTitle: string;
+  nextDueAt: string;
+  nextPriority: NextAction["priority"];
+};
 
 export function App() {
   const [authState, setAuthState] = useState<AuthState>({ status: "loading" });
@@ -13,9 +47,6 @@ export function App() {
   useEffect(() => {
     void readSupabaseSession().then(setAuthState);
   }, []);
-
-  const activeUser = authState.status === "authenticated" ? authState.user : null;
-  const navItems = activeUser ? buildNavItems(activeUser.permissions) : baseNavItems;
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,7 +78,8 @@ export function App() {
       <main className="auth-screen">
         <section className="auth-panel">
           <AlertCircle aria-hidden="true" className="auth-icon danger" />
-          <h1>Erro ao abrir o CRM</h1>
+          <p className="eyebrow">Artec CRM</p>
+          <h1>Erro ao entrar</h1>
           <p>{authState.message}</p>
           <LoginForm email={email} password={password} isSubmitting={isSubmitting} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={handleLogin} />
         </section>
@@ -75,7 +107,7 @@ export function App() {
     );
   }
 
-  if (!activeUser) {
+  if (authState.status !== "authenticated") {
     return (
       <main className="auth-screen">
         <section className="auth-panel">
@@ -89,6 +121,240 @@ export function App() {
     );
   }
 
+  return <AuthenticatedApp authState={authState} onLogout={handleLogout} />;
+}
+
+function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthState, { status: "authenticated" }>; onLogout: () => Promise<void> }) {
+  const [snapshot, setSnapshot] = useState<CrmSnapshot | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [customerForm, setCustomerForm] = useState({ nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" });
+  const [opportunityForm, setOpportunityForm] = useState({ clienteId: "", titulo: "", tipoDemanda: "instalacao", situacao: "em andamento", proximaAcao: "", proximaAcaoEm: "" });
+  const [activityForm, setActivityForm] = useState({ customerId: "", opportunityId: "", type: "note" as Activity["type"], description: "" });
+  const [nextActionForm, setNextActionForm] = useState({ customerId: "", opportunityId: "", title: "", dueAt: "", priority: "normal" as NextAction["priority"] });
+  const [actionFilter, setActionFilter] = useState<ActionFilter>("overdue");
+  const [actionOperation, setActionOperation] = useState<ActionOperation | null>(null);
+  const [timeline, setTimeline] = useState<Activity[]>([]);
+  const [timelineTitle, setTimelineTitle] = useState("Linha do tempo");
+
+  const activeCustomers = snapshot?.customers.filter((customer) => !customer.archivedAt) ?? [];
+  const activeOpportunities = snapshot?.opportunities.filter((opportunity) => opportunity.status === "ativa") ?? [];
+  const opportunitiesWithoutNextAction = activeOpportunities.filter((opportunity) => !opportunity.proximaAcao || !opportunity.proximaAcaoEm);
+  const defaultStageId = snapshot?.stages[0]?.id;
+  const firstLossReasonId = snapshot?.lossReasons[0]?.id;
+  const visibleNextActions = useMemo(
+    () => filterNextActions(snapshot?.nextActions ?? [], actionFilter),
+    [snapshot?.nextActions, actionFilter],
+  );
+
+  const metrics = useMemo(
+    () => [
+      { label: "Clientes ativos", value: activeCustomers.length },
+      { label: "Oportunidades ativas", value: activeOpportunities.length },
+      { label: "Sem proxima acao", value: opportunitiesWithoutNextAction.length },
+    ],
+    [activeCustomers.length, activeOpportunities.length, opportunitiesWithoutNextAction.length],
+  );
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  async function refresh() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await loadCrmSnapshot(search);
+      setSnapshot(data);
+      setOpportunityForm((current) => ({ ...current, clienteId: current.clienteId || data.customers[0]?.id || "" }));
+      setActivityForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
+      setNextActionForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel carregar o CRM.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleCreateCustomer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    try {
+      await createCustomer({ tipoPessoa: "fisica", ...customerForm });
+      setCustomerForm({ nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel salvar o cliente.");
+    }
+  }
+
+  async function handleCreateOpportunity(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    try {
+      await createOpportunity({
+        ...opportunityForm,
+        etapaId: defaultStageId,
+        responsavelId: authState.user.id,
+      });
+      setOpportunityForm((current) => ({ ...current, titulo: "", proximaAcao: "", proximaAcaoEm: "" }));
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel salvar a oportunidade.");
+    }
+  }
+
+  async function handleArchiveCustomer(customer: Customer) {
+    if (!window.confirm(`Arquivar ${customer.nome}? O historico sera preservado.`)) return;
+    await archiveCustomer(customer.id);
+    await refresh();
+  }
+
+  async function handleCreateActivity(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    try {
+      await createActivity({
+        customerId: activityForm.customerId,
+        opportunityId: activityForm.opportunityId || null,
+        type: activityForm.type,
+        description: activityForm.description,
+      });
+      setActivityForm((current) => ({ ...current, description: "" }));
+      await refresh();
+      await openCustomerTimeline(activityForm.customerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel registrar a atividade.");
+    }
+  }
+
+  async function handleCreateNextAction(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    try {
+      await createNextAction({
+        customerId: nextActionForm.customerId,
+        opportunityId: nextActionForm.opportunityId || null,
+        responsibleUserId: authState.user.id,
+        title: nextActionForm.title,
+        dueAt: nextActionForm.dueAt,
+        priority: nextActionForm.priority,
+      });
+      setNextActionForm((current) => ({ ...current, title: "", dueAt: "" }));
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel criar a proxima acao.");
+    }
+  }
+
+  async function handleEditCustomer(customer: Customer) {
+    const telefone = window.prompt("Telefone do cliente", customer.telefone ?? "");
+    if (telefone === null) return;
+    await updateCustomer(customer.id, { telefone });
+    await refresh();
+  }
+
+  async function handleEditOpportunity(opportunity: Opportunity) {
+    const proximaAcao = window.prompt("Proxima acao", opportunity.proximaAcao ?? "");
+    if (!proximaAcao) return;
+    const proximaAcaoEm = window.prompt("Data da proxima acao em ISO ou AAAA-MM-DDTHH:mm", opportunity.proximaAcaoEm ?? "");
+    if (!proximaAcaoEm) return;
+    await updateOpportunity(opportunity.id, { proximaAcao, proximaAcaoEm });
+    await refresh();
+  }
+
+  async function handleApproveOpportunity(opportunity: Opportunity) {
+    const valorAprovado = window.prompt("Valor aprovado em centavos. Exemplo: 150000 para R$ 1.500,00");
+    const previsaoExecucao = window.prompt("Previsao de execucao no formato AAAA-MM-DD");
+    if (!valorAprovado || !previsaoExecucao) return;
+    await approveOpportunity(opportunity.id, {
+      valorAprovado: Number(valorAprovado),
+      formaPagamento: "a vista",
+      quantidadeParcelas: 1,
+      previsaoExecucao,
+    });
+    await refresh();
+  }
+
+  async function handleLoseOpportunity(opportunity: Opportunity) {
+    if (!firstLossReasonId) {
+      setError("Cadastre ou aplique os motivos de perda antes de registrar uma perda.");
+      return;
+    }
+    if (!window.confirm(`Marcar ${opportunity.titulo} como perdida?`)) return;
+    await loseOpportunity(opportunity.id, firstLossReasonId);
+    await refresh();
+  }
+
+  async function handleArchiveOpportunity(opportunity: Opportunity) {
+    if (!window.confirm(`Arquivar ${opportunity.titulo}? O historico sera preservado.`)) return;
+    await archiveOpportunity(opportunity.id);
+    await refresh();
+  }
+
+  function openActionOperation(action: NextAction, mode: ActionOperation["mode"]) {
+    setError(null);
+    setActionOperation({
+      action,
+      mode,
+      completionResult: "",
+      dueAt: toDateTimeLocalValue(action.dueAt),
+      cancellationReason: "",
+      nextTitle: "",
+      nextDueAt: "",
+      nextPriority: "normal",
+    });
+  }
+
+  async function handleActionOperationSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!actionOperation) return;
+    setError(null);
+    const { action, mode } = actionOperation;
+    const replacementRequired = needsReplacementAction(action, snapshot?.opportunities ?? []);
+    const nextAction = replacementRequired
+      ? {
+          customerId: action.customerId,
+          opportunityId: action.opportunityId,
+          responsibleUserId: authState.user.id,
+          title: actionOperation.nextTitle,
+          dueAt: actionOperation.nextDueAt,
+          priority: actionOperation.nextPriority,
+        }
+      : null;
+
+    try {
+      if (replacementRequired && (!actionOperation.nextTitle.trim() || !actionOperation.nextDueAt)) {
+        setError("Defina a proxima acao antes de concluir esta atividade.");
+        return;
+      }
+      if (mode === "complete") {
+        await completeNextAction(action.id, { completionResult: actionOperation.completionResult, nextAction });
+      } else if (mode === "postpone") {
+        await postponeNextAction(action.id, actionOperation.dueAt);
+      } else {
+        await cancelNextAction(action.id, actionOperation.cancellationReason, nextAction);
+      }
+      setActionOperation(null);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel atualizar a proxima acao.");
+    }
+  }
+
+  async function openCustomerTimeline(id: string) {
+    const customer = snapshot?.customers.find((item) => item.id === id);
+    setTimeline(await loadCustomerActivities(id));
+    setTimelineTitle(customer ? `Linha do tempo de ${customer.nome}` : "Linha do tempo do cliente");
+  }
+
+  async function openOpportunityTimeline(id: string) {
+    const opportunity = snapshot?.opportunities.find((item) => item.id === id);
+    setTimeline(await loadOpportunityActivities(id));
+    setTimelineTitle(opportunity ? `Linha do tempo de ${opportunity.titulo}` : "Linha do tempo da oportunidade");
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Navegacao principal">
@@ -100,11 +366,7 @@ export function App() {
           </div>
         </div>
         <nav>
-          {navItems.map((item) => (
-            <button className={item === "Visao geral" ? "nav-item active" : "nav-item"} type="button" key={item}>
-              {item}
-            </button>
-          ))}
+          <button className="nav-item active" type="button">Clientes e oportunidades</button>
         </nav>
       </aside>
 
@@ -112,13 +374,15 @@ export function App() {
         <header className="topbar">
           <label className="search-box">
             <Search aria-hidden="true" />
-            <input type="search" placeholder="Buscar no CRM" />
+            <input type="search" placeholder="Buscar no CRM" aria-label="Buscar no CRM" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => {
+              if (event.key === "Enter") void refresh();
+            }} />
           </label>
           <div className="user-chip">
             <UserRound aria-hidden="true" />
-            <span>{activeUser.email}</span>
+            <span>{authState.user.email}</span>
           </div>
-          <button className="button ghost" type="button" onClick={handleLogout}>
+          <button className="button ghost" type="button" onClick={onLogout}>
             <LogOut aria-hidden="true" />
             Sair
           </button>
@@ -126,74 +390,238 @@ export function App() {
 
         <section className="page-heading">
           <div>
-            <p className="eyebrow">Fundacao</p>
-            <h1>Ambiente CRM</h1>
+            <p className="eyebrow">Marco 2</p>
+            <h1>Clientes e oportunidades</h1>
           </div>
+          <button className="button secondary" type="button" onClick={refresh} disabled={isLoading}>Buscar/atualizar</button>
         </section>
 
-        <FoundationHome role={activeUser.role} permissions={activeUser.permissions} />
+        {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
+        {isLoading ? <LoadingPanels /> : null}
+
+        {!isLoading && snapshot ? (
+          <>
+            <section className="grid metrics-row" aria-label="Resumo comercial">
+              {metrics.map((metric) => (
+                <article className="panel metric" key={metric.label}>
+                  <span>{metric.label}</span>
+                  <strong>{metric.value}</strong>
+                </article>
+              ))}
+            </section>
+
+            <section className="split-layout">
+              <form className="panel compact-form" onSubmit={handleCreateCustomer}>
+                <h2>Novo cliente</h2>
+                <label>Nome<input required value={customerForm.nome} onChange={(event) => setCustomerForm({ ...customerForm, nome: event.target.value })} /></label>
+                <label>Telefone<input value={customerForm.telefone} onChange={(event) => setCustomerForm({ ...customerForm, telefone: event.target.value })} /></label>
+                <label>E-mail<input type="email" value={customerForm.email} onChange={(event) => setCustomerForm({ ...customerForm, email: event.target.value })} /></label>
+                <label>Empresa<input value={customerForm.empresa} onChange={(event) => setCustomerForm({ ...customerForm, empresa: event.target.value })} /></label>
+                <div className="form-row">
+                  <label>Bairro<input value={customerForm.bairro} onChange={(event) => setCustomerForm({ ...customerForm, bairro: event.target.value })} /></label>
+                  <label>Cidade<input value={customerForm.cidade} onChange={(event) => setCustomerForm({ ...customerForm, cidade: event.target.value })} /></label>
+                </div>
+                <button className="button primary" type="submit"><Plus aria-hidden="true" />Salvar cliente</button>
+              </form>
+
+              <form className="panel compact-form" onSubmit={handleCreateOpportunity}>
+                <h2>Nova oportunidade</h2>
+                <label>Cliente<select required value={opportunityForm.clienteId} onChange={(event) => setOpportunityForm({ ...opportunityForm, clienteId: event.target.value })}>
+                  <option value="">Selecione</option>
+                  {activeCustomers.map((customer) => <option value={customer.id} key={customer.id}>{customer.nome}</option>)}
+                </select></label>
+                <label>Titulo<input required value={opportunityForm.titulo} onChange={(event) => setOpportunityForm({ ...opportunityForm, titulo: event.target.value })} /></label>
+                <label>Tipo de demanda<input required value={opportunityForm.tipoDemanda} onChange={(event) => setOpportunityForm({ ...opportunityForm, tipoDemanda: event.target.value })} /></label>
+                <label>Situacao<input required value={opportunityForm.situacao} onChange={(event) => setOpportunityForm({ ...opportunityForm, situacao: event.target.value })} /></label>
+                <label>Proxima acao<input required value={opportunityForm.proximaAcao} onChange={(event) => setOpportunityForm({ ...opportunityForm, proximaAcao: event.target.value })} /></label>
+                <label>Data da proxima acao<input required type="datetime-local" value={opportunityForm.proximaAcaoEm} onChange={(event) => setOpportunityForm({ ...opportunityForm, proximaAcaoEm: event.target.value })} /></label>
+                <button className="button primary" type="submit" disabled={!activeCustomers.length}><Plus aria-hidden="true" />Salvar oportunidade</button>
+              </form>
+            </section>
+
+            <section className="split-layout">
+              <form className="panel compact-form" onSubmit={handleCreateActivity}>
+                <h2>Registrar atividade</h2>
+                <label>Cliente<select required value={activityForm.customerId} onChange={(event) => setActivityForm({ ...activityForm, customerId: event.target.value })}>
+                  <option value="">Selecione</option>
+                  {activeCustomers.map((customer) => <option value={customer.id} key={customer.id}>{customer.nome}</option>)}
+                </select></label>
+                <label>Oportunidade<select value={activityForm.opportunityId} onChange={(event) => setActivityForm({ ...activityForm, opportunityId: event.target.value })}>
+                  <option value="">Sem oportunidade</option>
+                  {snapshot.opportunities.filter((opportunity) => opportunity.clienteId === activityForm.customerId).map((opportunity) => <option value={opportunity.id} key={opportunity.id}>{opportunity.titulo}</option>)}
+                </select></label>
+                <label>Tipo<select value={activityForm.type} onChange={(event) => setActivityForm({ ...activityForm, type: event.target.value as Activity["type"] })}>
+                  <option value="note">Observacao</option><option value="message">Mensagem</option><option value="call">Ligacao</option><option value="visit">Visita</option><option value="follow_up">Follow-up</option><option value="warranty">Garantia</option><option value="support">Suporte</option><option value="after_sales">Pos-venda</option>
+                </select></label>
+                <label>Descricao<input required value={activityForm.description} onChange={(event) => setActivityForm({ ...activityForm, description: event.target.value })} /></label>
+                <button className="button primary" type="submit"><Plus aria-hidden="true" />Registrar atividade</button>
+              </form>
+
+              <form className="panel compact-form" onSubmit={handleCreateNextAction}>
+                <h2>Criar proxima acao</h2>
+                <label>Cliente<select required value={nextActionForm.customerId} onChange={(event) => setNextActionForm({ ...nextActionForm, customerId: event.target.value })}>
+                  <option value="">Selecione</option>
+                  {activeCustomers.map((customer) => <option value={customer.id} key={customer.id}>{customer.nome}</option>)}
+                </select></label>
+                <label>Oportunidade<select value={nextActionForm.opportunityId} onChange={(event) => setNextActionForm({ ...nextActionForm, opportunityId: event.target.value })}>
+                  <option value="">Atendimento sem oportunidade</option>
+                  {snapshot.opportunities.filter((opportunity) => opportunity.clienteId === nextActionForm.customerId).map((opportunity) => <option value={opportunity.id} key={opportunity.id}>{opportunity.titulo}</option>)}
+                </select></label>
+                <label>Acao<input required value={nextActionForm.title} onChange={(event) => setNextActionForm({ ...nextActionForm, title: event.target.value })} /></label>
+                <label>Vencimento<input required type="datetime-local" value={nextActionForm.dueAt} onChange={(event) => setNextActionForm({ ...nextActionForm, dueAt: event.target.value })} /></label>
+                <label>Prioridade<select value={nextActionForm.priority} onChange={(event) => setNextActionForm({ ...nextActionForm, priority: event.target.value as NextAction["priority"] })}>
+                  <option value="normal">Normal</option><option value="high">Alta</option><option value="low">Baixa</option>
+                </select></label>
+                <button className="button primary" type="submit"><Clock aria-hidden="true" />Criar proxima acao</button>
+              </form>
+            </section>
+
+            <section className="data-section">
+              <h2>Proximas acoes</h2>
+              <div className="segmented-control" aria-label="Filtros de proximas acoes">
+                {(["overdue", "today", "upcoming", "completed", "cancelled"] as ActionFilter[]).map((filter) => (
+                  <button className={actionFilter === filter ? "active" : ""} type="button" key={filter} onClick={() => setActionFilter(filter)}>
+                    {formatActionFilter(filter)}
+                  </button>
+                ))}
+              </div>
+              {actionOperation ? (
+                <form className="panel compact-form action-operation" onSubmit={handleActionOperationSubmit}>
+                  <div>
+                    <p className="eyebrow">{actionOperation.action.customerName}</p>
+                    <h3>{formatOperationTitle(actionOperation.mode)}</h3>
+                  </div>
+                  {actionOperation.mode === "complete" ? (
+                    <label>Resultado<input required value={actionOperation.completionResult} onChange={(event) => setActionOperation({ ...actionOperation, completionResult: event.target.value })} /></label>
+                  ) : null}
+                  {actionOperation.mode === "postpone" ? (
+                    <label>Novo vencimento<input required type="datetime-local" value={actionOperation.dueAt} onChange={(event) => setActionOperation({ ...actionOperation, dueAt: event.target.value })} /></label>
+                  ) : null}
+                  {actionOperation.mode === "cancel" ? (
+                    <label>Motivo do cancelamento<input required value={actionOperation.cancellationReason} onChange={(event) => setActionOperation({ ...actionOperation, cancellationReason: event.target.value })} /></label>
+                  ) : null}
+                  {needsReplacementAction(actionOperation.action, snapshot.opportunities) && actionOperation.mode !== "postpone" ? (
+                    <fieldset className="replacement-fields">
+                      <legend>Nova proxima acao obrigatoria</legend>
+                      <label>Acao<input required value={actionOperation.nextTitle} onChange={(event) => setActionOperation({ ...actionOperation, nextTitle: event.target.value })} /></label>
+                      <label>Vencimento<input required type="datetime-local" value={actionOperation.nextDueAt} onChange={(event) => setActionOperation({ ...actionOperation, nextDueAt: event.target.value })} /></label>
+                      <label>Prioridade<select value={actionOperation.nextPriority} onChange={(event) => setActionOperation({ ...actionOperation, nextPriority: event.target.value as NextAction["priority"] })}>
+                        <option value="normal">Normal</option><option value="high">Alta</option><option value="low">Baixa</option>
+                      </select></label>
+                    </fieldset>
+                  ) : null}
+                  <div className="form-actions">
+                    <button className="button primary" type="submit">Salvar</button>
+                    <button className="button secondary" type="button" onClick={() => setActionOperation(null)}>Cancelar</button>
+                  </div>
+                </form>
+              ) : null}
+              {visibleNextActions.length ? (
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Acao</th><th>Cliente</th><th>Contexto</th><th>Vencimento</th><th>Prioridade</th><th>Status</th><th>Acoes</th></tr></thead>
+                    <tbody>{visibleNextActions.map((action) => (
+                      <tr key={action.id}>
+                        <td>{action.title}{isOverdue(action) ? <span className="badge danger-badge">vencida</span> : null}</td>
+                        <td>{action.customerName}</td>
+                        <td>{action.opportunityTitle ?? "Atendimento"}</td>
+                        <td>{formatDateTime(action.dueAt)}</td>
+                        <td><span className="badge">{formatPriority(action.priority)}</span></td>
+                        <td><span className="badge">{action.status}</span></td>
+                        <td className="actions-cell">
+                          <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => openActionOperation(action, "complete")}>Concluir</button>
+                          <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => openActionOperation(action, "postpone")}>Reagendar</button>
+                          <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => openActionOperation(action, "cancel")}>Cancelar</button>
+                        </td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              ) : <EmptyState title="Nenhuma proxima acao" text="Crie uma acao pendente para acompanhar cliente, garantia, suporte ou oportunidade." />}
+            </section>
+
+            <section className="data-section">
+              <h2>Clientes</h2>
+              {activeCustomers.length ? (
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Nome</th><th>Telefone</th><th>Empresa</th><th>Oportunidades</th><th>Acoes</th></tr></thead>
+                    <tbody>{activeCustomers.map((customer) => (
+                      <tr key={customer.id}>
+                        <td>{customer.nome}{customer.duplicatePhoneCustomerIds.length ? <span className="badge warning">possivel duplicidade</span> : null}</td>
+                        <td>{customer.telefone ?? "-"}</td>
+                        <td>{customer.empresa ?? "-"}</td>
+                        <td>{customer.opportunitiesCount}</td>
+                        <td className="actions-cell">
+                          <button className="button secondary" type="button" onClick={() => void openCustomerTimeline(customer.id)}>Historico</button>
+                          <button className="icon-button" type="button" aria-label={`Editar ${customer.nome}`} onClick={() => void handleEditCustomer(customer)}><Edit3 aria-hidden="true" /></button>
+                          <button className="icon-button" type="button" aria-label={`Arquivar ${customer.nome}`} onClick={() => void handleArchiveCustomer(customer)}><Archive aria-hidden="true" /></button>
+                        </td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              ) : <EmptyState title="Nenhum cliente cadastrado" text="Cadastre o primeiro cliente para criar oportunidades comerciais." />}
+            </section>
+
+            <section className="data-section">
+              <h2>Oportunidades</h2>
+              {snapshot.opportunities.length ? (
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Titulo</th><th>Cliente</th><th>Etapa</th><th>Situacao</th><th>Proxima acao</th><th>Status</th><th>Acoes</th></tr></thead>
+                    <tbody>{snapshot.opportunities.map((opportunity) => (
+                      <tr key={opportunity.id}>
+                        <td>{opportunity.titulo}</td>
+                        <td>{opportunity.clienteNome}</td>
+                        <td>{opportunity.etapaNome}</td>
+                        <td>{opportunity.situacao}</td>
+                        <td>{opportunity.proximaAcao ? `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}` : <span className="badge danger-badge">sem proxima acao</span>}</td>
+                        <td><span className="badge">{opportunity.status}</span></td>
+                        <td className="actions-cell">
+                          <button className="button secondary" type="button" onClick={() => void openOpportunityTimeline(opportunity.id)}>Historico</button>
+                          <button className="icon-button" type="button" aria-label={`Aprovar ${opportunity.titulo}`} onClick={() => void handleApproveOpportunity(opportunity)}><CheckCircle2 aria-hidden="true" /></button>
+                          <button className="icon-button" type="button" aria-label={`Marcar ${opportunity.titulo} como perdida`} onClick={() => void handleLoseOpportunity(opportunity)}><XCircle aria-hidden="true" /></button>
+                          <button className="icon-button" type="button" aria-label={`Editar proxima acao de ${opportunity.titulo}`} onClick={() => void handleEditOpportunity(opportunity)}><Edit3 aria-hidden="true" /></button>
+                          <button className="icon-button" type="button" aria-label={`Arquivar ${opportunity.titulo}`} onClick={() => void handleArchiveOpportunity(opportunity)}><Archive aria-hidden="true" /></button>
+                        </td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              ) : <EmptyState title="Nenhuma oportunidade cadastrada" text="Crie uma oportunidade com responsavel, proxima acao e data." />}
+            </section>
+
+            <section className="data-section timeline-section">
+              <h2>{timelineTitle}</h2>
+              {timeline.length ? (
+                <ol className="timeline-list">
+                  {timeline.map((activity) => (
+                    <li key={activity.id}>
+                      <strong>{formatActivityType(activity.type)}</strong>
+                      <span>{formatDateTime(activity.occurredAt)}</span>
+                      <p>{activity.description}</p>
+                    </li>
+                  ))}
+                </ol>
+              ) : <EmptyState title="Historico vazio" text="Abra um cliente ou oportunidade, ou registre uma atividade para preencher a linha do tempo." />}
+            </section>
+          </>
+        ) : null}
       </main>
     </div>
   );
 }
 
-function buildNavItems(permissions: string[]) {
-  const items = [...baseNavItems];
-  if (permissions.includes("settings:read")) items.push("Configuracoes");
-  if (permissions.includes("users:manage")) items.push("Usuarios");
-  return items;
-}
-
 function getAuthBlockedCopy(state: Exclude<AuthState, { status: "loading" | "authenticated" | "anonymous" | "error" }>) {
-  if (state.status === "not_configured") {
-    return { title: "Ambiente nao configurado", message: state.message };
-  }
-
-  if (state.status === "membership_missing") {
-    return { title: "Acesso nao liberado", message: state.message };
-  }
-
-  if (state.status === "membership_inactive") {
-    return { title: "Acesso inativo", message: state.message };
-  }
-
-  if (state.status === "access_denied") {
-    return { title: "Acesso negado", message: state.message };
-  }
-
+  if (state.status === "not_configured") return { title: "Ambiente nao configurado", message: state.message };
+  if (state.status === "membership_missing") return { title: "Acesso nao liberado", message: state.message };
+  if (state.status === "membership_inactive") return { title: "Acesso inativo", message: state.message };
+  if (state.status === "access_denied") return { title: "Acesso negado", message: state.message };
   return { title: "API temporariamente indisponivel", message: state.message };
 }
 
-function FoundationHome({ role, permissions }: { role: string; permissions: string[] }) {
-  return (
-    <section className="foundation-grid">
-      <article className="state-panel">
-        <ShieldCheck aria-hidden="true" className="state-icon success" />
-        <h2>Autenticacao validada pelo backend</h2>
-        <p>Seu token Supabase foi validado pela API e sua membership ativa foi confirmada no schema `crm`.</p>
-      </article>
-      <article className="panel foundation-panel">
-        <Settings aria-hidden="true" />
-        <span>Papel atual</span>
-        <strong>{role}</strong>
-      </article>
-      <article className="panel foundation-panel">
-        <UsersRound aria-hidden="true" />
-        <span>Permissoes derivadas</span>
-        <strong>{permissions.length}</strong>
-      </article>
-    </section>
-  );
-}
-
-function LoginForm({
-  email,
-  password,
-  isSubmitting,
-  onEmailChange,
-  onPasswordChange,
-  onSubmit,
-}: {
+function LoginForm({ email, password, isSubmitting, onEmailChange, onPasswordChange, onSubmit }: {
   email: string;
   password: string;
   isSubmitting: boolean;
@@ -203,18 +631,114 @@ function LoginForm({
 }) {
   return (
     <form className="login-form" onSubmit={onSubmit}>
-      <label>
-        <span>E-mail</span>
-        <input value={email} type="email" autoComplete="email" required onChange={(event) => onEmailChange(event.target.value)} />
-      </label>
-      <label>
-        <span>Senha</span>
-        <input value={password} type="password" autoComplete="current-password" required onChange={(event) => onPasswordChange(event.target.value)} />
-      </label>
+      <label><span>E-mail</span><input value={email} type="email" autoComplete="email" required onChange={(event) => onEmailChange(event.target.value)} /></label>
+      <label><span>Senha</span><input value={password} type="password" autoComplete="current-password" required onChange={(event) => onPasswordChange(event.target.value)} /></label>
       <button className="button primary" type="submit" disabled={isSubmitting}>
         <LogIn aria-hidden="true" />
         {isSubmitting ? "Entrando" : "Entrar no CRM"}
       </button>
     </form>
   );
+}
+
+function LoadingPanels() {
+  return (
+    <section className="split-layout" aria-busy="true">
+      <div className="panel"><div className="skeleton skeleton-title" /><div className="skeleton skeleton-line" /></div>
+      <div className="panel"><div className="skeleton skeleton-title" /><div className="skeleton skeleton-line" /></div>
+    </section>
+  );
+}
+
+function EmptyState({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="empty-state">
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+}
+
+function toDateTimeLocalValue(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function isOverdue(action: NextAction): boolean {
+  return action.status === "pending" && new Date(action.dueAt).getTime() < Date.now();
+}
+
+function isTodayAction(action: NextAction): boolean {
+  if (action.status !== "pending") return false;
+  const now = new Date();
+  const due = new Date(action.dueAt);
+  return due.getFullYear() === now.getFullYear() && due.getMonth() === now.getMonth() && due.getDate() === now.getDate();
+}
+
+function filterNextActions(actions: NextAction[], filter: ActionFilter): NextAction[] {
+  return actions.filter((action) => {
+    if (filter === "overdue") return isOverdue(action);
+    if (filter === "today") return isTodayAction(action);
+    if (filter === "upcoming") return action.status === "pending" && !isOverdue(action) && !isTodayAction(action);
+    return action.status === filter;
+  });
+}
+
+function formatActionFilter(filter: ActionFilter): string {
+  const labels: Record<ActionFilter, string> = {
+    overdue: "Vencidas",
+    today: "Hoje",
+    upcoming: "Proximas",
+    completed: "Concluidas",
+    cancelled: "Canceladas",
+  };
+  return labels[filter];
+}
+
+function formatOperationTitle(mode: ActionOperation["mode"]): string {
+  if (mode === "complete") return "Concluir proxima acao";
+  if (mode === "postpone") return "Reagendar proxima acao";
+  return "Cancelar proxima acao";
+}
+
+function needsReplacementAction(action: NextAction, opportunities: Opportunity[]): boolean {
+  return opportunities.some((opportunity) =>
+    opportunity.status === "ativa" &&
+    opportunity.currentNextActionId === action.id &&
+    opportunity.id === action.opportunityId,
+  );
+}
+
+function formatPriority(priority: NextAction["priority"]): string {
+  if (priority === "high") return "Alta";
+  if (priority === "low") return "Baixa";
+  return "Normal";
+}
+
+function formatActivityType(type: Activity["type"]): string {
+  const labels: Record<Activity["type"], string> = {
+    note: "Observacao",
+    message: "Mensagem",
+    call: "Ligacao",
+    visit: "Visita",
+    meeting: "Reuniao",
+    follow_up: "Follow-up",
+    quote_sent: "Orcamento enviado",
+    stage_change: "Mudanca de etapa",
+    owner_change: "Mudanca de responsavel",
+    approval: "Aprovacao",
+    loss: "Perda",
+    warranty: "Garantia",
+    support: "Suporte",
+    after_sales: "Pos-venda",
+    system: "Sistema",
+  };
+  return labels[type];
 }

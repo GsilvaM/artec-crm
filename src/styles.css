@@ -29,7 +29,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -39,7 +40,8 @@ button:disabled {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--focus-ring) 45%, transparent);
   outline-offset: 2px;
 }
@@ -320,6 +322,227 @@ input:focus-visible {
   gap: 14px;
 }
 
+.metrics-row {
+  margin-bottom: 18px;
+}
+
+.split-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.compact-form {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.compact-form h2,
+.data-section h2,
+.empty-state h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.compact-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.compact-form input,
+.compact-form select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.segmented-control button {
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.segmented-control button.active {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  color: var(--primary);
+}
+
+.action-operation {
+  margin-top: 12px;
+}
+
+.action-operation h3 {
+  margin: 0;
+}
+
+.replacement-fields {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, var(--border));
+  border-radius: 8px;
+}
+
+.replacement-fields legend {
+  padding: 0 6px;
+  color: var(--warning);
+  font-weight: 800;
+}
+
+.alert {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-weight: 700;
+}
+
+.danger-alert {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  color: var(--danger);
+}
+
+.data-section {
+  margin-top: 22px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+th {
+  color: var(--foreground-muted);
+  font-size: 13px;
+}
+
+tr:last-child td {
+  border-bottom: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.warning {
+  color: var(--warning);
+}
+
+.danger-badge {
+  color: var(--danger);
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
+.empty-state {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--foreground-muted);
+}
+
+.timeline-section {
+  padding-bottom: 24px;
+}
+
+.timeline-list {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-list li {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.timeline-list span {
+  color: var(--foreground-muted);
+  font-size: 13px;
+}
+
+.timeline-list p {
+  margin: 0;
+}
+
 .foundation-grid {
   display: grid;
   grid-template-columns: minmax(0, 2fr) repeat(2, minmax(180px, 1fr));
@@ -451,6 +674,10 @@ input:focus-visible {
   }
 
   .foundation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .split-layout {
     grid-template-columns: 1fr;
   }
 

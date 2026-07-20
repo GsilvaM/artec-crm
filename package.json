@@ -7,19 +7,25 @@
     "dev": "vite --host 0.0.0.0",
     "dev:frontend": "vite --host 0.0.0.0",
     "dev:server": "tsx watch server/index.ts",
-    "build": "npm run build:frontend && npm run build:server",
+    "build": "npm run prisma:generate && npm run build:frontend && npm run build:server",
     "build:frontend": "tsc -b tsconfig.app.json && vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "start:server": "node dist-server/index.js",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.node.json",
+    "typecheck": "npm run prisma:generate && tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "prisma:format": "prisma format",
+    "prisma:studio": "prisma studio",
     "db:migrate": "tsx database/migrate.ts",
     "db:migrate:status": "tsx database/migration-status.ts",
     "db:migrate:create": "tsx database/create-migration.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "@supabase/supabase-js": "^2.49.0",
     "@vitejs/plugin-react": "^4.4.0",
     "dotenv": "^17.4.2",
@@ -37,6 +43,7 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "prisma": "^7.8.0",
     "tsx": "^4.20.0"
   }
 }

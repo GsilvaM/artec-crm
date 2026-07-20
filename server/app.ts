@@ -4,6 +4,9 @@ import { randomUUID } from "node:crypto";
 import { getPermissionsForRole, roleHasPermission, type Permission } from "./auth/rbac.js";
 import type { AuthenticatedUser, AuthVerifier, MembershipRepository } from "./auth/types.js";
 import type { ServerConfig } from "./config.js";
+import { createRouteGuards, registerCrmRoutes } from "./crm/routes.js";
+import type { CrmDataRepository } from "./crm/types.js";
+import type { DatabaseHealth } from "./database/health.js";
 import { ApiError, toPublicError } from "./errors.js";
 
 declare module "fastify" {
@@ -16,6 +19,8 @@ export type ServerDependencies = {
   config: Pick<ServerConfig, "corsOrigins" | "CRM_LOG_LEVEL">;
   authVerifier: AuthVerifier;
   membershipRepository: MembershipRepository;
+  crmRepository: CrmDataRepository;
+  databaseHealth: DatabaseHealth;
 };
 
 export function buildServer(dependencies: ServerDependencies): FastifyInstance {
@@ -59,11 +64,14 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
 
   app.addHook("onClose", async () => {
     await dependencies.membershipRepository.close();
+    await dependencies.crmRepository.close();
+    await dependencies.databaseHealth.close();
   });
 
   app.get("/api/health", async () => ({
-    ok: true,
-    app: "artec-crm",
+    status: "ok",
+    service: "artec-crm-api",
+    database: await dependencies.databaseHealth.check(),
     timestamp: new Date().toISOString(),
   }));
 
@@ -81,6 +89,8 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
       permissions: user.permissions,
     };
   });
+
+  registerCrmRoutes(app, dependencies, createRouteGuards(authenticate(dependencies), requirePermission));
 
   app.setNotFoundHandler((request, reply) => {
     void reply.status(404).send({

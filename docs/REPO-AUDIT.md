@@ -6,7 +6,7 @@ Data: 2026-07-20
 
 - Aplicacao CRM: React 19, TypeScript, Vite 6, Supabase Auth, Fastify, PostgreSQL/Supabase, Vitest.
 - Gerenciador: npm, com `package-lock.json` proprio.
-- Backend do CRM: `server/`, com Fastify, autenticacao por Bearer token Supabase e RBAC centralizado.
+- Backend do CRM: `server/`, com Fastify, Prisma Client para runtime, autenticacao por Bearer token Supabase e RBAC centralizado.
 - Frontend do CRM: `src/`, com checagem UX baseada em `/api/me`.
 
 ## Scripts do projeto CRM
@@ -54,7 +54,7 @@ A autenticacao usa Supabase Auth do mesmo projeto. Acesso ao CRM depende de regi
 
 O backend proprio fica em `server`, usa Fastify, valida o token Supabase recebido em `Authorization: Bearer`, consulta `crm.user_memberships`, deriva permissoes por RBAC centralizado e expoe `GET /api/health` e `GET /api/me`. O Vite nao e health check definitivo; ele apenas faz proxy local para `/api`.
 
-As migrations ficam em `database/migrations/`, com runner proprio, checksum, lock e historico em `crm_internal.migration_history`. Nenhuma migration do Prisma financeiro foi alterada.
+As migrations ficam em `database/migrations/`, com runner proprio baseado em `pg`, checksum, lock e historico em `crm_internal.migration_history`. O Prisma Client e usado no runtime do backend; Prisma Migrate nao e usado e nenhuma migration do Prisma financeiro foi alterada.
 
 ## Confirmacao de separacao
 

@@ -5,6 +5,7 @@ export type ApiErrorCode =
   | "membership_missing"
   | "membership_inactive"
   | "not_found"
+  | "database_unavailable"
   | "internal_error";
 
 export class ApiError extends Error {

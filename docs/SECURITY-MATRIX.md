@@ -28,7 +28,8 @@ Atualizado em: 2026-07-20
 | `crm.etapas_funil` | Leitura | Leitura | Leitura | RLS ativa | Futuro funil |
 | `crm.motivos_perda` | Leitura | Leitura | Leitura | RLS ativa | Futuro fechamento |
 | `crm.oportunidades` | Todas | Proprias | Triagem/atribuicao futura | RLS ativa | Futuro CRUD |
-| `crm.atividades` | Leitura/escrita | Leitura/escrita futura | Leitura/escrita futura | RLS ativa | Futuro historico |
+| `crm.atividades` | Leitura/escrita | Proprias e das oportunidades sob responsabilidade | Atendimento conforme escopo | RLS ativa | Linha do tempo funcional |
+| `crm.next_actions` | Todas | Proprias | Atendimento conforme escopo | RLS ativa | Acompanhamento e follow-ups |
 | `crm.audit_log` | Leitura | Nao | Nao | RLS gestor | Backend grava futuramente |
 | `crm.notificacoes` | Proprias | Proprias | Proprias | RLS por usuario | Futuras notificacoes |
 
@@ -51,3 +52,10 @@ Atualizado em: 2026-07-20
 | `crm.has_role(text)` | `crm, pg_temp` | `authenticated` | RLS de gestor. |
 
 Todas as funcoes `security definer` devem manter `search_path` explicito e minimo.
+
+## Escopo operacional
+
+- Gestor visualiza e opera todos os clientes, oportunidades, atividades e proximas acoes.
+- Vendedor localiza clientes para evitar duplicidade, mas oportunidades e proximas acoes ficam restritas ao responsavel no backend e nas policies aplicaveis.
+- Atendimento pode registrar historico de garantia, suporte e pos-venda sem criar oportunidade automaticamente.
+- Auditoria tecnica deve usar `created_by` e `updated_by` definidos pelo backend a partir do token Supabase validado. Nao confiar em `current_user` do banco como identidade do usuario da aplicacao.

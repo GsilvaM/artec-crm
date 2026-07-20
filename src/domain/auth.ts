@@ -3,6 +3,14 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export type CrmUserRole = "gestor" | "vendedor" | "atendimento";
 export type CrmPermission =
   | "self:read"
+  | "customers:read"
+  | "customers:write"
+  | "opportunities:read"
+  | "opportunities:write"
+  | "activities:read"
+  | "activities:write"
+  | "next_actions:read"
+  | "next_actions:write"
   | "users:manage"
   | "settings:read"
   | "settings:write"
