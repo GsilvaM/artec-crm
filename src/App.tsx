@@ -35,6 +35,7 @@ type ActionOperation = {
   cancellationReason: string;
   nextTitle: string;
   nextDueAt: string;
+  nextCategory: NextAction["category"];
   nextPriority: NextAction["priority"];
 };
 
@@ -132,7 +133,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [customerForm, setCustomerForm] = useState({ nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" });
   const [opportunityForm, setOpportunityForm] = useState({ clienteId: "", titulo: "", tipoDemanda: "instalacao", situacao: "em andamento", proximaAcao: "", proximaAcaoEm: "" });
   const [activityForm, setActivityForm] = useState({ customerId: "", opportunityId: "", type: "note" as Activity["type"], description: "" });
-  const [nextActionForm, setNextActionForm] = useState({ customerId: "", opportunityId: "", title: "", dueAt: "", priority: "normal" as NextAction["priority"] });
+  const [nextActionForm, setNextActionForm] = useState({ customerId: "", opportunityId: "", category: "commercial" as NextAction["category"], title: "", dueAt: "", priority: "normal" as NextAction["priority"] });
   const [actionFilter, setActionFilter] = useState<ActionFilter>("overdue");
   const [actionOperation, setActionOperation] = useState<ActionOperation | null>(null);
   const [timeline, setTimeline] = useState<Activity[]>([]);
@@ -237,6 +238,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
         customerId: nextActionForm.customerId,
         opportunityId: nextActionForm.opportunityId || null,
         responsibleUserId: authState.user.id,
+        category: nextActionForm.category,
         title: nextActionForm.title,
         dueAt: nextActionForm.dueAt,
         priority: nextActionForm.priority,
@@ -303,6 +305,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
       cancellationReason: "",
       nextTitle: "",
       nextDueAt: "",
+      nextCategory: action.category,
       nextPriority: "normal",
     });
   }
@@ -318,6 +321,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
           customerId: action.customerId,
           opportunityId: action.opportunityId,
           responsibleUserId: authState.user.id,
+          category: actionOperation.nextCategory,
           title: actionOperation.nextTitle,
           dueAt: actionOperation.nextDueAt,
           priority: actionOperation.nextPriority,
@@ -467,6 +471,9 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                   <option value="">Atendimento sem oportunidade</option>
                   {snapshot.opportunities.filter((opportunity) => opportunity.clienteId === nextActionForm.customerId).map((opportunity) => <option value={opportunity.id} key={opportunity.id}>{opportunity.titulo}</option>)}
                 </select></label>
+                <label>Categoria<select value={nextActionForm.category} onChange={(event) => setNextActionForm({ ...nextActionForm, category: event.target.value as NextAction["category"] })}>
+                  <option value="commercial">Comercial</option><option value="warranty">Garantia</option><option value="support">Suporte</option><option value="after_sales">Pos-venda</option>
+                </select></label>
                 <label>Acao<input required value={nextActionForm.title} onChange={(event) => setNextActionForm({ ...nextActionForm, title: event.target.value })} /></label>
                 <label>Vencimento<input required type="datetime-local" value={nextActionForm.dueAt} onChange={(event) => setNextActionForm({ ...nextActionForm, dueAt: event.target.value })} /></label>
                 <label>Prioridade<select value={nextActionForm.priority} onChange={(event) => setNextActionForm({ ...nextActionForm, priority: event.target.value as NextAction["priority"] })}>
@@ -505,6 +512,9 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                       <legend>Nova proxima acao obrigatoria</legend>
                       <label>Acao<input required value={actionOperation.nextTitle} onChange={(event) => setActionOperation({ ...actionOperation, nextTitle: event.target.value })} /></label>
                       <label>Vencimento<input required type="datetime-local" value={actionOperation.nextDueAt} onChange={(event) => setActionOperation({ ...actionOperation, nextDueAt: event.target.value })} /></label>
+                      <label>Categoria<select value={actionOperation.nextCategory} onChange={(event) => setActionOperation({ ...actionOperation, nextCategory: event.target.value as NextAction["category"] })}>
+                        <option value="commercial">Comercial</option><option value="warranty">Garantia</option><option value="support">Suporte</option><option value="after_sales">Pos-venda</option>
+                      </select></label>
                       <label>Prioridade<select value={actionOperation.nextPriority} onChange={(event) => setActionOperation({ ...actionOperation, nextPriority: event.target.value as NextAction["priority"] })}>
                         <option value="normal">Normal</option><option value="high">Alta</option><option value="low">Baixa</option>
                       </select></label>
@@ -519,12 +529,13 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
               {visibleNextActions.length ? (
                 <div className="table-wrap">
                   <table>
-                    <thead><tr><th>Acao</th><th>Cliente</th><th>Contexto</th><th>Vencimento</th><th>Prioridade</th><th>Status</th><th>Acoes</th></tr></thead>
+                    <thead><tr><th>Acao</th><th>Cliente</th><th>Contexto</th><th>Categoria</th><th>Vencimento</th><th>Prioridade</th><th>Status</th><th>Acoes</th></tr></thead>
                     <tbody>{visibleNextActions.map((action) => (
                       <tr key={action.id}>
                         <td>{action.title}{isOverdue(action) ? <span className="badge danger-badge">vencida</span> : null}</td>
                         <td>{action.customerName}</td>
                         <td>{action.opportunityTitle ?? "Atendimento"}</td>
+                        <td><span className="badge">{formatActionCategory(action.category)}</span></td>
                         <td>{formatDateTime(action.dueAt)}</td>
                         <td><span className="badge">{formatPriority(action.priority)}</span></td>
                         <td><span className="badge">{action.status}</span></td>
@@ -720,6 +731,16 @@ function formatPriority(priority: NextAction["priority"]): string {
   if (priority === "high") return "Alta";
   if (priority === "low") return "Baixa";
   return "Normal";
+}
+
+function formatActionCategory(category: NextAction["category"]): string {
+  const labels: Record<NextAction["category"], string> = {
+    commercial: "Comercial",
+    warranty: "Garantia",
+    support: "Suporte",
+    after_sales: "Pos-venda",
+  };
+  return labels[category];
 }
 
 function formatActivityType(type: Activity["type"]): string {

@@ -10,6 +10,7 @@ const optionalText = emptyToNull.optional().nullable();
 const moneyValue = z.coerce.number().int().nonnegative().optional().nullable();
 const uuid = z.string().uuid();
 const metadataSchema = z.record(z.string(), z.unknown()).default({});
+const nextActionCategorySchema = z.enum(["commercial", "warranty", "support", "after_sales"]);
 
 export const customerCreateSchema = z.object({
   tipoPessoa: z.enum(["fisica", "juridica"]).default("fisica"),
@@ -119,6 +120,7 @@ export const nextActionCreateSchema = z.object({
   customerId: uuid,
   opportunityId: uuid.optional().nullable(),
   responsibleUserId: uuid,
+  category: nextActionCategorySchema.default("commercial"),
   title: z.string().trim().min(2, "Informe a proxima acao."),
   description: optionalText,
   dueAt: z.string().trim().min(1, "Informe a data da proxima acao."),

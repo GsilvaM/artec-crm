@@ -199,7 +199,7 @@ export type ActivityGroupByArgs<ExtArgs extends runtime.Types.Extensions.Interna
 
 export type ActivityGroupByOutputType = {
   id: string
-  clienteId: string | null
+  clienteId: string
   oportunidadeId: string | null
   tipo: string
   corpo: string
@@ -237,7 +237,7 @@ export type ActivityWhereInput = {
   OR?: Prisma.ActivityWhereInput[]
   NOT?: Prisma.ActivityWhereInput | Prisma.ActivityWhereInput[]
   id?: Prisma.UuidFilter<"Activity"> | string
-  clienteId?: Prisma.UuidNullableFilter<"Activity"> | string | null
+  clienteId?: Prisma.UuidFilter<"Activity"> | string
   oportunidadeId?: Prisma.UuidNullableFilter<"Activity"> | string | null
   tipo?: Prisma.StringFilter<"Activity"> | string
   corpo?: Prisma.StringFilter<"Activity"> | string
@@ -256,7 +256,7 @@ export type ActivityWhereInput = {
 
 export type ActivityOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  clienteId?: Prisma.SortOrderInput | Prisma.SortOrder
+  clienteId?: Prisma.SortOrder
   oportunidadeId?: Prisma.SortOrderInput | Prisma.SortOrder
   tipo?: Prisma.SortOrder
   corpo?: Prisma.SortOrder
@@ -278,7 +278,7 @@ export type ActivityWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.ActivityWhereInput | Prisma.ActivityWhereInput[]
   OR?: Prisma.ActivityWhereInput[]
   NOT?: Prisma.ActivityWhereInput | Prisma.ActivityWhereInput[]
-  clienteId?: Prisma.UuidNullableFilter<"Activity"> | string | null
+  clienteId?: Prisma.UuidFilter<"Activity"> | string
   oportunidadeId?: Prisma.UuidNullableFilter<"Activity"> | string | null
   tipo?: Prisma.StringFilter<"Activity"> | string
   corpo?: Prisma.StringFilter<"Activity"> | string
@@ -297,7 +297,7 @@ export type ActivityWhereUniqueInput = Prisma.AtLeast<{
 
 export type ActivityOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  clienteId?: Prisma.SortOrderInput | Prisma.SortOrder
+  clienteId?: Prisma.SortOrder
   oportunidadeId?: Prisma.SortOrderInput | Prisma.SortOrder
   tipo?: Prisma.SortOrder
   corpo?: Prisma.SortOrder
@@ -320,7 +320,7 @@ export type ActivityScalarWhereWithAggregatesInput = {
   OR?: Prisma.ActivityScalarWhereWithAggregatesInput[]
   NOT?: Prisma.ActivityScalarWhereWithAggregatesInput | Prisma.ActivityScalarWhereWithAggregatesInput[]
   id?: Prisma.UuidWithAggregatesFilter<"Activity"> | string
-  clienteId?: Prisma.UuidNullableWithAggregatesFilter<"Activity"> | string | null
+  clienteId?: Prisma.UuidWithAggregatesFilter<"Activity"> | string
   oportunidadeId?: Prisma.UuidNullableWithAggregatesFilter<"Activity"> | string | null
   tipo?: Prisma.StringWithAggregatesFilter<"Activity"> | string
   corpo?: Prisma.StringWithAggregatesFilter<"Activity"> | string
@@ -354,7 +354,7 @@ export type ActivityCreateInput = {
 
 export type ActivityUncheckedCreateInput = {
   id?: string
-  clienteId?: string | null
+  clienteId: string
   oportunidadeId?: string | null
   tipo: string
   corpo: string
@@ -388,7 +388,7 @@ export type ActivityUpdateInput = {
 
 export type ActivityUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  clienteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clienteId?: Prisma.StringFieldUpdateOperationsInput | string
   oportunidadeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tipo?: Prisma.StringFieldUpdateOperationsInput | string
   corpo?: Prisma.StringFieldUpdateOperationsInput | string
@@ -405,7 +405,7 @@ export type ActivityUncheckedUpdateInput = {
 
 export type ActivityCreateManyInput = {
   id?: string
-  clienteId?: string | null
+  clienteId: string
   oportunidadeId?: string | null
   tipo: string
   corpo: string
@@ -437,7 +437,7 @@ export type ActivityUpdateManyMutationInput = {
 
 export type ActivityUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  clienteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clienteId?: Prisma.StringFieldUpdateOperationsInput | string
   oportunidadeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tipo?: Prisma.StringFieldUpdateOperationsInput | string
   corpo?: Prisma.StringFieldUpdateOperationsInput | string
@@ -658,7 +658,7 @@ export type ActivityScalarWhereInput = {
   OR?: Prisma.ActivityScalarWhereInput[]
   NOT?: Prisma.ActivityScalarWhereInput | Prisma.ActivityScalarWhereInput[]
   id?: Prisma.UuidFilter<"Activity"> | string
-  clienteId?: Prisma.UuidNullableFilter<"Activity"> | string | null
+  clienteId?: Prisma.UuidFilter<"Activity"> | string
   oportunidadeId?: Prisma.UuidNullableFilter<"Activity"> | string | null
   tipo?: Prisma.StringFilter<"Activity"> | string
   corpo?: Prisma.StringFilter<"Activity"> | string
@@ -691,7 +691,7 @@ export type ActivityCreateWithoutOpportunityInput = {
 
 export type ActivityUncheckedCreateWithoutOpportunityInput = {
   id?: string
-  clienteId?: string | null
+  clienteId: string
   tipo: string
   corpo: string
   occurredAt: Date | string
@@ -797,7 +797,7 @@ export type ActivityUncheckedUpdateManyWithoutCustomerInput = {
 
 export type ActivityCreateManyOpportunityInput = {
   id?: string
-  clienteId?: string | null
+  clienteId: string
   tipo: string
   corpo: string
   occurredAt: Date | string
@@ -829,7 +829,7 @@ export type ActivityUpdateWithoutOpportunityInput = {
 
 export type ActivityUncheckedUpdateWithoutOpportunityInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  clienteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clienteId?: Prisma.StringFieldUpdateOperationsInput | string
   tipo?: Prisma.StringFieldUpdateOperationsInput | string
   corpo?: Prisma.StringFieldUpdateOperationsInput | string
   occurredAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -845,7 +845,7 @@ export type ActivityUncheckedUpdateWithoutOpportunityInput = {
 
 export type ActivityUncheckedUpdateManyWithoutOpportunityInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  clienteId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clienteId?: Prisma.StringFieldUpdateOperationsInput | string
   tipo?: Prisma.StringFieldUpdateOperationsInput | string
   corpo?: Prisma.StringFieldUpdateOperationsInput | string
   occurredAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -957,7 +957,7 @@ export type $ActivityPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    clienteId: string | null
+    clienteId: string
     oportunidadeId: string | null
     tipo: string
     corpo: string

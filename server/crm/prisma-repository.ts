@@ -449,6 +449,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
   }
 
   async createActivity(actor: Actor, input: CreateActivityInput): Promise<ActivityRecord> {
+    await this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
     if (input.opportunityId) await this.assertCanAccessOpportunity(actor, input.opportunityId);
     const activity = await this.prisma.activity.create({
       data: {
@@ -499,8 +500,10 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     filters: {
       responsibleUserId?: string;
       status?: "pending" | "completed" | "cancelled";
+      category?: "commercial" | "warranty" | "support" | "after_sales";
       overdue?: boolean;
       today?: boolean;
+      future?: boolean;
       dateFrom?: string;
       dateTo?: string;
       customerId?: string;
@@ -516,11 +519,14 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         ...(actor.role === "vendedor" ? { responsibleUserId: actor.id } : {}),
         ...(filters.responsibleUserId ? { responsibleUserId: filters.responsibleUserId } : {}),
         ...(filters.status ? { status: filters.status } : {}),
+        archivedAt: null,
+        ...(filters.category ? { category: filters.category } : {}),
         ...(filters.customerId ? { customerId: filters.customerId } : {}),
         ...(filters.opportunityId ? { opportunityId: filters.opportunityId } : {}),
         ...(filters.priority ? { priority: filters.priority } : {}),
         ...(filters.overdue ? { status: "pending", dueAt: { lt: now } } : {}),
         ...(filters.today ? { status: "pending", dueAt: { gte: startOfToday, lt: startOfTomorrow } } : {}),
+        ...(filters.future ? { status: "pending", dueAt: { gte: startOfTomorrow } } : {}),
         ...(filters.dateFrom || filters.dateTo
           ? {
               dueAt: {
@@ -557,6 +563,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           customerId: input.customerId,
           opportunityId: input.opportunityId ?? null,
           responsibleUserId: input.responsibleUserId,
+          category: input.category ?? "commercial",
           title: input.title,
           description: input.description ?? null,
           dueAt: new Date(input.dueAt),
@@ -595,6 +602,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
         ...(input.opportunityId !== undefined ? { opportunityId: input.opportunityId } : {}),
         ...(input.responsibleUserId !== undefined ? { responsibleUserId: input.responsibleUserId } : {}),
+        ...(input.category !== undefined ? { category: input.category } : {}),
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),
         ...(input.dueAt !== undefined ? { dueAt: new Date(input.dueAt) } : {}),
@@ -719,12 +727,21 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
   }
 
   private async assertCustomerOpportunityMatch(customerId: string, opportunityId: string | null): Promise<void> {
+    await this.assertCustomerExists(customerId);
     if (!opportunityId) return;
     const opportunity = await this.prisma.opportunity.findFirst({
       where: { id: opportunityId, clienteId: customerId },
       select: { id: true },
     });
     if (!opportunity) throw new ApiError(400, "bad_request", "A oportunidade informada nao pertence ao cliente.");
+  }
+
+  private async assertCustomerExists(customerId: string): Promise<void> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+    if (!customer) throw new ApiError(422, "bad_request", "Cliente informado nao existe.");
   }
 
   private async assertCanAccessOpportunity(actor: Actor, opportunityId: string | null): Promise<void> {
@@ -846,6 +863,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
             customerId: replacement.customerId,
             opportunityId: replacement.opportunityId ?? null,
             responsibleUserId: replacement.responsibleUserId,
+            category: replacement.category ?? "commercial",
             title: replacement.title,
             description: replacement.description ?? null,
             dueAt: new Date(replacement.dueAt),
@@ -951,7 +969,7 @@ function mapOpportunity(row: OpportunityWithRelations): OpportunityRecord {
 function mapActivity(row: ActivityEntity): ActivityRecord {
   return {
     id: row.id,
-    customerId: row.clienteId as string,
+    customerId: row.clienteId,
     opportunityId: row.oportunidadeId,
     type: row.tipo as ActivityRecord["type"],
     title: row.title,
@@ -974,6 +992,7 @@ function mapNextAction(row: NextActionWithRelations): NextActionRecord {
     opportunityId: row.opportunityId,
     opportunityTitle: row.opportunity?.titulo ?? null,
     responsibleUserId: row.responsibleUserId,
+    category: row.category as NextActionRecord["category"],
     title: row.title,
     description: row.description,
     dueAt: row.dueAt.toISOString(),
@@ -989,6 +1008,7 @@ function mapNextAction(row: NextActionWithRelations): NextActionRecord {
     cancelledAt: row.cancelledAt?.toISOString() ?? null,
     cancelledBy: row.cancelledBy,
     cancellationReason: row.cancellationReason,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
   };
 }
 

@@ -97,6 +97,7 @@ export type ActivityRecord = {
 
 export type NextActionStatus = "pending" | "completed" | "cancelled";
 export type NextActionPriority = "low" | "normal" | "high";
+export type NextActionCategory = "commercial" | "warranty" | "support" | "after_sales";
 
 export type NextActionRecord = {
   id: string;
@@ -105,6 +106,7 @@ export type NextActionRecord = {
   opportunityId: string | null;
   opportunityTitle: string | null;
   responsibleUserId: string;
+  category: NextActionCategory;
   title: string;
   description: string | null;
   dueAt: string;
@@ -120,6 +122,7 @@ export type NextActionRecord = {
   cancelledAt: string | null;
   cancelledBy: string | null;
   cancellationReason: string | null;
+  archivedAt: string | null;
 };
 
 export type PipelineStageRecord = {
@@ -184,6 +187,7 @@ export type CreateNextActionInput = {
   customerId: string;
   opportunityId?: string | null;
   responsibleUserId: string;
+  category?: NextActionCategory;
   title: string;
   description?: string | null;
   dueAt: string;
@@ -249,8 +253,10 @@ export type CrmDataRepository = {
     filters: {
       responsibleUserId?: string;
       status?: NextActionStatus;
+      category?: NextActionCategory;
       overdue?: boolean;
       today?: boolean;
+      future?: boolean;
       dateFrom?: string;
       dateTo?: string;
       customerId?: string;

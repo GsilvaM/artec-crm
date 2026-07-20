@@ -110,6 +110,7 @@ type NextActionRow = {
   opportunity_id: string | null;
   opportunity_title: string | null;
   responsible_user_id: string;
+  category: NextActionRecord["category"];
   title: string;
   description: string | null;
   due_at: Date;
@@ -125,6 +126,7 @@ type NextActionRow = {
   cancelled_at: Date | null;
   cancelled_by: string | null;
   cancellation_reason: string | null;
+  archived_at: Date | null;
 };
 
 export class PgCrmDataRepository implements CrmDataRepository {
@@ -635,8 +637,10 @@ export class PgCrmDataRepository implements CrmDataRepository {
     filters: {
       responsibleUserId?: string;
       status?: NextActionStatus;
+      category?: NextActionRecord["category"];
       overdue?: boolean;
       today?: boolean;
+      future?: boolean;
       dateFrom?: string;
       dateTo?: string;
       customerId?: string;
@@ -653,6 +657,7 @@ export class PgCrmDataRepository implements CrmDataRepository {
     const exactFilters: Array<[string, unknown]> = [
       ["action.responsible_user_id", filters.responsibleUserId],
       ["action.status", filters.status],
+      ["action.category", filters.category],
       ["action.customer_id", filters.customerId],
       ["action.opportunity_id", filters.opportunityId],
       ["action.priority", filters.priority],
@@ -664,6 +669,7 @@ export class PgCrmDataRepository implements CrmDataRepository {
     }
     if (filters.overdue) where.push("action.status = 'pending' AND action.due_at < now()");
     if (filters.today) where.push("action.status = 'pending' AND action.due_at >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AND action.due_at < (date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') + interval '1 day') AT TIME ZONE 'America/Sao_Paulo'");
+    if (filters.future) where.push("action.status = 'pending' AND action.due_at >= (date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') + interval '1 day') AT TIME ZONE 'America/Sao_Paulo'");
     if (filters.dateFrom) {
       values.push(filters.dateFrom);
       where.push(`action.due_at >= $${values.length}`);
@@ -702,12 +708,22 @@ export class PgCrmDataRepository implements CrmDataRepository {
       const result = await client.query<NextActionRow>(
         `
           INSERT INTO crm.next_actions (
-            customer_id, opportunity_id, responsible_user_id, title, description, due_at, priority, status, created_by, updated_by
+            customer_id, opportunity_id, responsible_user_id, category, title, description, due_at, priority, status, created_by, updated_by
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $8)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $9)
           RETURNING *
         `,
-        [input.customerId, input.opportunityId ?? null, input.responsibleUserId, input.title, input.description ?? null, input.dueAt, input.priority ?? "normal", actor.id],
+        [
+          input.customerId,
+          input.opportunityId ?? null,
+          input.responsibleUserId,
+          input.category ?? "commercial",
+          input.title,
+          input.description ?? null,
+          input.dueAt,
+          input.priority ?? "normal",
+          actor.id,
+        ],
       );
       insertedId = result.rows[0].id;
       if (opportunity?.status === "ativa" && opportunity.archivedAt === null) {
@@ -740,6 +756,7 @@ export class PgCrmDataRepository implements CrmDataRepository {
       customer_id: input.customerId,
       opportunity_id: input.opportunityId,
       responsible_user_id: input.responsibleUserId,
+      category: input.category,
       title: input.title,
       description: input.description,
       due_at: input.dueAt,
@@ -928,15 +945,16 @@ export class PgCrmDataRepository implements CrmDataRepository {
         const created = await client.query<{ id: string }>(
           `
             INSERT INTO crm.next_actions (
-              customer_id, opportunity_id, responsible_user_id, title, description, due_at, priority, status, created_by, updated_by
+              customer_id, opportunity_id, responsible_user_id, category, title, description, due_at, priority, status, created_by, updated_by
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $8)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $9)
             RETURNING id
           `,
           [
             replacement.customerId,
             replacement.opportunityId ?? null,
             replacement.responsibleUserId,
+            replacement.category ?? "commercial",
             replacement.title,
             replacement.description ?? null,
             replacement.dueAt,
@@ -1144,6 +1162,7 @@ function mapNextAction(row: NextActionRow): NextActionRecord {
     opportunityId: row.opportunity_id,
     opportunityTitle: row.opportunity_title,
     responsibleUserId: row.responsible_user_id,
+    category: row.category,
     title: row.title,
     description: row.description,
     dueAt: row.due_at.toISOString(),
@@ -1159,6 +1178,7 @@ function mapNextAction(row: NextActionRow): NextActionRecord {
     cancelledAt: row.cancelled_at?.toISOString() ?? null,
     cancelledBy: row.cancelled_by,
     cancellationReason: row.cancellation_reason,
+    archivedAt: row.archived_at?.toISOString() ?? null,
   };
 }
 

@@ -149,8 +149,10 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
     const query = request.query as {
       responsibleUserId?: string;
       status?: "pending" | "completed" | "cancelled";
+      category?: "commercial" | "warranty" | "support" | "after_sales";
       overdue?: string;
       today?: string;
+      future?: string;
       dateFrom?: string;
       dateTo?: string;
       customerId?: string;
@@ -162,6 +164,7 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
         ...query,
         overdue: query.overdue === "true",
         today: query.today === "true",
+        future: query.future === "true",
       }),
     };
   });

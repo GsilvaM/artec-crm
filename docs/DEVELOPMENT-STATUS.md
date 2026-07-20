@@ -7,8 +7,8 @@ Atualizado em: 2026-07-20
 - Repositorio: `C:\Users\Artec Climatizados\Desktop\artec-crm`
 - Remote esperado: `https://github.com/GsilvaM/artec-crm.git`
 - Branch: `main`
-- Base local observada: `08c9ee1 chore: extract artec crm project`
-- Marco trabalhado: Clientes e Oportunidades com banco real.
+- Base local observada: `7e7fffa feat: homologate customers and opportunities`
+- Marco trabalhado: Atividades e Proximas Acoes com banco real.
 - Commit/push: nao executado.
 
 ## Estado inicial observado
@@ -42,6 +42,7 @@ Status final:
 - `0008_create_activities_and_next_actions`: applied
 - `0009_fix_opportunity_responsible_trigger`: applied
 - `0010_split_responsible_trigger_branch`: applied
+- `0011_harden_activities_next_actions`: applied
 
 ## Prisma, backend e frontend
 
@@ -105,6 +106,42 @@ Homologado com dados reais de teste identificados como homologacao:
 - Auditoria em `crm.audit_log`: passou para insert/update.
 - Reatribuicao para outro responsavel nao foi homologada no banco real por ausencia de segundo usuario Auth disponivel; regra esta coberta por teste unitario/API e backend.
 
+## Atividades
+
+Homologado com dados reais de teste identificados como homologacao:
+
+- Atividade comercial vinculada a oportunidade: passou.
+- Atividade de garantia sem oportunidade: passou.
+- Atividade de suporte sem oportunidade: passou.
+- Atividade de pos-venda sem oportunidade: passou.
+- Linha do tempo por cliente via `GET /api/customers/:id/activities`: passou.
+- Linha do tempo por oportunidade via `GET /api/opportunities/:id/activities`: passou.
+- Bloqueio de `opportunityId` pertencente a outro cliente: passou em teste automatizado e constraint de banco.
+- Auditoria em `crm.audit_log`: passou para atividades.
+
+## Proximas Acoes
+
+Homologado com dados reais de teste identificados como homologacao:
+
+- Criar proxima acao comercial vinculada a oportunidade: passou.
+- Criar proxima acao de suporte sem oportunidade: passou.
+- Categoria `commercial`, `warranty`, `support` e `after_sales` suportada no contrato.
+- Reagendar preservando data anterior em `postponed_from`: passou.
+- Cancelar com motivo: passou.
+- Concluir acao atual de oportunidade ativa com acao substituta na mesma operacao: passou.
+- Bloquear conclusao da unica acao atual sem substituta: coberto por teste automatizado.
+- Filtros por categoria, status, vencidas, hoje, futuras, cliente, oportunidade e prioridade: cobertos no backend.
+- Auditoria em `crm.audit_log`: passou para proximas acoes.
+
+## Correcoes do Marco 3
+
+- Migration `0011` adicionou `category` e `archived_at` a `crm.next_actions`.
+- Migration `0011` tornou `crm.atividades.cliente_id` obrigatorio apos backfill seguro a partir da oportunidade.
+- Migration `0011` adicionou triggers para impedir atividade ou proxima acao vinculada a oportunidade de outro cliente.
+- Backend passou a validar cliente existente antes de gravar atividade ou proxima acao.
+- Backend, contratos e UI passaram a trabalhar com categorias de proximas acoes.
+- Lista de proximas acoes passou a aceitar filtros por categoria e futuras.
+
 ## Correcoes do Marco 2
 
 - Backend passou a validar cliente inexistente/arquivado antes de criar ou mover oportunidade.
@@ -122,7 +159,7 @@ Homologado com dados reais de teste identificados como homologacao:
 - `npm run prisma:validate`: passou.
 - `npm run prisma:generate`: passou.
 - `npm run typecheck`: passou.
-- `npm run test`: passou, 4 arquivos e 31 testes.
+- `npm run test`: passou, 4 arquivos e 33 testes.
 - `npm run build`: passou.
 - E2E: nao executado porque nao existe script `e2e` ou Playwright no `package.json`.
 
@@ -133,13 +170,15 @@ Homologado com dados reais de teste identificados como homologacao:
 - Nenhum valor sensivel registrado.
 - Nenhum objeto financeiro foi alterado.
 - Nenhuma integracao Auvo foi iniciada.
+- Nenhuma funcionalidade de Central Comercial, notificacoes completas, relatorios ou deploy foi iniciada.
 
 ## Marcos
 
 - Marco 1, Homologacao conectada da Fundacao: concluido e homologado.
 - Marco 2, Clientes e Oportunidades: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
-- Marco 3, Atividades e Proximas Acoes: proximo marco recomendado.
+- Marco 3, Atividades e Proximas Acoes: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
+- Marco 4, Central Comercial: proximo marco recomendado.
 
 ## Proximo marco
 
-Homologar e expandir Atividades + Proximas Acoes sem iniciar Central Comercial, Notificacoes, Auvo, Relatorios ou financeiro.
+Criar a Central Comercial, usando os dados ja estruturados de clientes, oportunidades, atividades e proximas acoes para destacar o que precisa ser feito hoje, sem iniciar Auvo, relatorios, financeiro ou deploy.

@@ -118,7 +118,7 @@ model Opportunity {
 
 model Activity {
   id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clienteId      String?      @map("cliente_id") @db.Uuid
+  clienteId      String       @map("cliente_id") @db.Uuid
   oportunidadeId String?      @map("oportunidade_id") @db.Uuid
   tipo           String       @db.Text
   corpo          String       @db.Text
@@ -143,6 +143,7 @@ model NextAction {
   customerId         String       @map("customer_id") @db.Uuid
   opportunityId      String?      @map("opportunity_id") @db.Uuid
   responsibleUserId  String       @map("responsible_user_id") @db.Uuid
+  category           String       @default("commercial") @db.Text
   title              String       @db.Text
   description        String?      @db.Text
   dueAt              DateTime     @map("due_at") @db.Timestamptz(6)
@@ -159,10 +160,12 @@ model NextAction {
   cancelledAt        DateTime?    @map("cancelled_at") @db.Timestamptz(6)
   cancelledBy        String?      @map("cancelled_by") @db.Uuid
   cancellationReason String?      @map("cancellation_reason") @db.Text
+  archivedAt         DateTime?    @map("archived_at") @db.Timestamptz(6)
   customer           Customer     @relation(fields: [customerId], references: [id])
   opportunity        Opportunity? @relation(fields: [opportunityId], references: [id])
 
   @@index([responsibleUserId, status, dueAt], map: "next_actions_responsible_status_due_idx")
+  @@index([category, status, dueAt], map: "next_actions_category_status_due_idx")
   @@index([customerId], map: "next_actions_customer_idx")
   @@index([opportunityId], map: "next_actions_opportunity_idx")
   @@map("next_actions")

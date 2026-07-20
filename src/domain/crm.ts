@@ -56,6 +56,7 @@ export type NextAction = {
   opportunityId: string | null;
   opportunityTitle: string | null;
   responsibleUserId: string;
+  category: "commercial" | "warranty" | "support" | "after_sales";
   title: string;
   description: string | null;
   dueAt: string;
@@ -65,6 +66,7 @@ export type NextAction = {
   completionResult: string | null;
   postponedFrom: string | null;
   cancellationReason: string | null;
+  archivedAt: string | null;
 };
 
 export type PipelineStage = {
@@ -170,11 +172,11 @@ export async function createActivity(payload: { customerId: string; opportunityI
   return (await apiSend<{ activity: Activity }>("/api/activities", "POST", payload)).activity;
 }
 
-export async function createNextAction(payload: { customerId: string; opportunityId?: string | null; responsibleUserId: string; title: string; dueAt: string; priority?: NextAction["priority"] }): Promise<NextAction> {
+export async function createNextAction(payload: { customerId: string; opportunityId?: string | null; responsibleUserId: string; category?: NextAction["category"]; title: string; dueAt: string; priority?: NextAction["priority"] }): Promise<NextAction> {
   return (await apiSend<{ nextAction: NextAction }>("/api/next-actions", "POST", payload)).nextAction;
 }
 
-export async function completeNextAction(id: string, payload: { completionResult: string; nextAction?: { customerId: string; opportunityId?: string | null; responsibleUserId: string; title: string; dueAt: string; priority?: NextAction["priority"] } | null }): Promise<NextAction> {
+export async function completeNextAction(id: string, payload: { completionResult: string; nextAction?: { customerId: string; opportunityId?: string | null; responsibleUserId: string; category?: NextAction["category"]; title: string; dueAt: string; priority?: NextAction["priority"] } | null }): Promise<NextAction> {
   return (await apiSend<{ nextAction: NextAction }>(`/api/next-actions/${id}/complete`, "POST", payload)).nextAction;
 }
 
@@ -182,7 +184,7 @@ export async function postponeNextAction(id: string, dueAt: string): Promise<Nex
   return (await apiSend<{ nextAction: NextAction }>(`/api/next-actions/${id}/postpone`, "POST", { dueAt })).nextAction;
 }
 
-export async function cancelNextAction(id: string, cancellationReason: string, nextAction?: { customerId: string; opportunityId?: string | null; responsibleUserId: string; title: string; dueAt: string; priority?: NextAction["priority"] } | null): Promise<NextAction> {
+export async function cancelNextAction(id: string, cancellationReason: string, nextAction?: { customerId: string; opportunityId?: string | null; responsibleUserId: string; category?: NextAction["category"]; title: string; dueAt: string; priority?: NextAction["priority"] } | null): Promise<NextAction> {
   return (await apiSend<{ nextAction: NextAction }>(`/api/next-actions/${id}/cancel`, "POST", { cancellationReason, nextAction })).nextAction;
 }
 

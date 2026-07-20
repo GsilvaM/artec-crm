@@ -367,6 +367,27 @@ describe("CRM activities and next actions API", () => {
     expect(response.json().activity.createdBy).toBe(actorId);
   });
 
+  it("rejects activity when opportunity belongs to another customer", async () => {
+    const repository = new FakeCrmRepository();
+    const otherCustomer = await repository.createCustomer({ id: actorId, role: "gestor" }, { tipoPessoa: "fisica", nome: "Outro Cliente" });
+    const app = createTestServer({ crmRepository: repository });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/activities",
+      headers: { authorization: "Bearer valid" },
+      payload: {
+        customerId: otherCustomer.id,
+        opportunityId,
+        type: "note",
+        description: "Tentativa com cliente divergente.",
+      },
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.message).toBe("A oportunidade informada nao pertence ao cliente.");
+  });
+
   it("rejects invalid activity payloads", async () => {
     const app = createTestServer({});
     const response = await app.inject({
@@ -399,14 +420,14 @@ describe("CRM activities and next actions API", () => {
     expect(response.json().error.message).toBe("Informe um responsavel ativo no CRM.");
   });
 
-  it("creates, postpones, cancels and lists next actions by date filters", async () => {
+  it("creates, postpones, cancels and lists next actions by category and date filters", async () => {
     const repository = new FakeCrmRepository();
     const app = createTestServer({ crmRepository: repository });
     const created = await app.inject({
       method: "POST",
       url: "/api/next-actions",
       headers: { authorization: "Bearer valid" },
-      payload: { customerId, responsibleUserId: actorId, title: "Retornar ao cliente", dueAt: "2026-07-20T13:00:00.000Z", priority: "high" },
+      payload: { customerId, responsibleUserId: actorId, category: "support", title: "Retornar ao cliente", dueAt: "2026-07-20T13:00:00.000Z", priority: "high" },
     });
     const id = created.json().nextAction.id;
     const postponed = await app.inject({
@@ -422,12 +443,37 @@ describe("CRM activities and next actions API", () => {
       payload: { cancellationReason: "Cliente pediu para pausar." },
     });
     const list = await app.inject({ method: "GET", url: "/api/next-actions?status=cancelled", headers: { authorization: "Bearer valid" } });
+    const supportList = await app.inject({ method: "GET", url: "/api/next-actions?category=support&status=cancelled", headers: { authorization: "Bearer valid" } });
     await app.close();
 
     expect(created.statusCode).toBe(201);
+    expect(created.json().nextAction.category).toBe("support");
     expect(postponed.json().nextAction.postponedFrom).toBe("2026-07-20T13:00:00.000Z");
     expect(cancelled.json().nextAction.status).toBe("cancelled");
     expect(list.json().nextActions).toHaveLength(1);
+    expect(supportList.json().nextActions).toHaveLength(1);
+  });
+
+  it("rejects next action when opportunity belongs to another customer", async () => {
+    const repository = new FakeCrmRepository();
+    const otherCustomer = await repository.createCustomer({ id: actorId, role: "gestor" }, { tipoPessoa: "fisica", nome: "Outro Cliente" });
+    const app = createTestServer({ crmRepository: repository });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/next-actions",
+      headers: { authorization: "Bearer valid" },
+      payload: {
+        customerId: otherCustomer.id,
+        opportunityId,
+        responsibleUserId: actorId,
+        title: "Acompanhar divergencia",
+        dueAt: "2026-07-21T13:00:00.000Z",
+      },
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.message).toBe("A oportunidade informada nao pertence ao cliente.");
   });
 
   it("prevents completing current active opportunity action without replacement", async () => {
@@ -734,6 +780,7 @@ class FakeCrmRepository implements CrmDataRepository {
   }
 
   async createActivity(actor: Actor, input: CreateActivityInput): Promise<ActivityRecord> {
+    this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
     const activity = makeActivity({
       id: randomUUID(),
       customerId: input.customerId,
@@ -762,16 +809,18 @@ class FakeCrmRepository implements CrmDataRepository {
     return activity;
   }
 
-  async listNextActions(actor: Actor, filters: { responsibleUserId?: string; status?: "pending" | "completed" | "cancelled"; overdue?: boolean; today?: boolean; customerId?: string; opportunityId?: string; priority?: "low" | "normal" | "high" }): Promise<NextActionRecord[]> {
+  async listNextActions(actor: Actor, filters: { responsibleUserId?: string; status?: "pending" | "completed" | "cancelled"; category?: "commercial" | "warranty" | "support" | "after_sales"; overdue?: boolean; today?: boolean; future?: boolean; customerId?: string; opportunityId?: string; priority?: "low" | "normal" | "high" }): Promise<NextActionRecord[]> {
     return this.nextActions.filter((action) => {
       if (actor.role === "vendedor" && action.responsibleUserId !== actor.id) return false;
       if (filters.responsibleUserId && action.responsibleUserId !== filters.responsibleUserId) return false;
       if (filters.status && action.status !== filters.status) return false;
+      if (filters.category && action.category !== filters.category) return false;
       if (filters.customerId && action.customerId !== filters.customerId) return false;
       if (filters.opportunityId && action.opportunityId !== filters.opportunityId) return false;
       if (filters.priority && action.priority !== filters.priority) return false;
       if (filters.overdue && !(action.status === "pending" && action.dueAt < now)) return false;
       if (filters.today && !action.dueAt.startsWith("2026-07-20")) return false;
+      if (filters.future && !(action.status === "pending" && action.dueAt >= "2026-07-21T00:00:00.000Z")) return false;
       return true;
     });
   }
@@ -783,6 +832,7 @@ class FakeCrmRepository implements CrmDataRepository {
   }
 
   async createNextAction(actor: Actor, input: CreateNextActionInput): Promise<NextActionRecord> {
+    this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
     this.assertActiveUser(input.responsibleUserId);
     if (actor.role === "vendedor" && input.responsibleUserId !== actor.id) {
       throw new ApiError(403, "forbidden", "Vendedor nao pode alterar acoes de outro responsavel.");
@@ -792,6 +842,7 @@ class FakeCrmRepository implements CrmDataRepository {
       customerId: input.customerId,
       opportunityId: input.opportunityId ?? null,
       responsibleUserId: input.responsibleUserId,
+      category: input.category ?? "commercial",
       title: input.title,
       description: input.description ?? null,
       dueAt: input.dueAt,
@@ -895,6 +946,15 @@ class FakeCrmRepository implements CrmDataRepository {
 
   private assertActiveUser(userId: string): void {
     if (!this.activeUsers.has(userId)) throw new ApiError(422, "bad_request", "Informe um responsavel ativo no CRM.");
+  }
+
+  private assertCustomerOpportunityMatch(customerId: string, opportunityId: string | null): void {
+    if (!this.customers.some((item) => item.id === customerId)) {
+      throw new ApiError(422, "bad_request", "Cliente informado nao existe.");
+    }
+    if (!opportunityId) return;
+    const opportunity = this.opportunities.find((item) => item.id === opportunityId && item.clienteId === customerId);
+    if (!opportunity) throw new ApiError(400, "bad_request", "A oportunidade informada nao pertence ao cliente.");
   }
 
   private assertCustomerCanReceiveOpportunity(customerId: string): void {
@@ -1030,6 +1090,7 @@ function makeNextAction(overrides: Partial<NextActionRecord>): NextActionRecord 
     opportunityId: overrides.opportunityId ?? null,
     opportunityTitle: overrides.opportunityTitle ?? null,
     responsibleUserId: overrides.responsibleUserId ?? actorId,
+    category: overrides.category ?? "commercial",
     title: overrides.title ?? "Retornar ao cliente",
     description: overrides.description ?? null,
     dueAt: overrides.dueAt ?? "2026-07-21T13:00:00.000Z",
@@ -1045,6 +1106,7 @@ function makeNextAction(overrides: Partial<NextActionRecord>): NextActionRecord 
     cancelledAt: null,
     cancelledBy: null,
     cancellationReason: null,
+    archivedAt: null,
   };
 }
 

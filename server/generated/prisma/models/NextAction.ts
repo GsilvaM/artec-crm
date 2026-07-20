@@ -29,6 +29,7 @@ export type NextActionMinAggregateOutputType = {
   customerId: string | null
   opportunityId: string | null
   responsibleUserId: string | null
+  category: string | null
   title: string | null
   description: string | null
   dueAt: Date | null
@@ -45,6 +46,7 @@ export type NextActionMinAggregateOutputType = {
   cancelledAt: Date | null
   cancelledBy: string | null
   cancellationReason: string | null
+  archivedAt: Date | null
 }
 
 export type NextActionMaxAggregateOutputType = {
@@ -52,6 +54,7 @@ export type NextActionMaxAggregateOutputType = {
   customerId: string | null
   opportunityId: string | null
   responsibleUserId: string | null
+  category: string | null
   title: string | null
   description: string | null
   dueAt: Date | null
@@ -68,6 +71,7 @@ export type NextActionMaxAggregateOutputType = {
   cancelledAt: Date | null
   cancelledBy: string | null
   cancellationReason: string | null
+  archivedAt: Date | null
 }
 
 export type NextActionCountAggregateOutputType = {
@@ -75,6 +79,7 @@ export type NextActionCountAggregateOutputType = {
   customerId: number
   opportunityId: number
   responsibleUserId: number
+  category: number
   title: number
   description: number
   dueAt: number
@@ -91,6 +96,7 @@ export type NextActionCountAggregateOutputType = {
   cancelledAt: number
   cancelledBy: number
   cancellationReason: number
+  archivedAt: number
   _all: number
 }
 
@@ -100,6 +106,7 @@ export type NextActionMinAggregateInputType = {
   customerId?: true
   opportunityId?: true
   responsibleUserId?: true
+  category?: true
   title?: true
   description?: true
   dueAt?: true
@@ -116,6 +123,7 @@ export type NextActionMinAggregateInputType = {
   cancelledAt?: true
   cancelledBy?: true
   cancellationReason?: true
+  archivedAt?: true
 }
 
 export type NextActionMaxAggregateInputType = {
@@ -123,6 +131,7 @@ export type NextActionMaxAggregateInputType = {
   customerId?: true
   opportunityId?: true
   responsibleUserId?: true
+  category?: true
   title?: true
   description?: true
   dueAt?: true
@@ -139,6 +148,7 @@ export type NextActionMaxAggregateInputType = {
   cancelledAt?: true
   cancelledBy?: true
   cancellationReason?: true
+  archivedAt?: true
 }
 
 export type NextActionCountAggregateInputType = {
@@ -146,6 +156,7 @@ export type NextActionCountAggregateInputType = {
   customerId?: true
   opportunityId?: true
   responsibleUserId?: true
+  category?: true
   title?: true
   description?: true
   dueAt?: true
@@ -162,6 +173,7 @@ export type NextActionCountAggregateInputType = {
   cancelledAt?: true
   cancelledBy?: true
   cancellationReason?: true
+  archivedAt?: true
   _all?: true
 }
 
@@ -242,6 +254,7 @@ export type NextActionGroupByOutputType = {
   customerId: string
   opportunityId: string | null
   responsibleUserId: string
+  category: string
   title: string
   description: string | null
   dueAt: Date
@@ -258,6 +271,7 @@ export type NextActionGroupByOutputType = {
   cancelledAt: Date | null
   cancelledBy: string | null
   cancellationReason: string | null
+  archivedAt: Date | null
   _count: NextActionCountAggregateOutputType | null
   _min: NextActionMinAggregateOutputType | null
   _max: NextActionMaxAggregateOutputType | null
@@ -286,6 +300,7 @@ export type NextActionWhereInput = {
   customerId?: Prisma.UuidFilter<"NextAction"> | string
   opportunityId?: Prisma.UuidNullableFilter<"NextAction"> | string | null
   responsibleUserId?: Prisma.UuidFilter<"NextAction"> | string
+  category?: Prisma.StringFilter<"NextAction"> | string
   title?: Prisma.StringFilter<"NextAction"> | string
   description?: Prisma.StringNullableFilter<"NextAction"> | string | null
   dueAt?: Prisma.DateTimeFilter<"NextAction"> | Date | string
@@ -302,6 +317,7 @@ export type NextActionWhereInput = {
   cancelledAt?: Prisma.DateTimeNullableFilter<"NextAction"> | Date | string | null
   cancelledBy?: Prisma.UuidNullableFilter<"NextAction"> | string | null
   cancellationReason?: Prisma.StringNullableFilter<"NextAction"> | string | null
+  archivedAt?: Prisma.DateTimeNullableFilter<"NextAction"> | Date | string | null
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   opportunity?: Prisma.XOR<Prisma.OpportunityNullableScalarRelationFilter, Prisma.OpportunityWhereInput> | null
 }
@@ -311,6 +327,7 @@ export type NextActionOrderByWithRelationInput = {
   customerId?: Prisma.SortOrder
   opportunityId?: Prisma.SortOrderInput | Prisma.SortOrder
   responsibleUserId?: Prisma.SortOrder
+  category?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   dueAt?: Prisma.SortOrder
@@ -327,6 +344,7 @@ export type NextActionOrderByWithRelationInput = {
   cancelledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   cancelledBy?: Prisma.SortOrderInput | Prisma.SortOrder
   cancellationReason?: Prisma.SortOrderInput | Prisma.SortOrder
+  archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   customer?: Prisma.CustomerOrderByWithRelationInput
   opportunity?: Prisma.OpportunityOrderByWithRelationInput
 }
@@ -339,6 +357,7 @@ export type NextActionWhereUniqueInput = Prisma.AtLeast<{
   customerId?: Prisma.UuidFilter<"NextAction"> | string
   opportunityId?: Prisma.UuidNullableFilter<"NextAction"> | string | null
   responsibleUserId?: Prisma.UuidFilter<"NextAction"> | string
+  category?: Prisma.StringFilter<"NextAction"> | string
   title?: Prisma.StringFilter<"NextAction"> | string
   description?: Prisma.StringNullableFilter<"NextAction"> | string | null
   dueAt?: Prisma.DateTimeFilter<"NextAction"> | Date | string
@@ -355,6 +374,7 @@ export type NextActionWhereUniqueInput = Prisma.AtLeast<{
   cancelledAt?: Prisma.DateTimeNullableFilter<"NextAction"> | Date | string | null
   cancelledBy?: Prisma.UuidNullableFilter<"NextAction"> | string | null
   cancellationReason?: Prisma.StringNullableFilter<"NextAction"> | string | null
+  archivedAt?: Prisma.DateTimeNullableFilter<"NextAction"> | Date | string | null
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   opportunity?: Prisma.XOR<Prisma.OpportunityNullableScalarRelationFilter, Prisma.OpportunityWhereInput> | null
 }, "id">
@@ -364,6 +384,7 @@ export type NextActionOrderByWithAggregationInput = {
   customerId?: Prisma.SortOrder
   opportunityId?: Prisma.SortOrderInput | Prisma.SortOrder
   responsibleUserId?: Prisma.SortOrder
+  category?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   dueAt?: Prisma.SortOrder
@@ -380,6 +401,7 @@ export type NextActionOrderByWithAggregationInput = {
   cancelledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   cancelledBy?: Prisma.SortOrderInput | Prisma.SortOrder
   cancellationReason?: Prisma.SortOrderInput | Prisma.SortOrder
+  archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.NextActionCountOrderByAggregateInput
   _max?: Prisma.NextActionMaxOrderByAggregateInput
   _min?: Prisma.NextActionMinOrderByAggregateInput
@@ -393,6 +415,7 @@ export type NextActionScalarWhereWithAggregatesInput = {
   customerId?: Prisma.UuidWithAggregatesFilter<"NextAction"> | string
   opportunityId?: Prisma.UuidNullableWithAggregatesFilter<"NextAction"> | string | null
   responsibleUserId?: Prisma.UuidWithAggregatesFilter<"NextAction"> | string
+  category?: Prisma.StringWithAggregatesFilter<"NextAction"> | string
   title?: Prisma.StringWithAggregatesFilter<"NextAction"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"NextAction"> | string | null
   dueAt?: Prisma.DateTimeWithAggregatesFilter<"NextAction"> | Date | string
@@ -409,11 +432,13 @@ export type NextActionScalarWhereWithAggregatesInput = {
   cancelledAt?: Prisma.DateTimeNullableWithAggregatesFilter<"NextAction"> | Date | string | null
   cancelledBy?: Prisma.UuidNullableWithAggregatesFilter<"NextAction"> | string | null
   cancellationReason?: Prisma.StringNullableWithAggregatesFilter<"NextAction"> | string | null
+  archivedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"NextAction"> | Date | string | null
 }
 
 export type NextActionCreateInput = {
   id?: string
   responsibleUserId: string
+  category?: string
   title: string
   description?: string | null
   dueAt: Date | string
@@ -430,6 +455,7 @@ export type NextActionCreateInput = {
   cancelledAt?: Date | string | null
   cancelledBy?: string | null
   cancellationReason?: string | null
+  archivedAt?: Date | string | null
   customer: Prisma.CustomerCreateNestedOneWithoutNextActionsInput
   opportunity?: Prisma.OpportunityCreateNestedOneWithoutNextActionsInput
 }
@@ -439,6 +465,7 @@ export type NextActionUncheckedCreateInput = {
   customerId: string
   opportunityId?: string | null
   responsibleUserId: string
+  category?: string
   title: string
   description?: string | null
   dueAt: Date | string
@@ -455,11 +482,13 @@ export type NextActionUncheckedCreateInput = {
   cancelledAt?: Date | string | null
   cancelledBy?: string | null
   cancellationReason?: string | null
+  archivedAt?: Date | string | null
 }
 
 export type NextActionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -476,6 +505,7 @@ export type NextActionUpdateInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customer?: Prisma.CustomerUpdateOneRequiredWithoutNextActionsNestedInput
   opportunity?: Prisma.OpportunityUpdateOneWithoutNextActionsNestedInput
 }
@@ -485,6 +515,7 @@ export type NextActionUncheckedUpdateInput = {
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
   opportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -501,6 +532,7 @@ export type NextActionUncheckedUpdateInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type NextActionCreateManyInput = {
@@ -508,6 +540,7 @@ export type NextActionCreateManyInput = {
   customerId: string
   opportunityId?: string | null
   responsibleUserId: string
+  category?: string
   title: string
   description?: string | null
   dueAt: Date | string
@@ -524,11 +557,13 @@ export type NextActionCreateManyInput = {
   cancelledAt?: Date | string | null
   cancelledBy?: string | null
   cancellationReason?: string | null
+  archivedAt?: Date | string | null
 }
 
 export type NextActionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -545,6 +580,7 @@ export type NextActionUpdateManyMutationInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type NextActionUncheckedUpdateManyInput = {
@@ -552,6 +588,7 @@ export type NextActionUncheckedUpdateManyInput = {
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
   opportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -568,6 +605,7 @@ export type NextActionUncheckedUpdateManyInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type NextActionListRelationFilter = {
@@ -585,6 +623,7 @@ export type NextActionCountOrderByAggregateInput = {
   customerId?: Prisma.SortOrder
   opportunityId?: Prisma.SortOrder
   responsibleUserId?: Prisma.SortOrder
+  category?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrder
   dueAt?: Prisma.SortOrder
@@ -601,6 +640,7 @@ export type NextActionCountOrderByAggregateInput = {
   cancelledAt?: Prisma.SortOrder
   cancelledBy?: Prisma.SortOrder
   cancellationReason?: Prisma.SortOrder
+  archivedAt?: Prisma.SortOrder
 }
 
 export type NextActionMaxOrderByAggregateInput = {
@@ -608,6 +648,7 @@ export type NextActionMaxOrderByAggregateInput = {
   customerId?: Prisma.SortOrder
   opportunityId?: Prisma.SortOrder
   responsibleUserId?: Prisma.SortOrder
+  category?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrder
   dueAt?: Prisma.SortOrder
@@ -624,6 +665,7 @@ export type NextActionMaxOrderByAggregateInput = {
   cancelledAt?: Prisma.SortOrder
   cancelledBy?: Prisma.SortOrder
   cancellationReason?: Prisma.SortOrder
+  archivedAt?: Prisma.SortOrder
 }
 
 export type NextActionMinOrderByAggregateInput = {
@@ -631,6 +673,7 @@ export type NextActionMinOrderByAggregateInput = {
   customerId?: Prisma.SortOrder
   opportunityId?: Prisma.SortOrder
   responsibleUserId?: Prisma.SortOrder
+  category?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrder
   dueAt?: Prisma.SortOrder
@@ -647,6 +690,7 @@ export type NextActionMinOrderByAggregateInput = {
   cancelledAt?: Prisma.SortOrder
   cancelledBy?: Prisma.SortOrder
   cancellationReason?: Prisma.SortOrder
+  archivedAt?: Prisma.SortOrder
 }
 
 export type NextActionCreateNestedManyWithoutCustomerInput = {
@@ -736,6 +780,7 @@ export type NextActionUncheckedUpdateManyWithoutOpportunityNestedInput = {
 export type NextActionCreateWithoutCustomerInput = {
   id?: string
   responsibleUserId: string
+  category?: string
   title: string
   description?: string | null
   dueAt: Date | string
@@ -752,6 +797,7 @@ export type NextActionCreateWithoutCustomerInput = {
   cancelledAt?: Date | string | null
   cancelledBy?: string | null
   cancellationReason?: string | null
+  archivedAt?: Date | string | null
   opportunity?: Prisma.OpportunityCreateNestedOneWithoutNextActionsInput
 }
 
@@ -759,6 +805,7 @@ export type NextActionUncheckedCreateWithoutCustomerInput = {
   id?: string
   opportunityId?: string | null
   responsibleUserId: string
+  category?: string
   title: string
   description?: string | null
   dueAt: Date | string
@@ -775,6 +822,7 @@ export type NextActionUncheckedCreateWithoutCustomerInput = {
   cancelledAt?: Date | string | null
   cancelledBy?: string | null
   cancellationReason?: string | null
+  archivedAt?: Date | string | null
 }
 
 export type NextActionCreateOrConnectWithoutCustomerInput = {
@@ -811,6 +859,7 @@ export type NextActionScalarWhereInput = {
   customerId?: Prisma.UuidFilter<"NextAction"> | string
   opportunityId?: Prisma.UuidNullableFilter<"NextAction"> | string | null
   responsibleUserId?: Prisma.UuidFilter<"NextAction"> | string
+  category?: Prisma.StringFilter<"NextAction"> | string
   title?: Prisma.StringFilter<"NextAction"> | string
   description?: Prisma.StringNullableFilter<"NextAction"> | string | null
   dueAt?: Prisma.DateTimeFilter<"NextAction"> | Date | string
@@ -827,11 +876,13 @@ export type NextActionScalarWhereInput = {
   cancelledAt?: Prisma.DateTimeNullableFilter<"NextAction"> | Date | string | null
   cancelledBy?: Prisma.UuidNullableFilter<"NextAction"> | string | null
   cancellationReason?: Prisma.StringNullableFilter<"NextAction"> | string | null
+  archivedAt?: Prisma.DateTimeNullableFilter<"NextAction"> | Date | string | null
 }
 
 export type NextActionCreateWithoutOpportunityInput = {
   id?: string
   responsibleUserId: string
+  category?: string
   title: string
   description?: string | null
   dueAt: Date | string
@@ -848,6 +899,7 @@ export type NextActionCreateWithoutOpportunityInput = {
   cancelledAt?: Date | string | null
   cancelledBy?: string | null
   cancellationReason?: string | null
+  archivedAt?: Date | string | null
   customer: Prisma.CustomerCreateNestedOneWithoutNextActionsInput
 }
 
@@ -855,6 +907,7 @@ export type NextActionUncheckedCreateWithoutOpportunityInput = {
   id?: string
   customerId: string
   responsibleUserId: string
+  category?: string
   title: string
   description?: string | null
   dueAt: Date | string
@@ -871,6 +924,7 @@ export type NextActionUncheckedCreateWithoutOpportunityInput = {
   cancelledAt?: Date | string | null
   cancelledBy?: string | null
   cancellationReason?: string | null
+  archivedAt?: Date | string | null
 }
 
 export type NextActionCreateOrConnectWithoutOpportunityInput = {
@@ -903,6 +957,7 @@ export type NextActionCreateManyCustomerInput = {
   id?: string
   opportunityId?: string | null
   responsibleUserId: string
+  category?: string
   title: string
   description?: string | null
   dueAt: Date | string
@@ -919,11 +974,13 @@ export type NextActionCreateManyCustomerInput = {
   cancelledAt?: Date | string | null
   cancelledBy?: string | null
   cancellationReason?: string | null
+  archivedAt?: Date | string | null
 }
 
 export type NextActionUpdateWithoutCustomerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -940,6 +997,7 @@ export type NextActionUpdateWithoutCustomerInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   opportunity?: Prisma.OpportunityUpdateOneWithoutNextActionsNestedInput
 }
 
@@ -947,6 +1005,7 @@ export type NextActionUncheckedUpdateWithoutCustomerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   opportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -963,12 +1022,14 @@ export type NextActionUncheckedUpdateWithoutCustomerInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type NextActionUncheckedUpdateManyWithoutCustomerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   opportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -985,12 +1046,14 @@ export type NextActionUncheckedUpdateManyWithoutCustomerInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type NextActionCreateManyOpportunityInput = {
   id?: string
   customerId: string
   responsibleUserId: string
+  category?: string
   title: string
   description?: string | null
   dueAt: Date | string
@@ -1007,11 +1070,13 @@ export type NextActionCreateManyOpportunityInput = {
   cancelledAt?: Date | string | null
   cancelledBy?: string | null
   cancellationReason?: string | null
+  archivedAt?: Date | string | null
 }
 
 export type NextActionUpdateWithoutOpportunityInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1028,6 +1093,7 @@ export type NextActionUpdateWithoutOpportunityInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customer?: Prisma.CustomerUpdateOneRequiredWithoutNextActionsNestedInput
 }
 
@@ -1035,6 +1101,7 @@ export type NextActionUncheckedUpdateWithoutOpportunityInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1051,12 +1118,14 @@ export type NextActionUncheckedUpdateWithoutOpportunityInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type NextActionUncheckedUpdateManyWithoutOpportunityInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
   responsibleUserId?: Prisma.StringFieldUpdateOperationsInput | string
+  category?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dueAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1073,6 +1142,7 @@ export type NextActionUncheckedUpdateManyWithoutOpportunityInput = {
   cancelledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cancelledBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cancellationReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 
@@ -1082,6 +1152,7 @@ export type NextActionSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   customerId?: boolean
   opportunityId?: boolean
   responsibleUserId?: boolean
+  category?: boolean
   title?: boolean
   description?: boolean
   dueAt?: boolean
@@ -1098,6 +1169,7 @@ export type NextActionSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   cancelledAt?: boolean
   cancelledBy?: boolean
   cancellationReason?: boolean
+  archivedAt?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   opportunity?: boolean | Prisma.NextAction$opportunityArgs<ExtArgs>
 }, ExtArgs["result"]["nextAction"]>
@@ -1107,6 +1179,7 @@ export type NextActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   customerId?: boolean
   opportunityId?: boolean
   responsibleUserId?: boolean
+  category?: boolean
   title?: boolean
   description?: boolean
   dueAt?: boolean
@@ -1123,6 +1196,7 @@ export type NextActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   cancelledAt?: boolean
   cancelledBy?: boolean
   cancellationReason?: boolean
+  archivedAt?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   opportunity?: boolean | Prisma.NextAction$opportunityArgs<ExtArgs>
 }, ExtArgs["result"]["nextAction"]>
@@ -1132,6 +1206,7 @@ export type NextActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   customerId?: boolean
   opportunityId?: boolean
   responsibleUserId?: boolean
+  category?: boolean
   title?: boolean
   description?: boolean
   dueAt?: boolean
@@ -1148,6 +1223,7 @@ export type NextActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   cancelledAt?: boolean
   cancelledBy?: boolean
   cancellationReason?: boolean
+  archivedAt?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   opportunity?: boolean | Prisma.NextAction$opportunityArgs<ExtArgs>
 }, ExtArgs["result"]["nextAction"]>
@@ -1157,6 +1233,7 @@ export type NextActionSelectScalar = {
   customerId?: boolean
   opportunityId?: boolean
   responsibleUserId?: boolean
+  category?: boolean
   title?: boolean
   description?: boolean
   dueAt?: boolean
@@ -1173,9 +1250,10 @@ export type NextActionSelectScalar = {
   cancelledAt?: boolean
   cancelledBy?: boolean
   cancellationReason?: boolean
+  archivedAt?: boolean
 }
 
-export type NextActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "customerId" | "opportunityId" | "responsibleUserId" | "title" | "description" | "dueAt" | "priority" | "status" | "completedAt" | "completedBy" | "completionResult" | "postponedFrom" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt" | "cancelledAt" | "cancelledBy" | "cancellationReason", ExtArgs["result"]["nextAction"]>
+export type NextActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "customerId" | "opportunityId" | "responsibleUserId" | "category" | "title" | "description" | "dueAt" | "priority" | "status" | "completedAt" | "completedBy" | "completionResult" | "postponedFrom" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt" | "cancelledAt" | "cancelledBy" | "cancellationReason" | "archivedAt", ExtArgs["result"]["nextAction"]>
 export type NextActionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   opportunity?: boolean | Prisma.NextAction$opportunityArgs<ExtArgs>
@@ -1200,6 +1278,7 @@ export type $NextActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
     customerId: string
     opportunityId: string | null
     responsibleUserId: string
+    category: string
     title: string
     description: string | null
     dueAt: Date
@@ -1216,6 +1295,7 @@ export type $NextActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
     cancelledAt: Date | null
     cancelledBy: string | null
     cancellationReason: string | null
+    archivedAt: Date | null
   }, ExtArgs["result"]["nextAction"]>
   composites: {}
 }
@@ -1645,6 +1725,7 @@ export interface NextActionFieldRefs {
   readonly customerId: Prisma.FieldRef<"NextAction", 'String'>
   readonly opportunityId: Prisma.FieldRef<"NextAction", 'String'>
   readonly responsibleUserId: Prisma.FieldRef<"NextAction", 'String'>
+  readonly category: Prisma.FieldRef<"NextAction", 'String'>
   readonly title: Prisma.FieldRef<"NextAction", 'String'>
   readonly description: Prisma.FieldRef<"NextAction", 'String'>
   readonly dueAt: Prisma.FieldRef<"NextAction", 'DateTime'>
@@ -1661,6 +1742,7 @@ export interface NextActionFieldRefs {
   readonly cancelledAt: Prisma.FieldRef<"NextAction", 'DateTime'>
   readonly cancelledBy: Prisma.FieldRef<"NextAction", 'String'>
   readonly cancellationReason: Prisma.FieldRef<"NextAction", 'String'>
+  readonly archivedAt: Prisma.FieldRef<"NextAction", 'DateTime'>
 }
     
 

@@ -198,6 +198,7 @@ export const NextActionScalarFieldEnum = {
   customerId: 'customerId',
   opportunityId: 'opportunityId',
   responsibleUserId: 'responsibleUserId',
+  category: 'category',
   title: 'title',
   description: 'description',
   dueAt: 'dueAt',
@@ -213,7 +214,8 @@ export const NextActionScalarFieldEnum = {
   updatedAt: 'updatedAt',
   cancelledAt: 'cancelledAt',
   cancelledBy: 'cancelledBy',
-  cancellationReason: 'cancellationReason'
+  cancellationReason: 'cancellationReason',
+  archivedAt: 'archivedAt'
 } as const
 
 export type NextActionScalarFieldEnum = (typeof NextActionScalarFieldEnum)[keyof typeof NextActionScalarFieldEnum]
