@@ -14,6 +14,7 @@ CRM comercial independente da Artec Ambientes Climatizados. Este projeto nao dev
 - `npm run prisma:generate`: gera o Prisma Client usado pelo backend.
 - `npm run prisma:validate`: valida `prisma/schema.prisma`.
 - `npm run prisma:format`: formata `prisma/schema.prisma`.
+- `npm run notifications:reconcile`: reconcilia notificacoes internas de forma idempotente.
 - `npm run db:migrate`: aplica migrations do CRM.
 - `npm run db:migrate:status`: consulta status das migrations.
 
@@ -66,6 +67,20 @@ Todas exigem token Supabase valido e membership ativa.
 `crm.next_actions` preserva historico de acoes pendentes, concluidas, reagendadas e canceladas. Durante a compatibilidade com o marco anterior, `crm.oportunidades.current_next_action_id` aponta para a acao pendente atual e os campos legados `proxima_acao`/`proxima_acao_em` sao mantidos sincronizados pelo backend.
 
 Auditoria tecnica usa `created_by` e `updated_by` definidos exclusivamente pelo backend a partir do usuario autenticado. O frontend nao envia o autor da auditoria.
+
+## APIs do marco Notificacoes Internas
+
+Todas exigem token Supabase valido e membership ativa.
+
+- `GET /api/notifications`.
+- `GET /api/notifications/unread-count`.
+- `POST /api/notifications/:id/read`.
+- `POST /api/notifications/read-all`.
+- `POST /api/notifications/:id/archive`.
+- `POST /api/notifications/:id/snooze`.
+- `POST /api/notifications/reconcile`, restrito a `gestor` para homologacao.
+
+As notificacoes sao persistentes, especificas por usuario e deduplicadas por condicao aberta. A reconciliacao pode ser chamada manualmente por `npm run notifications:reconcile` e futuramente por scheduler externo. Nao ha e-mail, WhatsApp, push web, webhook Auvo ou integracao externa nesta fase.
 
 ## Homologacao
 

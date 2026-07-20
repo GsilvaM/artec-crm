@@ -152,6 +152,38 @@ export type CommercialCenterFilters = {
   priority?: NextAction["priority"];
 };
 
+export type Notification = {
+  id: string;
+  userId: string;
+  type: "overdue_next_action" | "due_soon_next_action" | "opportunity_assigned" | "next_action_reassigned" | "missing_next_action" | "stalled_opportunity" | "internal_error";
+  severity: "info" | "attention" | "urgent";
+  title: string;
+  body: string;
+  entityType: string | null;
+  entityId: string | null;
+  customerId: string | null;
+  opportunityId: string | null;
+  nextActionId: string | null;
+  actionUrl: string | null;
+  status: "unread" | "read" | "archived" | "resolved";
+  readAt: string | null;
+  archivedAt: string | null;
+  snoozedUntil: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NotificationFilters = {
+  status?: Notification["status"] | "active";
+  type?: Notification["type"];
+  severity?: Notification["severity"];
+  from?: string;
+  to?: string;
+  limit?: string;
+  cursor?: string;
+};
+
 export type CreateCustomerPayload = {
   tipoPessoa: "fisica" | "juridica";
   nome: string;
@@ -272,6 +304,30 @@ export async function approveOpportunity(id: string, payload: { valorAprovado: n
 export async function loseOpportunity(id: string, motivoPerdaId: string): Promise<Opportunity> {
   const response = await apiSend<{ opportunity: Opportunity }>(`/api/opportunities/${id}/lose`, "POST", { motivoPerdaId });
   return response.opportunity;
+}
+
+export async function loadNotifications(filters: NotificationFilters = {}): Promise<{ notifications: Notification[]; nextCursor: string | null }> {
+  return apiGet<{ notifications: Notification[]; nextCursor: string | null }>(`/api/notifications${toQueryString(filters)}`);
+}
+
+export async function loadUnreadNotificationsCount(): Promise<number> {
+  return (await apiGet<{ count: number }>("/api/notifications/unread-count")).count;
+}
+
+export async function markNotificationRead(id: string): Promise<Notification> {
+  return (await apiSend<{ notification: Notification }>(`/api/notifications/${id}/read`, "POST")).notification;
+}
+
+export async function markAllNotificationsRead(): Promise<number> {
+  return (await apiSend<{ updated: number }>("/api/notifications/read-all", "POST")).updated;
+}
+
+export async function archiveNotification(id: string): Promise<Notification> {
+  return (await apiSend<{ notification: Notification }>(`/api/notifications/${id}/archive`, "POST")).notification;
+}
+
+export async function snoozeNotification(id: string, snoozedUntil: string): Promise<Notification> {
+  return (await apiSend<{ notification: Notification }>(`/api/notifications/${id}/snooze`, "POST", { snoozedUntil })).notification;
 }
 
 async function apiGet<T>(path: string): Promise<T> {

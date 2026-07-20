@@ -16,11 +16,16 @@ import type {
   CrmDataRepository,
   CustomerRecord,
   LossReasonRecord,
+  NotificationFilters,
+  NotificationListRecord,
+  NotificationRecord,
+  NotificationReconcileResult,
   NextActionPriority,
   NextActionRecord,
   OpportunityRecord,
   PipelineStageRecord,
   PostponeNextActionInput,
+  SnoozeNotificationInput,
   UpdateActivityInput,
   UpdateCustomerInput,
   UpdateNextActionInput,
@@ -30,7 +35,7 @@ import { assertActiveOpportunityHasNextAction, normalizePhone } from "./validati
 
 type PrismaExecutor = Pick<
   CrmPrismaClient,
-  "activity" | "customer" | "lossReason" | "nextAction" | "opportunity" | "pipelineStage" | "userMembership"
+  "activity" | "customer" | "lossReason" | "nextAction" | "notification" | "opportunity" | "pipelineStage" | "userMembership"
 >;
 
 type CustomerWithCount = Awaited<ReturnType<CrmPrismaClient["customer"]["findFirst"]>> & {
@@ -52,6 +57,23 @@ type NextActionWithRelations = NonNullable<Awaited<ReturnType<CrmPrismaClient["n
   opportunity: { titulo: string; situacao: string | null } | null;
 };
 
+type NotificationEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["notification"]["findFirst"]>>>;
+
+type NotificationPayload = {
+  userId: string;
+  type: NotificationRecord["type"];
+  severity: NotificationRecord["severity"];
+  title: string;
+  body: string;
+  entityType: string;
+  entityId: string;
+  customerId: string | null;
+  opportunityId: string | null;
+  nextActionId: string | null;
+  actionUrl: string;
+  dedupeKey: string;
+};
+
 const opportunityInclude = {
   cliente: { select: { nome: true } },
   etapa: { select: { nome: true } },
@@ -64,6 +86,7 @@ const nextActionInclude = {
 } as const;
 
 const STALLED_DAYS_THRESHOLD = 3;
+const DUE_SOON_HOURS = 24;
 
 export class PrismaCrmDataRepository implements CrmDataRepository {
   constructor(private readonly prisma: CrmPrismaClient) {}
@@ -248,6 +271,23 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         });
       }
 
+      if (input.responsavelId !== actor.id) {
+        await this.createAssignmentNotification({
+          userId: input.responsavelId,
+          type: "opportunity_assigned",
+          severity: "attention",
+          title: "Oportunidade atribuida a voce",
+          body: `${input.titulo} foi atribuida ao seu usuario.`,
+          entityType: "opportunity",
+          entityId: opportunity.id,
+          customerId: input.clienteId,
+          opportunityId: opportunity.id,
+          nextActionId: null,
+          actionUrl: `/app/opportunities/${opportunity.id}`,
+          dedupeKey: `opportunity-assigned:${opportunity.id}:${input.responsavelId}`,
+        }, actor);
+      }
+
       return opportunity.id;
     });
 
@@ -331,6 +371,24 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           });
           await this.setCurrentNextAction(actor, id, created.id, finalTitle, finalDueAt, tx);
         }
+        await this.resolveOpportunityNotifications(id, tx);
+      }
+
+      if (input.responsavelId && input.responsavelId !== current.responsavelId) {
+        await this.createAssignmentNotification({
+          userId: input.responsavelId,
+          type: "opportunity_assigned",
+          severity: "attention",
+          title: "Oportunidade atribuida a voce",
+          body: `${current.titulo} foi atribuida ao seu usuario.`,
+          entityType: "opportunity",
+          entityId: id,
+          customerId: input.clienteId ?? current.clienteId,
+          opportunityId: id,
+          nextActionId: current.currentNextActionId,
+          actionUrl: `/app/opportunities/${id}`,
+          dedupeKey: `opportunity-assigned:${id}:${input.responsavelId}`,
+        }, actor);
       }
     });
 
@@ -375,6 +433,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           metadata: {},
         },
       });
+      await this.resolveOpportunityNotifications(id, tx);
     });
 
     return this.getOpportunity(actor, id);
@@ -415,6 +474,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           metadata: {},
         },
       });
+      await this.resolveOpportunityNotifications(id, tx);
     });
 
     return this.getOpportunity(actor, id);
@@ -425,9 +485,12 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     if (!current) return null;
     if (archived && current.archivedAt) return current;
     if (!archived && !current.archivedAt) return current;
-    await this.prisma.opportunity.update({
-      where: { id },
-      data: { archivedAt: archived ? new Date() : null, updatedBy: actor.id },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.opportunity.update({
+        where: { id },
+        data: { archivedAt: archived ? new Date() : null, updatedBy: actor.id },
+      });
+      if (archived) await this.resolveOpportunityNotifications(id, tx);
     });
     return this.getOpportunity(actor, id);
   }
@@ -667,6 +730,203 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     return action ? mapNextAction(action) : null;
   }
 
+  async listNotifications(actor: Actor, filters: NotificationFilters): Promise<NotificationListRecord> {
+    const now = new Date();
+    const limit = filters.limit ?? 20;
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        userId: actor.id,
+        ...(filters.status === "active"
+          ? { status: { in: ["unread", "read"] }, archivedAt: null, resolvedAt: null, OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }] }
+          : filters.status
+            ? { status: filters.status }
+            : {}),
+        ...(filters.type ? { type: filters.type } : {}),
+        ...(filters.severity ? { severity: filters.severity } : {}),
+        ...(filters.from || filters.to
+          ? {
+              createdAt: {
+                ...(filters.from ? { gte: new Date(filters.from) } : {}),
+                ...(filters.to ? { lte: new Date(filters.to) } : {}),
+              },
+            }
+          : {}),
+        ...(filters.cursor ? { id: { lt: filters.cursor } } : {}),
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+    });
+
+    const page = notifications.slice(0, limit);
+    return {
+      notifications: page.map(mapNotification),
+      nextCursor: notifications.length > limit ? page[page.length - 1]?.id ?? null : null,
+    };
+  }
+
+  async getUnreadNotificationsCount(actor: Actor): Promise<{ count: number }> {
+    const now = new Date();
+    const count = await this.prisma.notification.count({
+      where: {
+        userId: actor.id,
+        status: "unread",
+        archivedAt: null,
+        resolvedAt: null,
+        OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
+      },
+    });
+    return { count };
+  }
+
+  async markNotificationRead(actor: Actor, id: string): Promise<NotificationRecord | null> {
+    const updated = await this.prisma.notification.updateManyAndReturn({
+      where: { id, userId: actor.id, archivedAt: null, resolvedAt: null },
+      data: { status: "read", readAt: new Date(), updatedAt: new Date() },
+    });
+    return updated[0] ? mapNotification(updated[0]) : null;
+  }
+
+  async markAllNotificationsRead(actor: Actor): Promise<{ updated: number }> {
+    const result = await this.prisma.notification.updateMany({
+      where: { userId: actor.id, status: "unread", archivedAt: null, resolvedAt: null },
+      data: { status: "read", readAt: new Date(), updatedAt: new Date() },
+    });
+    return { updated: result.count };
+  }
+
+  async archiveNotification(actor: Actor, id: string): Promise<NotificationRecord | null> {
+    const updated = await this.prisma.notification.updateManyAndReturn({
+      where: { id, userId: actor.id, resolvedAt: null },
+      data: { status: "archived", archivedAt: new Date(), updatedAt: new Date() },
+    });
+    return updated[0] ? mapNotification(updated[0]) : null;
+  }
+
+  async snoozeNotification(actor: Actor, id: string, input: SnoozeNotificationInput): Promise<NotificationRecord | null> {
+    const updated = await this.prisma.notification.updateManyAndReturn({
+      where: { id, userId: actor.id, archivedAt: null, resolvedAt: null },
+      data: { snoozedUntil: new Date(input.snoozedUntil), updatedAt: new Date() },
+    });
+    return updated[0] ? mapNotification(updated[0]) : null;
+  }
+
+  async reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult> {
+    if (actor.role !== "gestor") throw new ApiError(403, "forbidden", "Apenas gestor pode reconciliar notificacoes.");
+    const now = new Date();
+    const dueSoonUntil = new Date(now.getTime() + DUE_SOON_HOURS * 60 * 60 * 1000);
+    const stalledCutoff = new Date(now.getTime() - STALLED_DAYS_THRESHOLD * 24 * 60 * 60 * 1000);
+    const desired = new Map<string, Parameters<typeof buildNotificationPayload>[0]>();
+
+    const pendingActions = await this.prisma.nextAction.findMany({
+      where: { status: "pending", archivedAt: null },
+      include: nextActionInclude,
+      take: 500,
+    });
+
+    for (const action of pendingActions) {
+      if (action.dueAt < now) {
+        desired.set(`overdue-next-action:${action.id}`, {
+          userId: action.responsibleUserId,
+          type: "overdue_next_action",
+          severity: "urgent",
+          title: "Proxima acao vencida",
+          body: `${action.title} venceu em ${action.dueAt.toISOString()}.`,
+          entityType: "next_action",
+          entityId: action.id,
+          customerId: action.customerId,
+          opportunityId: action.opportunityId,
+          nextActionId: action.id,
+          actionUrl: `/app/next-actions/${action.id}`,
+          dedupeKey: `overdue-next-action:${action.id}`,
+        });
+      } else if (action.dueAt <= dueSoonUntil) {
+        desired.set(`due-soon-next-action:${action.id}`, {
+          userId: action.responsibleUserId,
+          type: "due_soon_next_action",
+          severity: "attention",
+          title: "Proxima acao chegando ao prazo",
+          body: `${action.title} vence em ate ${DUE_SOON_HOURS} horas.`,
+          entityType: "next_action",
+          entityId: action.id,
+          customerId: action.customerId,
+          opportunityId: action.opportunityId,
+          nextActionId: action.id,
+          actionUrl: `/app/next-actions/${action.id}`,
+          dedupeKey: `due-soon-next-action:${action.id}`,
+        });
+      }
+    }
+
+    const activeOpportunities = await this.prisma.opportunity.findMany({
+      where: { status: "ativa", archivedAt: null },
+      include: opportunityInclude,
+      take: 500,
+    });
+
+    for (const opportunity of activeOpportunities) {
+      const hasFutureAction = opportunity.proximaAcao && opportunity.proximaAcaoEm && opportunity.proximaAcaoEm >= now;
+      if (!opportunity.currentNextActionId || !opportunity.proximaAcao || !opportunity.proximaAcaoEm) {
+        desired.set(`missing-next-action:${opportunity.id}`, {
+          userId: opportunity.responsavelId,
+          type: "missing_next_action",
+          severity: "urgent",
+          title: "Oportunidade sem acompanhamento",
+          body: `${opportunity.titulo} precisa de proxima acao valida.`,
+          entityType: "opportunity",
+          entityId: opportunity.id,
+          customerId: opportunity.clienteId,
+          opportunityId: opportunity.id,
+          nextActionId: null,
+          actionUrl: `/app/opportunities/${opportunity.id}`,
+          dedupeKey: `missing-next-action:${opportunity.id}`,
+        });
+      } else if (!hasFutureAction && opportunity.updatedAt <= stalledCutoff) {
+        desired.set(`stalled-opportunity:${opportunity.id}`, {
+          userId: opportunity.responsavelId,
+          type: "stalled_opportunity",
+          severity: "attention",
+          title: "Oportunidade parada",
+          body: `${opportunity.titulo} esta sem movimentacao recente.`,
+          entityType: "opportunity",
+          entityId: opportunity.id,
+          customerId: opportunity.clienteId,
+          opportunityId: opportunity.id,
+          nextActionId: opportunity.currentNextActionId,
+          actionUrl: `/app/opportunities/${opportunity.id}`,
+          dedupeKey: `stalled-opportunity:${opportunity.id}`,
+        });
+      }
+    }
+
+    let generated = 0;
+    let updated = 0;
+    for (const payload of desired.values()) {
+      const result = await this.upsertOpenNotification(payload);
+      if (result === "created") generated += 1;
+      if (result === "updated") updated += 1;
+    }
+
+    const open = await this.prisma.notification.findMany({
+      where: {
+        status: { in: ["unread", "read"] },
+        archivedAt: null,
+        resolvedAt: null,
+        type: { in: ["overdue_next_action", "due_soon_next_action", "missing_next_action", "stalled_opportunity"] },
+      },
+      select: { id: true, dedupeKey: true },
+      take: 1000,
+    });
+    const staleIds = open.filter((notification) => notification.dedupeKey && !desired.has(notification.dedupeKey)).map((notification) => notification.id);
+    const resolved = staleIds.length
+      ? (await this.prisma.notification.updateMany({
+          where: { id: { in: staleIds } },
+          data: { status: "resolved", resolvedAt: new Date(), updatedAt: new Date() },
+        })).count
+      : 0;
+
+    return { generated, updated, resolved };
+  }
+
   async createNextAction(actor: Actor, input: CreateNextActionInput): Promise<NextActionRecord> {
     await this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
     await this.assertActiveResponsibleUser(input.responsibleUserId);
@@ -692,10 +952,27 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         const opportunity = await this.getOpportunity(actor, input.opportunityId);
         if (opportunity?.status === "ativa" && opportunity.archivedAt === null) {
           await this.setCurrentNextAction(actor, input.opportunityId, action.id, input.title, new Date(input.dueAt), tx);
+          await this.resolveOpportunityNotifications(input.opportunityId, tx);
         }
       }
       return action.id;
     });
+    if (input.responsibleUserId !== actor.id) {
+      await this.createAssignmentNotification({
+        userId: input.responsibleUserId,
+        type: "next_action_reassigned",
+        severity: "attention",
+        title: "Proxima acao atribuida a voce",
+        body: `${input.title} foi atribuida ao seu usuario.`,
+        entityType: "next_action",
+        entityId: id,
+        customerId: input.customerId,
+        opportunityId: input.opportunityId ?? null,
+        nextActionId: id,
+        actionUrl: `/app/next-actions/${id}`,
+        dedupeKey: `next-action-reassigned:${id}:${input.responsibleUserId}`,
+      }, actor);
+    }
     return (await this.getNextAction(actor, id)) as NextActionRecord;
   }
 
@@ -710,19 +987,24 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     await this.assertCanWriteNextAction(actor, finalResponsibleUserId, finalOpportunityId ?? null);
     if (current.opportunityId) await this.assertCanMoveCurrentAction(actor, current, finalOpportunityId ?? null);
 
-    await this.prisma.nextAction.update({
-      where: { id },
-      data: {
-        ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
-        ...(input.opportunityId !== undefined ? { opportunityId: input.opportunityId } : {}),
-        ...(input.responsibleUserId !== undefined ? { responsibleUserId: input.responsibleUserId } : {}),
-        ...(input.category !== undefined ? { category: input.category } : {}),
-        ...(input.title !== undefined ? { title: input.title } : {}),
-        ...(input.description !== undefined ? { description: input.description } : {}),
-        ...(input.dueAt !== undefined ? { dueAt: new Date(input.dueAt) } : {}),
-        ...(input.priority !== undefined ? { priority: input.priority } : {}),
-        updatedBy: actor.id,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.nextAction.update({
+        where: { id },
+        data: {
+          ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
+          ...(input.opportunityId !== undefined ? { opportunityId: input.opportunityId } : {}),
+          ...(input.responsibleUserId !== undefined ? { responsibleUserId: input.responsibleUserId } : {}),
+          ...(input.category !== undefined ? { category: input.category } : {}),
+          ...(input.title !== undefined ? { title: input.title } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.dueAt !== undefined ? { dueAt: new Date(input.dueAt) } : {}),
+          ...(input.priority !== undefined ? { priority: input.priority } : {}),
+          updatedBy: actor.id,
+        },
+      });
+      if (input.dueAt !== undefined || input.responsibleUserId !== undefined) {
+        await this.resolveNextActionNotifications(id, tx);
+      }
     });
 
     const updated = await this.getNextAction(actor, id);
@@ -731,6 +1013,22 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       if (opportunity?.status === "ativa" && opportunity.currentNextActionId === updated.id && opportunity.archivedAt === null) {
         await this.setCurrentNextAction(actor, updated.opportunityId, updated.id, updated.title, new Date(updated.dueAt));
       }
+    }
+    if (updated && input.responsibleUserId && input.responsibleUserId !== current.responsibleUserId && input.responsibleUserId !== actor.id) {
+      await this.createAssignmentNotification({
+        userId: input.responsibleUserId,
+        type: "next_action_reassigned",
+        severity: "attention",
+        title: "Proxima acao reatribuida a voce",
+        body: `${updated.title} foi reatribuida ao seu usuario.`,
+        entityType: "next_action",
+        entityId: updated.id,
+        customerId: updated.customerId,
+        opportunityId: updated.opportunityId,
+        nextActionId: updated.id,
+        actionUrl: `/app/next-actions/${updated.id}`,
+        dedupeKey: `next-action-reassigned:${updated.id}:${input.responsibleUserId}`,
+      }, actor);
     }
     return updated;
   }
@@ -749,6 +1047,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         data: { postponedFrom: new Date(current.dueAt), dueAt: new Date(input.dueAt), updatedBy: actor.id },
       });
       if (current.opportunityId) await this.setCurrentNextAction(actor, current.opportunityId, current.id, current.title, new Date(input.dueAt), tx);
+      await this.resolveNextActionNotifications(id, tx);
       await tx.activity.create({
         data: {
           clienteId: current.customerId,
@@ -954,6 +1253,58 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     return stage.id;
   }
 
+  private async upsertOpenNotification(payload: NotificationPayload): Promise<"created" | "updated"> {
+    const existing = await this.prisma.notification.findFirst({
+      where: {
+        userId: payload.userId,
+        dedupeKey: payload.dedupeKey,
+        status: { in: ["unread", "read"] },
+        archivedAt: null,
+        resolvedAt: null,
+      },
+      select: { id: true },
+    });
+
+    const data = buildNotificationPayload(payload);
+    if (existing) {
+      await this.prisma.notification.update({ where: { id: existing.id }, data });
+      return "updated";
+    }
+
+    await this.prisma.notification.create({ data });
+    return "created";
+  }
+
+  private async createAssignmentNotification(payload: NotificationPayload, actor: Actor): Promise<void> {
+    if (payload.userId === actor.id) return;
+    await this.upsertOpenNotification(payload);
+  }
+
+  private async resolveNextActionNotifications(nextActionId: string, tx: PrismaExecutor = this.prisma): Promise<void> {
+    await tx.notification.updateMany({
+      where: {
+        nextActionId,
+        status: { in: ["unread", "read"] },
+        archivedAt: null,
+        resolvedAt: null,
+      },
+      data: { status: "resolved", resolvedAt: new Date(), updatedAt: new Date() },
+    });
+  }
+
+  private async resolveOpportunityNotifications(opportunityId: string, tx: PrismaExecutor = this.prisma): Promise<void> {
+    await tx.notification.updateMany({
+      where: {
+        opportunityId,
+        status: { in: ["unread", "read"] },
+        archivedAt: null,
+        resolvedAt: null,
+        type: { in: ["missing_next_action", "stalled_opportunity", "opportunity_assigned"] },
+      },
+      data: { status: "resolved", resolvedAt: new Date(), updatedAt: new Date() },
+    });
+  }
+
   private async closePendingNextAction(actor: Actor, id: string, status: "completed" | "cancelled", input: CompleteNextActionInput | CancelNextActionInput): Promise<NextActionRecord | null> {
     const current = await this.getNextAction(actor, id);
     if (!current || current.status !== "pending") return null;
@@ -996,6 +1347,9 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       if (current.opportunityId && opportunity?.currentNextActionId === current.id) {
         await this.setCurrentNextAction(actor, current.opportunityId, nextActionId, nextTitle, nextDueAt, tx);
       }
+      await this.resolveNextActionNotifications(id, tx);
+      if (current.opportunityId && nextActionId) await this.resolveOpportunityNotifications(current.opportunityId, tx);
+      if (current.opportunityId && !nextActionId && status === "cancelled") await this.resolveOpportunityNotifications(current.opportunityId, tx);
 
       if (status === "completed") {
         await tx.nextAction.update({
@@ -1043,6 +1397,63 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
 
 function toPrismaJson(value: Record<string, unknown> | undefined): Prisma.InputJsonValue {
   return (value ?? {}) as Prisma.InputJsonValue;
+}
+
+function buildNotificationPayload(payload: NotificationPayload): Prisma.NotificationUncheckedCreateInput {
+  return {
+    userId: payload.userId,
+    type: payload.type,
+    priority: severityToPriority(payload.severity),
+    severity: payload.severity,
+    title: payload.title,
+    body: payload.body,
+    entityType: payload.entityType,
+    entityId: payload.entityId,
+    customerId: payload.customerId,
+    opportunityId: payload.opportunityId,
+    nextActionId: payload.nextActionId,
+    actionUrl: payload.actionUrl,
+    dedupeKey: payload.dedupeKey,
+    status: "unread",
+    archivedAt: null,
+    resolvedAt: null,
+    snoozedUntil: null,
+    metadata: {},
+    updatedAt: new Date(),
+  };
+}
+
+function severityToPriority(severity: NotificationRecord["severity"]): NotificationRecord["priority"] {
+  if (severity === "urgent") return "alta";
+  if (severity === "attention") return "media";
+  return "informativa";
+}
+
+function mapNotification(row: NotificationEntity): NotificationRecord {
+  return {
+    id: row.id,
+    userId: row.userId,
+    type: row.type as NotificationRecord["type"],
+    priority: row.priority as NotificationRecord["priority"],
+    severity: row.severity as NotificationRecord["severity"],
+    title: row.title,
+    body: row.body ?? "",
+    entityType: row.entityType,
+    entityId: row.entityId,
+    customerId: row.customerId,
+    opportunityId: row.opportunityId,
+    nextActionId: row.nextActionId,
+    actionUrl: row.actionUrl,
+    dedupeKey: row.dedupeKey ?? "",
+    status: row.status as NotificationRecord["status"],
+    readAt: row.readAt?.toISOString() ?? null,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
+    snoozedUntil: row.snoozedUntil?.toISOString() ?? null,
+    resolvedAt: row.resolvedAt?.toISOString() ?? null,
+    metadata: row.metadata as Record<string, unknown>,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }
 
 function mapOpportunity(row: OpportunityWithRelations): OpportunityRecord {

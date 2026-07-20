@@ -18,6 +18,7 @@
     "prisma:validate": "prisma validate",
     "prisma:format": "prisma format",
     "prisma:studio": "prisma studio",
+    "notifications:reconcile": "tsx server/notifications-reconcile.ts",
     "db:migrate": "tsx database/migrate.ts",
     "db:migrate:status": "tsx database/migration-status.ts",
     "db:migrate:create": "tsx database/create-migration.ts"

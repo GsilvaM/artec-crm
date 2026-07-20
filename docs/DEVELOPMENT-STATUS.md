@@ -43,6 +43,7 @@ Status final:
 - `0009_fix_opportunity_responsible_trigger`: applied
 - `0010_split_responsible_trigger_branch`: applied
 - `0011_harden_activities_next_actions`: applied
+- `0012_harden_internal_notifications`: applied
 
 ## Prisma, backend e frontend
 
@@ -150,6 +151,54 @@ Homologado com dados reais de teste identificados como homologacao:
 - Escopo de vendedor no backend: coberto por teste automatizado.
 - Gestor visualiza blocos agregados: coberto por teste automatizado.
 
+## Notificacoes internas
+
+Homologado com banco real e dados operacionais existentes:
+
+- Migration `0012_harden_internal_notifications`: aplicada.
+- Tabela `crm.notificacoes` preservada e endurecida com `status`, `severity`, `resolved_at`, `metadata` e vinculos opcionais para cliente, oportunidade e proxima acao.
+- Dedupe aberto por usuario e chave deterministica: implementado por indice unico parcial.
+- Endpoints implementados:
+  - `GET /api/notifications`;
+  - `GET /api/notifications/unread-count`;
+  - `POST /api/notifications/:id/read`;
+  - `POST /api/notifications/read-all`;
+  - `POST /api/notifications/:id/archive`;
+  - `POST /api/notifications/:id/snooze`;
+  - `POST /api/notifications/reconcile`, protegido para gestor.
+- Comando `npm run notifications:reconcile`: executado duas vezes; primeira execucao gerou notificacoes reais de pendencias existentes, segunda execucao nao duplicou e apenas atualizou notificacoes abertas.
+- Eventos implementados nesta rodada:
+  - proxima acao vencida;
+  - proxima acao chegando ao prazo;
+  - oportunidade atribuida a outro usuario;
+  - proxima acao atribuida/reatribuida a outro usuario;
+  - oportunidade ativa sem proxima acao valida;
+  - oportunidade parada.
+- Regras antirruido:
+  - nao notifica atribuicao feita pelo proprio usuario;
+  - dedupe por condicao;
+  - reconciliacao idempotente;
+  - conclusao, cancelamento, reagendamento e encerramento resolvem notificacoes relacionadas.
+- Interface:
+  - sino com contador de nao lidas;
+  - painel compacto;
+  - secao de notificacoes internas com filtros por pendentes, lidas e arquivadas;
+  - acoes para marcar como lida, arquivar e adiar.
+
+Limitacoes:
+
+- Pagina dedicada `/notificacoes` ainda nao foi separada em rota propria; a visualizacao completa inicial fica na tela autenticada atual.
+- Playwright/E2E visual nao foi executado porque o projeto nao possui infraestrutura configurada.
+- Notificacoes de Auvo, webhook, e-mail, WhatsApp e push web nao foram implementadas.
+
+## Correcoes do Marco 5
+
+- Backend ganhou endpoints persistentes de notificacoes internas.
+- Repository Prisma ganhou reconciliação idempotente e resolucao automatica em operacoes de proxima acao/oportunidade.
+- CLI `notifications:reconcile` foi criado para scheduler externo futuro.
+- Frontend ganhou sino, contador, painel compacto e lista operacional de notificacoes.
+- Testes de API cobrem lista, contador, leitura, snooze, arquivamento, isolamento por usuario e RBAC do reconcile.
+
 ## Correcoes do Marco 4
 
 - Backend ganhou endpoint `GET /api/commercial-center`.
@@ -186,8 +235,9 @@ Homologado com dados reais de teste identificados como homologacao:
 - `npm run prisma:validate`: passou.
 - `npm run prisma:generate`: passou.
 - `npm run typecheck`: passou.
-- `npm run test`: passou, 4 arquivos e 38 testes.
+- `npm run test`: passou, 4 arquivos e 41 testes.
 - `npm run build`: passou.
+- `npm run notifications:reconcile`: passou e confirmou idempotencia sem duplicar notificacoes abertas.
 - E2E: nao executado porque nao existe script `e2e` ou Playwright no `package.json`.
 
 ## Nao alterado
@@ -197,7 +247,7 @@ Homologado com dados reais de teste identificados como homologacao:
 - Nenhum valor sensivel registrado.
 - Nenhum objeto financeiro foi alterado.
 - Nenhuma integracao Auvo foi iniciada.
-- Nenhuma funcionalidade de notificacoes completas, relatorios avancados, Auvo real ou deploy foi iniciada.
+- Nenhuma funcionalidade de e-mail, WhatsApp, push web, relatorios avancados, Auvo real ou deploy foi iniciada.
 
 ## Marcos
 
@@ -205,8 +255,8 @@ Homologado com dados reais de teste identificados como homologacao:
 - Marco 2, Clientes e Oportunidades: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
 - Marco 3, Atividades e Proximas Acoes: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
 - Marco 4, Central Comercial: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
-- Marco 5, Notificacoes internas: proximo marco recomendado.
+- Marco 5, Notificacoes internas: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
 
 ## Proximo marco
 
-Implementar notificacoes internas usando eventos e consultas ja existentes, sem iniciar Auvo, relatorios avancados, financeiro ou deploy.
+Implementar o receptor de homologacao do Auvo, ainda sem transformar automaticamente atendimentos em oportunidades e sem iniciar mapeamento definitivo antes de capturar payloads reais.

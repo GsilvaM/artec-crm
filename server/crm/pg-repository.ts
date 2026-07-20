@@ -14,12 +14,17 @@ import type {
   CrmDataRepository,
   CustomerRecord,
   LossReasonRecord,
+  NotificationFilters,
+  NotificationListRecord,
+  NotificationRecord,
+  NotificationReconcileResult,
   NextActionPriority,
   NextActionRecord,
   NextActionStatus,
   OpportunityRecord,
   PipelineStageRecord,
   PostponeNextActionInput,
+  SnoozeNotificationInput,
   UpdateActivityInput,
   UpdateCustomerInput,
   UpdateNextActionInput,
@@ -87,6 +92,31 @@ type OpportunityRow = {
   created_at: Date;
   updated_at: Date;
   archived_at: Date | null;
+};
+
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  type: NotificationRecord["type"];
+  priority: NotificationRecord["priority"];
+  severity: NotificationRecord["severity"];
+  title: string;
+  body: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  customer_id: string | null;
+  opportunity_id: string | null;
+  next_action_id: string | null;
+  action_url: string | null;
+  dedupe_key: string | null;
+  status: NotificationRecord["status"];
+  read_at: Date | null;
+  archived_at: Date | null;
+  snoozed_until: Date | null;
+  resolved_at: Date | null;
+  metadata: Record<string, unknown>;
+  created_at: Date;
+  updated_at: Date;
 };
 
 type ActivityRow = {
@@ -774,6 +804,101 @@ export class PgCrmDataRepository implements CrmDataRepository {
     return result.rows[0] ? mapNextAction(result.rows[0]) : null;
   }
 
+  async listNotifications(actor: Actor, filters: NotificationFilters): Promise<NotificationListRecord> {
+    const values: unknown[] = [actor.id];
+    const where = ["user_id = $1"];
+    if (filters.status === "active") {
+      where.push("status IN ('unread', 'read') AND archived_at IS NULL AND resolved_at IS NULL AND (snoozed_until IS NULL OR snoozed_until <= now())");
+    } else if (filters.status) {
+      values.push(filters.status);
+      where.push(`status = $${values.length}`);
+    }
+    if (filters.type) {
+      values.push(filters.type);
+      where.push(`type = $${values.length}`);
+    }
+    if (filters.severity) {
+      values.push(filters.severity);
+      where.push(`severity = $${values.length}`);
+    }
+    if (filters.from) {
+      values.push(filters.from);
+      where.push(`created_at >= $${values.length}`);
+    }
+    if (filters.to) {
+      values.push(filters.to);
+      where.push(`created_at <= $${values.length}`);
+    }
+    if (filters.cursor) {
+      values.push(filters.cursor);
+      where.push(`id < $${values.length}`);
+    }
+    values.push((filters.limit ?? 20) + 1);
+    const result = await this.pool.query<NotificationRow>(
+      `SELECT * FROM crm.notificacoes WHERE ${where.join(" AND ")} ORDER BY created_at DESC, id DESC LIMIT $${values.length}`,
+      values,
+    );
+    const limit = filters.limit ?? 20;
+    const page = result.rows.slice(0, limit);
+    return {
+      notifications: page.map(mapNotificationRow),
+      nextCursor: result.rows.length > limit ? page[page.length - 1]?.id ?? null : null,
+    };
+  }
+
+  async getUnreadNotificationsCount(actor: Actor): Promise<{ count: number }> {
+    const result = await this.pool.query<{ count: string }>(
+      `
+        SELECT count(*)::text AS count
+        FROM crm.notificacoes
+        WHERE user_id = $1
+          AND status = 'unread'
+          AND archived_at IS NULL
+          AND resolved_at IS NULL
+          AND (snoozed_until IS NULL OR snoozed_until <= now())
+      `,
+      [actor.id],
+    );
+    return { count: Number(result.rows[0]?.count ?? 0) };
+  }
+
+  async markNotificationRead(actor: Actor, id: string): Promise<NotificationRecord | null> {
+    const result = await this.pool.query<NotificationRow>(
+      "UPDATE crm.notificacoes SET status = 'read', read_at = now(), updated_at = now() WHERE id = $1 AND user_id = $2 AND archived_at IS NULL AND resolved_at IS NULL RETURNING *",
+      [id, actor.id],
+    );
+    return result.rows[0] ? mapNotificationRow(result.rows[0]) : null;
+  }
+
+  async markAllNotificationsRead(actor: Actor): Promise<{ updated: number }> {
+    const result = await this.pool.query(
+      "UPDATE crm.notificacoes SET status = 'read', read_at = now(), updated_at = now() WHERE user_id = $1 AND status = 'unread' AND archived_at IS NULL AND resolved_at IS NULL",
+      [actor.id],
+    );
+    return { updated: result.rowCount ?? 0 };
+  }
+
+  async archiveNotification(actor: Actor, id: string): Promise<NotificationRecord | null> {
+    const result = await this.pool.query<NotificationRow>(
+      "UPDATE crm.notificacoes SET status = 'archived', archived_at = now(), updated_at = now() WHERE id = $1 AND user_id = $2 AND resolved_at IS NULL RETURNING *",
+      [id, actor.id],
+    );
+    return result.rows[0] ? mapNotificationRow(result.rows[0]) : null;
+  }
+
+  async snoozeNotification(actor: Actor, id: string, input: SnoozeNotificationInput): Promise<NotificationRecord | null> {
+    const result = await this.pool.query<NotificationRow>(
+      "UPDATE crm.notificacoes SET snoozed_until = $3, updated_at = now() WHERE id = $1 AND user_id = $2 AND archived_at IS NULL AND resolved_at IS NULL RETURNING *",
+      [id, actor.id, input.snoozedUntil],
+    );
+    return result.rows[0] ? mapNotificationRow(result.rows[0]) : null;
+  }
+
+  async reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult> {
+    if (actor.role !== "gestor") throw new ApiError(403, "forbidden", "Apenas gestor pode reconciliar notificacoes.");
+    return { generated: 0, updated: 0, resolved: 0 };
+  }
+
   async createNextAction(actor: Actor, input: CreateNextActionInput): Promise<NextActionRecord> {
     await this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
     await this.assertActiveResponsibleUser(input.responsibleUserId);
@@ -1258,6 +1383,33 @@ function mapNextAction(row: NextActionRow): NextActionRecord {
     cancelledBy: row.cancelled_by,
     cancellationReason: row.cancellation_reason,
     archivedAt: row.archived_at?.toISOString() ?? null,
+  };
+}
+
+function mapNotificationRow(row: NotificationRow): NotificationRecord {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    priority: row.priority,
+    severity: row.severity,
+    title: row.title,
+    body: row.body ?? "",
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    customerId: row.customer_id,
+    opportunityId: row.opportunity_id,
+    nextActionId: row.next_action_id,
+    actionUrl: row.action_url,
+    dedupeKey: row.dedupe_key ?? "",
+    status: row.status,
+    readAt: row.read_at?.toISOString() ?? null,
+    archivedAt: row.archived_at?.toISOString() ?? null,
+    snoozedUntil: row.snoozed_until?.toISOString() ?? null,
+    resolvedAt: row.resolved_at?.toISOString() ?? null,
+    metadata: row.metadata,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
   };
 }
 

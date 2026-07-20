@@ -15,6 +15,8 @@ import {
   loseOpportunitySchema,
   nextActionCreateSchema,
   nextActionUpdateSchema,
+  notificationQuerySchema,
+  notificationSnoozeSchema,
   opportunityCreateSchema,
   opportunityUpdateSchema,
   parseBody,
@@ -25,6 +27,45 @@ type PreHandlerFactory = ReturnType<typeof createRouteGuards>;
 
 export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDependencies, guards: PreHandlerFactory): void {
   const repository = dependencies.crmRepository;
+
+  app.get("/api/notifications", { preHandler: [guards.authenticate, guards.requirePermission("notifications:read")] }, async (request) => {
+    const query = parseBody(notificationQuerySchema, request.query);
+    return repository.listNotifications(getActor(request), {
+      ...query,
+      from: query.from ?? undefined,
+      to: query.to ?? undefined,
+    });
+  });
+
+  app.get("/api/notifications/unread-count", { preHandler: [guards.authenticate, guards.requirePermission("notifications:read")] }, async (request) => {
+    return repository.getUnreadNotificationsCount(getActor(request));
+  });
+
+  app.post("/api/notifications/:id/read", { preHandler: [guards.authenticate, guards.requirePermission("notifications:write")] }, async (request) => {
+    const notification = await repository.markNotificationRead(getActor(request), readIdParam(request));
+    if (!notification) throw new ApiError(404, "not_found", "Notificacao nao encontrada.");
+    return { notification };
+  });
+
+  app.post("/api/notifications/read-all", { preHandler: [guards.authenticate, guards.requirePermission("notifications:write")] }, async (request) => {
+    return repository.markAllNotificationsRead(getActor(request));
+  });
+
+  app.post("/api/notifications/:id/archive", { preHandler: [guards.authenticate, guards.requirePermission("notifications:write")] }, async (request) => {
+    const notification = await repository.archiveNotification(getActor(request), readIdParam(request));
+    if (!notification) throw new ApiError(404, "not_found", "Notificacao nao encontrada.");
+    return { notification };
+  });
+
+  app.post("/api/notifications/:id/snooze", { preHandler: [guards.authenticate, guards.requirePermission("notifications:write")] }, async (request) => {
+    const notification = await repository.snoozeNotification(getActor(request), readIdParam(request), parseBody(notificationSnoozeSchema, request.body));
+    if (!notification) throw new ApiError(404, "not_found", "Notificacao nao encontrada.");
+    return { notification };
+  });
+
+  app.post("/api/notifications/reconcile", { preHandler: [guards.authenticate, guards.requirePermission("notifications:reconcile")] }, async (request) => {
+    return repository.reconcileNotifications(getActor(request));
+  });
 
   app.get("/api/commercial-center", { preHandler: [guards.authenticate, guards.requirePermission("next_actions:read")] }, async (request) => {
     const query = parseBody(commercialCenterQuerySchema, request.query);

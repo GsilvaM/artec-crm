@@ -194,6 +194,67 @@ export type CommercialCenterRecord = {
   summary: CommercialCenterSummary;
 };
 
+export type NotificationStatus = "unread" | "read" | "archived" | "resolved";
+export type NotificationSeverity = "info" | "attention" | "urgent";
+export type NotificationType =
+  | "overdue_next_action"
+  | "due_soon_next_action"
+  | "opportunity_assigned"
+  | "next_action_reassigned"
+  | "missing_next_action"
+  | "stalled_opportunity"
+  | "internal_error";
+
+export type NotificationRecord = {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  priority: "alta" | "media" | "informativa";
+  severity: NotificationSeverity;
+  title: string;
+  body: string;
+  entityType: string | null;
+  entityId: string | null;
+  customerId: string | null;
+  opportunityId: string | null;
+  nextActionId: string | null;
+  actionUrl: string | null;
+  dedupeKey: string;
+  status: NotificationStatus;
+  readAt: string | null;
+  archivedAt: string | null;
+  snoozedUntil: string | null;
+  resolvedAt: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NotificationFilters = {
+  status?: NotificationStatus | "active";
+  type?: NotificationType;
+  severity?: NotificationSeverity;
+  from?: string;
+  to?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+export type NotificationListRecord = {
+  notifications: NotificationRecord[];
+  nextCursor: string | null;
+};
+
+export type NotificationReconcileResult = {
+  generated: number;
+  updated: number;
+  resolved: number;
+};
+
+export type SnoozeNotificationInput = {
+  snoozedUntil: string;
+};
+
 export type PipelineStageRecord = {
   id: string;
   nome: string;
@@ -334,6 +395,13 @@ export type CrmDataRepository = {
     },
   ): Promise<NextActionRecord[]>;
   getCommercialCenter(actor: Actor, filters: CommercialCenterFilters): Promise<CommercialCenterRecord>;
+  listNotifications(actor: Actor, filters: NotificationFilters): Promise<NotificationListRecord>;
+  getUnreadNotificationsCount(actor: Actor): Promise<{ count: number }>;
+  markNotificationRead(actor: Actor, id: string): Promise<NotificationRecord | null>;
+  markAllNotificationsRead(actor: Actor): Promise<{ updated: number }>;
+  archiveNotification(actor: Actor, id: string): Promise<NotificationRecord | null>;
+  snoozeNotification(actor: Actor, id: string, input: SnoozeNotificationInput): Promise<NotificationRecord | null>;
+  reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult>;
   getNextAction(actor: Actor, id: string): Promise<NextActionRecord | null>;
   createNextAction(actor: Actor, input: CreateNextActionInput): Promise<NextActionRecord>;
   updateNextAction(actor: Actor, id: string, input: UpdateNextActionInput): Promise<NextActionRecord | null>;

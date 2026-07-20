@@ -11,6 +11,17 @@ const moneyValue = z.coerce.number().int().nonnegative().optional().nullable();
 const uuid = z.string().uuid();
 const metadataSchema = z.record(z.string(), z.unknown()).default({});
 const nextActionCategorySchema = z.enum(["commercial", "warranty", "support", "after_sales"]);
+const notificationStatusSchema = z.enum(["unread", "read", "archived", "resolved", "active"]);
+const notificationTypeSchema = z.enum([
+  "overdue_next_action",
+  "due_soon_next_action",
+  "opportunity_assigned",
+  "next_action_reassigned",
+  "missing_next_action",
+  "stalled_opportunity",
+  "internal_error",
+]);
+const notificationSeveritySchema = z.enum(["info", "attention", "urgent"]);
 
 export const customerCreateSchema = z.object({
   tipoPessoa: z.enum(["fisica", "juridica"]).default("fisica"),
@@ -154,6 +165,20 @@ export const commercialCenterQuerySchema = z.object({
   demandType: optionalText,
   category: nextActionCategorySchema.optional(),
   priority: z.enum(["low", "normal", "high"]).optional(),
+});
+
+export const notificationQuerySchema = z.object({
+  status: notificationStatusSchema.optional(),
+  type: notificationTypeSchema.optional(),
+  severity: notificationSeveritySchema.optional(),
+  from: optionalText,
+  to: optionalText,
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: uuid.optional(),
+});
+
+export const notificationSnoozeSchema = z.object({
+  snoozedUntil: z.string().trim().min(1, "Informe quando a notificacao deve reaparecer."),
 });
 
 export function normalizePhone(phone: string | null | undefined): string | null {

@@ -10,6 +10,9 @@ export type Permission =
   | "activities:write"
   | "next_actions:read"
   | "next_actions:write"
+  | "notifications:read"
+  | "notifications:write"
+  | "notifications:reconcile"
   | "users:manage"
   | "settings:read"
   | "settings:write"
@@ -28,6 +31,9 @@ export const rolePermissions: Record<CrmRole, Permission[]> = {
     "activities:write",
     "next_actions:read",
     "next_actions:write",
+    "notifications:read",
+    "notifications:write",
+    "notifications:reconcile",
     "users:manage",
     "settings:read",
     "settings:write",
@@ -35,8 +41,8 @@ export const rolePermissions: Record<CrmRole, Permission[]> = {
     "integrations:write",
     "reports:read",
   ],
-  vendedor: ["self:read", "customers:read", "customers:write", "opportunities:read", "opportunities:write", "activities:read", "activities:write", "next_actions:read", "next_actions:write"],
-  atendimento: ["self:read", "customers:read", "customers:write", "opportunities:read", "opportunities:write", "activities:read", "activities:write", "next_actions:read", "next_actions:write"],
+  vendedor: ["self:read", "customers:read", "customers:write", "opportunities:read", "opportunities:write", "activities:read", "activities:write", "next_actions:read", "next_actions:write", "notifications:read", "notifications:write"],
+  atendimento: ["self:read", "customers:read", "customers:write", "opportunities:read", "opportunities:write", "activities:read", "activities:write", "next_actions:read", "next_actions:write", "notifications:read", "notifications:write"],
 };
 
 export function getPermissionsForRole(role: CrmRole): Permission[] {

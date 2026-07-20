@@ -1,4 +1,4 @@
-import { AlertCircle, Archive, CheckCircle2, Clock, Edit3, LogIn, LogOut, Plus, Search, UserRound, XCircle } from "lucide-react";
+import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Edit3, LogIn, LogOut, Plus, Search, UserRound, XCircle } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
 import {
@@ -11,11 +11,17 @@ import {
   createOpportunity,
   completeNextAction,
   cancelNextAction,
+  archiveNotification,
   loadCrmSnapshot,
   loadCustomerActivities,
+  loadNotifications,
   loadOpportunityActivities,
+  loadUnreadNotificationsCount,
   loseOpportunity,
+  markAllNotificationsRead,
+  markNotificationRead,
   postponeNextAction,
+  snoozeNotification,
   updateCustomer,
   updateOpportunity,
   type Activity,
@@ -25,6 +31,7 @@ import {
   type CrmSnapshot,
   type Customer,
   type NextAction,
+  type Notification,
   type Opportunity,
 } from "./domain/crm";
 
@@ -142,6 +149,10 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [actionOperation, setActionOperation] = useState<ActionOperation | null>(null);
   const [timeline, setTimeline] = useState<Activity[]>([]);
   const [timelineTitle, setTimelineTitle] = useState("Linha do tempo");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState<"active" | "read" | "archived">("active");
 
   const activeCustomers = snapshot?.customers.filter((customer) => !customer.archivedAt) ?? [];
   const activeOpportunities = snapshot?.opportunities.filter((opportunity) => opportunity.status === "ativa") ?? [];
@@ -189,6 +200,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     try {
       const data = await loadCrmSnapshot(search, commercialFilters);
       setSnapshot(data);
+      await refreshNotifications(notificationStatus);
       setOpportunityForm((current) => ({ ...current, clienteId: current.clienteId || data.customers[0]?.id || "" }));
       setActivityForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
       setNextActionForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
@@ -197,6 +209,41 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function refreshNotifications(status = notificationStatus) {
+    const [list, count] = await Promise.all([
+      loadNotifications({ status, limit: "20" }),
+      loadUnreadNotificationsCount(),
+    ]);
+    setNotifications(list.notifications);
+    setNotificationCount(count);
+  }
+
+  async function handleNotificationRead(id: string) {
+    await markNotificationRead(id);
+    await refreshNotifications();
+  }
+
+  async function handleAllNotificationsRead() {
+    await markAllNotificationsRead();
+    await refreshNotifications();
+  }
+
+  async function handleNotificationArchive(id: string) {
+    await archiveNotification(id);
+    await refreshNotifications();
+  }
+
+  async function handleNotificationSnooze(id: string) {
+    const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await snoozeNotification(id, until);
+    await refreshNotifications();
+  }
+
+  async function handleNotificationStatusChange(status: "active" | "read" | "archived") {
+    setNotificationStatus(status);
+    await refreshNotifications(status);
   }
 
   async function handleCreateCustomer(event: FormEvent<HTMLFormElement>) {
@@ -426,6 +473,21 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
             <UserRound aria-hidden="true" />
             <span>{authState.user.email}</span>
           </div>
+          <div className="notification-shell">
+            <button className="icon-button" type="button" aria-label="Abrir notificacoes" onClick={() => setNotificationPanelOpen((open) => !open)}>
+              <Bell aria-hidden="true" />
+              {notificationCount > 0 ? <span>{notificationCount > 9 ? "9+" : notificationCount}</span> : null}
+            </button>
+            {notificationPanelOpen ? (
+              <div className="notification-popover" role="dialog" aria-label="Notificacoes recentes">
+                <header>
+                  <strong>Notificacoes</strong>
+                  <button className="button ghost" type="button" onClick={handleAllNotificationsRead}>Ler todas</button>
+                </header>
+                <NotificationList items={notifications.slice(0, 5)} onRead={handleNotificationRead} onArchive={handleNotificationArchive} onSnooze={handleNotificationSnooze} />
+              </div>
+            ) : null}
+          </div>
           <button className="button ghost" type="button" onClick={onLogout}>
             <LogOut aria-hidden="true" />
             Sair
@@ -532,6 +594,24 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                   <div><dt>Conversao simples</dt><dd>{formatPercent(snapshot.commercialCenter.summary.simpleConversionRate)}</dd></div>
                 </dl>
               </article>
+            </section>
+
+            <section className="panel notifications-page" aria-label="Notificacoes internas">
+              <header>
+                <div>
+                  <p className="eyebrow">Marco 5</p>
+                  <h2>Notificacoes internas</h2>
+                </div>
+                <div className="filter-actions">
+                  {(["active", "read", "archived"] as const).map((status) => (
+                    <button key={status} className={`button ${notificationStatus === status ? "secondary" : "ghost"}`} type="button" onClick={() => void handleNotificationStatusChange(status)}>
+                      {formatNotificationStatus(status)}
+                    </button>
+                  ))}
+                  <button className="button secondary" type="button" onClick={() => void refreshNotifications()}>Atualizar</button>
+                </div>
+              </header>
+              <NotificationList items={notifications} onRead={handleNotificationRead} onArchive={handleNotificationArchive} onSnooze={handleNotificationSnooze} />
             </section>
 
             <section className="split-layout">
@@ -853,6 +933,37 @@ function CommercialOpportunityBlock({ title, emptyText, items, onOpen }: {
   );
 }
 
+function NotificationList({ items, onRead, onArchive, onSnooze }: {
+  items: Notification[];
+  onRead: (id: string) => void | Promise<void>;
+  onArchive: (id: string) => void | Promise<void>;
+  onSnooze: (id: string) => void | Promise<void>;
+}) {
+  if (items.length === 0) {
+    return <EmptyState title="Nenhuma notificacao pendente" text="Voce esta em dia." />;
+  }
+
+  return (
+    <ul className="notification-list">
+      {items.map((item) => (
+        <li key={item.id} className={item.status === "unread" ? "is-unread" : ""}>
+          <div>
+            <span className={`severity ${item.severity}`}>{formatNotificationSeverity(item.severity)}</span>
+            <strong>{item.title}</strong>
+            <p>{item.body}</p>
+            <small>{formatDateTime(item.createdAt)} - {formatNotificationStatus(item.status)}</small>
+          </div>
+          <div className="quick-actions">
+            {item.status === "unread" ? <button className="button ghost" type="button" onClick={() => void onRead(item.id)}>Lida</button> : null}
+            <button className="button ghost" type="button" onClick={() => void onSnooze(item.id)}>Adiar</button>
+            <button className="button ghost" type="button" onClick={() => void onArchive(item.id)}>Arquivar</button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function formatDateTime(value: string | null): string {
   if (!value) return "";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
@@ -864,6 +975,20 @@ function formatMoney(valueInCents: number): string {
 
 function formatPercent(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 }).format(value);
+}
+
+function formatNotificationSeverity(severity: Notification["severity"]): string {
+  if (severity === "urgent") return "Urgente";
+  if (severity === "attention") return "Atencao";
+  return "Informativa";
+}
+
+function formatNotificationStatus(status: Notification["status"] | "active"): string {
+  if (status === "active") return "Pendentes";
+  if (status === "unread") return "Nao lida";
+  if (status === "read") return "Lida";
+  if (status === "archived") return "Arquivada";
+  return "Resolvida";
 }
 
 function toDateTimeLocalValue(value: string | null): string {

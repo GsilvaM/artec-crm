@@ -29,15 +29,21 @@ export type NotificationMinAggregateOutputType = {
   userId: string | null
   type: string | null
   priority: string | null
+  severity: string | null
   title: string | null
   body: string | null
   entityType: string | null
   entityId: string | null
+  customerId: string | null
+  opportunityId: string | null
+  nextActionId: string | null
   actionUrl: string | null
   dedupeKey: string | null
+  status: string | null
   readAt: Date | null
   archivedAt: Date | null
   snoozedUntil: Date | null
+  resolvedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -47,15 +53,21 @@ export type NotificationMaxAggregateOutputType = {
   userId: string | null
   type: string | null
   priority: string | null
+  severity: string | null
   title: string | null
   body: string | null
   entityType: string | null
   entityId: string | null
+  customerId: string | null
+  opportunityId: string | null
+  nextActionId: string | null
   actionUrl: string | null
   dedupeKey: string | null
+  status: string | null
   readAt: Date | null
   archivedAt: Date | null
   snoozedUntil: Date | null
+  resolvedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -65,15 +77,22 @@ export type NotificationCountAggregateOutputType = {
   userId: number
   type: number
   priority: number
+  severity: number
   title: number
   body: number
   entityType: number
   entityId: number
+  customerId: number
+  opportunityId: number
+  nextActionId: number
   actionUrl: number
   dedupeKey: number
+  status: number
   readAt: number
   archivedAt: number
   snoozedUntil: number
+  resolvedAt: number
+  metadata: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -85,15 +104,21 @@ export type NotificationMinAggregateInputType = {
   userId?: true
   type?: true
   priority?: true
+  severity?: true
   title?: true
   body?: true
   entityType?: true
   entityId?: true
+  customerId?: true
+  opportunityId?: true
+  nextActionId?: true
   actionUrl?: true
   dedupeKey?: true
+  status?: true
   readAt?: true
   archivedAt?: true
   snoozedUntil?: true
+  resolvedAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -103,15 +128,21 @@ export type NotificationMaxAggregateInputType = {
   userId?: true
   type?: true
   priority?: true
+  severity?: true
   title?: true
   body?: true
   entityType?: true
   entityId?: true
+  customerId?: true
+  opportunityId?: true
+  nextActionId?: true
   actionUrl?: true
   dedupeKey?: true
+  status?: true
   readAt?: true
   archivedAt?: true
   snoozedUntil?: true
+  resolvedAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -121,15 +152,22 @@ export type NotificationCountAggregateInputType = {
   userId?: true
   type?: true
   priority?: true
+  severity?: true
   title?: true
   body?: true
   entityType?: true
   entityId?: true
+  customerId?: true
+  opportunityId?: true
+  nextActionId?: true
   actionUrl?: true
   dedupeKey?: true
+  status?: true
   readAt?: true
   archivedAt?: true
   snoozedUntil?: true
+  resolvedAt?: true
+  metadata?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -212,15 +250,22 @@ export type NotificationGroupByOutputType = {
   userId: string
   type: string
   priority: string
+  severity: string
   title: string
   body: string | null
   entityType: string | null
   entityId: string | null
+  customerId: string | null
+  opportunityId: string | null
+  nextActionId: string | null
   actionUrl: string | null
   dedupeKey: string | null
+  status: string
   readAt: Date | null
   archivedAt: Date | null
   snoozedUntil: Date | null
+  resolvedAt: Date | null
+  metadata: runtime.JsonValue
   createdAt: Date
   updatedAt: Date
   _count: NotificationCountAggregateOutputType | null
@@ -251,15 +296,22 @@ export type NotificationWhereInput = {
   userId?: Prisma.UuidFilter<"Notification"> | string
   type?: Prisma.StringFilter<"Notification"> | string
   priority?: Prisma.StringFilter<"Notification"> | string
+  severity?: Prisma.StringFilter<"Notification"> | string
   title?: Prisma.StringFilter<"Notification"> | string
   body?: Prisma.StringNullableFilter<"Notification"> | string | null
   entityType?: Prisma.StringNullableFilter<"Notification"> | string | null
   entityId?: Prisma.UuidNullableFilter<"Notification"> | string | null
+  customerId?: Prisma.UuidNullableFilter<"Notification"> | string | null
+  opportunityId?: Prisma.UuidNullableFilter<"Notification"> | string | null
+  nextActionId?: Prisma.UuidNullableFilter<"Notification"> | string | null
   actionUrl?: Prisma.StringNullableFilter<"Notification"> | string | null
   dedupeKey?: Prisma.StringNullableFilter<"Notification"> | string | null
+  status?: Prisma.StringFilter<"Notification"> | string
   readAt?: Prisma.DateTimeNullableFilter<"Notification"> | Date | string | null
   archivedAt?: Prisma.DateTimeNullableFilter<"Notification"> | Date | string | null
   snoozedUntil?: Prisma.DateTimeNullableFilter<"Notification"> | Date | string | null
+  resolvedAt?: Prisma.DateTimeNullableFilter<"Notification"> | Date | string | null
+  metadata?: Prisma.JsonFilter<"Notification">
   createdAt?: Prisma.DateTimeFilter<"Notification"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Notification"> | Date | string
 }
@@ -269,54 +321,75 @@ export type NotificationOrderByWithRelationInput = {
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   priority?: Prisma.SortOrder
+  severity?: Prisma.SortOrder
   title?: Prisma.SortOrder
   body?: Prisma.SortOrderInput | Prisma.SortOrder
   entityType?: Prisma.SortOrderInput | Prisma.SortOrder
   entityId?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerId?: Prisma.SortOrderInput | Prisma.SortOrder
+  opportunityId?: Prisma.SortOrderInput | Prisma.SortOrder
+  nextActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   actionUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   dedupeKey?: Prisma.SortOrderInput | Prisma.SortOrder
+  status?: Prisma.SortOrder
   readAt?: Prisma.SortOrderInput | Prisma.SortOrder
   archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   snoozedUntil?: Prisma.SortOrderInput | Prisma.SortOrder
+  resolvedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type NotificationWhereUniqueInput = Prisma.AtLeast<{
   id?: string
-  dedupeKey?: string
   AND?: Prisma.NotificationWhereInput | Prisma.NotificationWhereInput[]
   OR?: Prisma.NotificationWhereInput[]
   NOT?: Prisma.NotificationWhereInput | Prisma.NotificationWhereInput[]
   userId?: Prisma.UuidFilter<"Notification"> | string
   type?: Prisma.StringFilter<"Notification"> | string
   priority?: Prisma.StringFilter<"Notification"> | string
+  severity?: Prisma.StringFilter<"Notification"> | string
   title?: Prisma.StringFilter<"Notification"> | string
   body?: Prisma.StringNullableFilter<"Notification"> | string | null
   entityType?: Prisma.StringNullableFilter<"Notification"> | string | null
   entityId?: Prisma.UuidNullableFilter<"Notification"> | string | null
+  customerId?: Prisma.UuidNullableFilter<"Notification"> | string | null
+  opportunityId?: Prisma.UuidNullableFilter<"Notification"> | string | null
+  nextActionId?: Prisma.UuidNullableFilter<"Notification"> | string | null
   actionUrl?: Prisma.StringNullableFilter<"Notification"> | string | null
+  dedupeKey?: Prisma.StringNullableFilter<"Notification"> | string | null
+  status?: Prisma.StringFilter<"Notification"> | string
   readAt?: Prisma.DateTimeNullableFilter<"Notification"> | Date | string | null
   archivedAt?: Prisma.DateTimeNullableFilter<"Notification"> | Date | string | null
   snoozedUntil?: Prisma.DateTimeNullableFilter<"Notification"> | Date | string | null
+  resolvedAt?: Prisma.DateTimeNullableFilter<"Notification"> | Date | string | null
+  metadata?: Prisma.JsonFilter<"Notification">
   createdAt?: Prisma.DateTimeFilter<"Notification"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Notification"> | Date | string
-}, "id" | "dedupeKey">
+}, "id">
 
 export type NotificationOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   priority?: Prisma.SortOrder
+  severity?: Prisma.SortOrder
   title?: Prisma.SortOrder
   body?: Prisma.SortOrderInput | Prisma.SortOrder
   entityType?: Prisma.SortOrderInput | Prisma.SortOrder
   entityId?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerId?: Prisma.SortOrderInput | Prisma.SortOrder
+  opportunityId?: Prisma.SortOrderInput | Prisma.SortOrder
+  nextActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   actionUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   dedupeKey?: Prisma.SortOrderInput | Prisma.SortOrder
+  status?: Prisma.SortOrder
   readAt?: Prisma.SortOrderInput | Prisma.SortOrder
   archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   snoozedUntil?: Prisma.SortOrderInput | Prisma.SortOrder
+  resolvedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.NotificationCountOrderByAggregateInput
@@ -332,15 +405,22 @@ export type NotificationScalarWhereWithAggregatesInput = {
   userId?: Prisma.UuidWithAggregatesFilter<"Notification"> | string
   type?: Prisma.StringWithAggregatesFilter<"Notification"> | string
   priority?: Prisma.StringWithAggregatesFilter<"Notification"> | string
+  severity?: Prisma.StringWithAggregatesFilter<"Notification"> | string
   title?: Prisma.StringWithAggregatesFilter<"Notification"> | string
   body?: Prisma.StringNullableWithAggregatesFilter<"Notification"> | string | null
   entityType?: Prisma.StringNullableWithAggregatesFilter<"Notification"> | string | null
   entityId?: Prisma.UuidNullableWithAggregatesFilter<"Notification"> | string | null
+  customerId?: Prisma.UuidNullableWithAggregatesFilter<"Notification"> | string | null
+  opportunityId?: Prisma.UuidNullableWithAggregatesFilter<"Notification"> | string | null
+  nextActionId?: Prisma.UuidNullableWithAggregatesFilter<"Notification"> | string | null
   actionUrl?: Prisma.StringNullableWithAggregatesFilter<"Notification"> | string | null
   dedupeKey?: Prisma.StringNullableWithAggregatesFilter<"Notification"> | string | null
+  status?: Prisma.StringWithAggregatesFilter<"Notification"> | string
   readAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Notification"> | Date | string | null
   archivedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Notification"> | Date | string | null
   snoozedUntil?: Prisma.DateTimeNullableWithAggregatesFilter<"Notification"> | Date | string | null
+  resolvedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Notification"> | Date | string | null
+  metadata?: Prisma.JsonWithAggregatesFilter<"Notification">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Notification"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Notification"> | Date | string
 }
@@ -350,15 +430,22 @@ export type NotificationCreateInput = {
   userId: string
   type: string
   priority: string
+  severity?: string
   title: string
   body?: string | null
   entityType?: string | null
   entityId?: string | null
+  customerId?: string | null
+  opportunityId?: string | null
+  nextActionId?: string | null
   actionUrl?: string | null
   dedupeKey?: string | null
+  status?: string
   readAt?: Date | string | null
   archivedAt?: Date | string | null
   snoozedUntil?: Date | string | null
+  resolvedAt?: Date | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -368,15 +455,22 @@ export type NotificationUncheckedCreateInput = {
   userId: string
   type: string
   priority: string
+  severity?: string
   title: string
   body?: string | null
   entityType?: string | null
   entityId?: string | null
+  customerId?: string | null
+  opportunityId?: string | null
+  nextActionId?: string | null
   actionUrl?: string | null
   dedupeKey?: string | null
+  status?: string
   readAt?: Date | string | null
   archivedAt?: Date | string | null
   snoozedUntil?: Date | string | null
+  resolvedAt?: Date | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -386,15 +480,22 @@ export type NotificationUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   priority?: Prisma.StringFieldUpdateOperationsInput | string
+  severity?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   entityType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   entityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  opportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actionUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   snoozedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  resolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -404,15 +505,22 @@ export type NotificationUncheckedUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   priority?: Prisma.StringFieldUpdateOperationsInput | string
+  severity?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   entityType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   entityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  opportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actionUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   snoozedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  resolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -422,15 +530,22 @@ export type NotificationCreateManyInput = {
   userId: string
   type: string
   priority: string
+  severity?: string
   title: string
   body?: string | null
   entityType?: string | null
   entityId?: string | null
+  customerId?: string | null
+  opportunityId?: string | null
+  nextActionId?: string | null
   actionUrl?: string | null
   dedupeKey?: string | null
+  status?: string
   readAt?: Date | string | null
   archivedAt?: Date | string | null
   snoozedUntil?: Date | string | null
+  resolvedAt?: Date | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -440,15 +555,22 @@ export type NotificationUpdateManyMutationInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   priority?: Prisma.StringFieldUpdateOperationsInput | string
+  severity?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   entityType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   entityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  opportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actionUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   snoozedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  resolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -458,15 +580,22 @@ export type NotificationUncheckedUpdateManyInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   priority?: Prisma.StringFieldUpdateOperationsInput | string
+  severity?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   body?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   entityType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   entityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  opportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actionUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   readAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   snoozedUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  resolvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -476,15 +605,22 @@ export type NotificationCountOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   priority?: Prisma.SortOrder
+  severity?: Prisma.SortOrder
   title?: Prisma.SortOrder
   body?: Prisma.SortOrder
   entityType?: Prisma.SortOrder
   entityId?: Prisma.SortOrder
+  customerId?: Prisma.SortOrder
+  opportunityId?: Prisma.SortOrder
+  nextActionId?: Prisma.SortOrder
   actionUrl?: Prisma.SortOrder
   dedupeKey?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   readAt?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
   snoozedUntil?: Prisma.SortOrder
+  resolvedAt?: Prisma.SortOrder
+  metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -494,15 +630,21 @@ export type NotificationMaxOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   priority?: Prisma.SortOrder
+  severity?: Prisma.SortOrder
   title?: Prisma.SortOrder
   body?: Prisma.SortOrder
   entityType?: Prisma.SortOrder
   entityId?: Prisma.SortOrder
+  customerId?: Prisma.SortOrder
+  opportunityId?: Prisma.SortOrder
+  nextActionId?: Prisma.SortOrder
   actionUrl?: Prisma.SortOrder
   dedupeKey?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   readAt?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
   snoozedUntil?: Prisma.SortOrder
+  resolvedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -512,15 +654,21 @@ export type NotificationMinOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   type?: Prisma.SortOrder
   priority?: Prisma.SortOrder
+  severity?: Prisma.SortOrder
   title?: Prisma.SortOrder
   body?: Prisma.SortOrder
   entityType?: Prisma.SortOrder
   entityId?: Prisma.SortOrder
+  customerId?: Prisma.SortOrder
+  opportunityId?: Prisma.SortOrder
+  nextActionId?: Prisma.SortOrder
   actionUrl?: Prisma.SortOrder
   dedupeKey?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   readAt?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
   snoozedUntil?: Prisma.SortOrder
+  resolvedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -532,15 +680,22 @@ export type NotificationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   userId?: boolean
   type?: boolean
   priority?: boolean
+  severity?: boolean
   title?: boolean
   body?: boolean
   entityType?: boolean
   entityId?: boolean
+  customerId?: boolean
+  opportunityId?: boolean
+  nextActionId?: boolean
   actionUrl?: boolean
   dedupeKey?: boolean
+  status?: boolean
   readAt?: boolean
   archivedAt?: boolean
   snoozedUntil?: boolean
+  resolvedAt?: boolean
+  metadata?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["notification"]>
@@ -550,15 +705,22 @@ export type NotificationSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   userId?: boolean
   type?: boolean
   priority?: boolean
+  severity?: boolean
   title?: boolean
   body?: boolean
   entityType?: boolean
   entityId?: boolean
+  customerId?: boolean
+  opportunityId?: boolean
+  nextActionId?: boolean
   actionUrl?: boolean
   dedupeKey?: boolean
+  status?: boolean
   readAt?: boolean
   archivedAt?: boolean
   snoozedUntil?: boolean
+  resolvedAt?: boolean
+  metadata?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["notification"]>
@@ -568,15 +730,22 @@ export type NotificationSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   userId?: boolean
   type?: boolean
   priority?: boolean
+  severity?: boolean
   title?: boolean
   body?: boolean
   entityType?: boolean
   entityId?: boolean
+  customerId?: boolean
+  opportunityId?: boolean
+  nextActionId?: boolean
   actionUrl?: boolean
   dedupeKey?: boolean
+  status?: boolean
   readAt?: boolean
   archivedAt?: boolean
   snoozedUntil?: boolean
+  resolvedAt?: boolean
+  metadata?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["notification"]>
@@ -586,20 +755,27 @@ export type NotificationSelectScalar = {
   userId?: boolean
   type?: boolean
   priority?: boolean
+  severity?: boolean
   title?: boolean
   body?: boolean
   entityType?: boolean
   entityId?: boolean
+  customerId?: boolean
+  opportunityId?: boolean
+  nextActionId?: boolean
   actionUrl?: boolean
   dedupeKey?: boolean
+  status?: boolean
   readAt?: boolean
   archivedAt?: boolean
   snoozedUntil?: boolean
+  resolvedAt?: boolean
+  metadata?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type NotificationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "type" | "priority" | "title" | "body" | "entityType" | "entityId" | "actionUrl" | "dedupeKey" | "readAt" | "archivedAt" | "snoozedUntil" | "createdAt" | "updatedAt", ExtArgs["result"]["notification"]>
+export type NotificationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "type" | "priority" | "severity" | "title" | "body" | "entityType" | "entityId" | "customerId" | "opportunityId" | "nextActionId" | "actionUrl" | "dedupeKey" | "status" | "readAt" | "archivedAt" | "snoozedUntil" | "resolvedAt" | "metadata" | "createdAt" | "updatedAt", ExtArgs["result"]["notification"]>
 
 export type $NotificationPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Notification"
@@ -609,15 +785,22 @@ export type $NotificationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     userId: string
     type: string
     priority: string
+    severity: string
     title: string
     body: string | null
     entityType: string | null
     entityId: string | null
+    customerId: string | null
+    opportunityId: string | null
+    nextActionId: string | null
     actionUrl: string | null
     dedupeKey: string | null
+    status: string
     readAt: Date | null
     archivedAt: Date | null
     snoozedUntil: Date | null
+    resolvedAt: Date | null
+    metadata: runtime.JsonValue
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["notification"]>
@@ -1047,15 +1230,22 @@ export interface NotificationFieldRefs {
   readonly userId: Prisma.FieldRef<"Notification", 'String'>
   readonly type: Prisma.FieldRef<"Notification", 'String'>
   readonly priority: Prisma.FieldRef<"Notification", 'String'>
+  readonly severity: Prisma.FieldRef<"Notification", 'String'>
   readonly title: Prisma.FieldRef<"Notification", 'String'>
   readonly body: Prisma.FieldRef<"Notification", 'String'>
   readonly entityType: Prisma.FieldRef<"Notification", 'String'>
   readonly entityId: Prisma.FieldRef<"Notification", 'String'>
+  readonly customerId: Prisma.FieldRef<"Notification", 'String'>
+  readonly opportunityId: Prisma.FieldRef<"Notification", 'String'>
+  readonly nextActionId: Prisma.FieldRef<"Notification", 'String'>
   readonly actionUrl: Prisma.FieldRef<"Notification", 'String'>
   readonly dedupeKey: Prisma.FieldRef<"Notification", 'String'>
+  readonly status: Prisma.FieldRef<"Notification", 'String'>
   readonly readAt: Prisma.FieldRef<"Notification", 'DateTime'>
   readonly archivedAt: Prisma.FieldRef<"Notification", 'DateTime'>
   readonly snoozedUntil: Prisma.FieldRef<"Notification", 'DateTime'>
+  readonly resolvedAt: Prisma.FieldRef<"Notification", 'DateTime'>
+  readonly metadata: Prisma.FieldRef<"Notification", 'Json'>
   readonly createdAt: Prisma.FieldRef<"Notification", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Notification", 'DateTime'>
 }

@@ -188,22 +188,33 @@ model AuditLog {
 }
 
 model Notification {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String    @map("user_id") @db.Uuid
-  type         String    @db.Text
-  priority     String    @db.Text
-  title        String    @db.Text
-  body         String?   @db.Text
-  entityType   String?   @map("entity_type") @db.Text
-  entityId     String?   @map("entity_id") @db.Uuid
-  actionUrl    String?   @map("action_url") @db.Text
-  dedupeKey    String?   @unique @map("dedupe_key") @db.Text
-  readAt       DateTime? @map("read_at") @db.Timestamptz(6)
-  archivedAt   DateTime? @map("archived_at") @db.Timestamptz(6)
-  snoozedUntil DateTime? @map("snoozed_until") @db.Timestamptz(6)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  type          String    @db.Text
+  priority      String    @db.Text
+  severity      String    @default("attention") @db.Text
+  title         String    @db.Text
+  body          String?   @db.Text
+  entityType    String?   @map("entity_type") @db.Text
+  entityId      String?   @map("entity_id") @db.Uuid
+  customerId    String?   @map("customer_id") @db.Uuid
+  opportunityId String?   @map("opportunity_id") @db.Uuid
+  nextActionId  String?   @map("next_action_id") @db.Uuid
+  actionUrl     String?   @map("action_url") @db.Text
+  dedupeKey     String?   @map("dedupe_key") @db.Text
+  status        String    @default("unread") @db.Text
+  readAt        DateTime? @map("read_at") @db.Timestamptz(6)
+  archivedAt    DateTime? @map("archived_at") @db.Timestamptz(6)
+  snoozedUntil  DateTime? @map("snoozed_until") @db.Timestamptz(6)
+  resolvedAt    DateTime? @map("resolved_at") @db.Timestamptz(6)
+  metadata      Json      @default("{}")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
+  @@index([userId, status, createdAt], map: "notificacoes_user_status_idx")
+  @@index([userId, snoozedUntil], map: "notificacoes_user_snooze_idx")
+  @@index([createdAt], map: "notificacoes_created_at_idx")
+  @@index([entityType, entityId], map: "notificacoes_entity_idx")
   @@map("notificacoes")
   @@schema("crm")
 }

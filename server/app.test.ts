@@ -19,10 +19,15 @@ import type {
   CrmDataRepository,
   CustomerRecord,
   LossReasonRecord,
+  NotificationFilters,
+  NotificationListRecord,
+  NotificationRecord,
+  NotificationReconcileResult,
   NextActionRecord,
   OpportunityRecord,
   PipelineStageRecord,
   PostponeNextActionInput,
+  SnoozeNotificationInput,
   UpdateActivityInput,
   UpdateCustomerInput,
   UpdateNextActionInput,
@@ -147,6 +152,8 @@ describe("CRM API auth and RBAC", () => {
         "activities:write",
         "next_actions:read",
         "next_actions:write",
+        "notifications:read",
+        "notifications:write",
       ],
     });
   });
@@ -705,6 +712,52 @@ describe("CRM activities and next actions API", () => {
     expect(response.json().commercialCenter.todayActions).toHaveLength(1);
     expect(response.json().commercialCenter.auvoInbox.pending).toBe(0);
   });
+
+  it("lists, counts, reads, snoozes and archives own notifications", async () => {
+    const repository = new FakeCrmRepository();
+    const notification = repository.seedNotification({ userId: actorId, status: "unread" });
+    repository.seedNotification({ userId: "77777777-7777-4777-8777-777777777777", status: "unread" });
+    const app = createTestServer({ crmRepository: repository });
+
+    const list = await app.inject({ method: "GET", url: "/api/notifications?status=active", headers: { authorization: "Bearer valid" } });
+    const count = await app.inject({ method: "GET", url: "/api/notifications/unread-count", headers: { authorization: "Bearer valid" } });
+    const read = await app.inject({ method: "POST", url: `/api/notifications/${notification.id}/read`, headers: { authorization: "Bearer valid" } });
+    const snooze = await app.inject({ method: "POST", url: `/api/notifications/${notification.id}/snooze`, headers: { authorization: "Bearer valid" }, payload: { snoozedUntil: "2026-07-21T10:00:00.000Z" } });
+    const archive = await app.inject({ method: "POST", url: `/api/notifications/${notification.id}/archive`, headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(list.statusCode).toBe(200);
+    expect(list.json().notifications).toHaveLength(1);
+    expect(count.json().count).toBe(1);
+    expect(read.json().notification.status).toBe("read");
+    expect(snooze.json().notification.snoozedUntil).toBe("2026-07-21T10:00:00.000Z");
+    expect(archive.json().notification.status).toBe("archived");
+  });
+
+  it("does not allow accessing another user's notification", async () => {
+    const repository = new FakeCrmRepository();
+    const notification = repository.seedNotification({ userId: "77777777-7777-4777-8777-777777777777", status: "unread" });
+    const app = createTestServer({ crmRepository: repository });
+    const response = await app.inject({ method: "POST", url: `/api/notifications/${notification.id}/read`, headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("keeps notification reconcile restricted to gestor", async () => {
+    const repository = new FakeCrmRepository();
+    const sellerApp = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true }, crmRepository: repository });
+    const denied = await sellerApp.inject({ method: "POST", url: "/api/notifications/reconcile", headers: { authorization: "Bearer valid" } });
+    await sellerApp.close();
+
+    const managerApp = createTestServer({ crmRepository: repository });
+    const allowed = await managerApp.inject({ method: "POST", url: "/api/notifications/reconcile", headers: { authorization: "Bearer valid" } });
+    await managerApp.close();
+
+    expect(denied.statusCode).toBe(403);
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.json()).toEqual({ generated: 0, updated: 0, resolved: 0 });
+  });
 });
 
 class FakeCrmRepository implements CrmDataRepository {
@@ -715,12 +768,19 @@ class FakeCrmRepository implements CrmDataRepository {
   private opportunities: OpportunityRecord[] = [];
   private activities: ActivityRecord[] = [];
   private nextActions: NextActionRecord[] = [];
+  private notifications: NotificationRecord[] = [];
   private stages: PipelineStageRecord[] = [
     { id: stageId, nome: "Novo lead", ordem: 1, isTerminal: false },
     { id: "30000000-0000-0000-0000-000000000007", nome: "Aprovado", ordem: 7, isTerminal: true },
     { id: lostStageId, nome: "Perdido", ordem: 9, isTerminal: true },
   ];
   private lossReasons: LossReasonRecord[] = [{ id: lossReasonId, nome: "sem retorno" }];
+
+  seedNotification(overrides: Partial<NotificationRecord>): NotificationRecord {
+    const notification = makeNotification(overrides);
+    this.notifications.push(notification);
+    return notification;
+  }
 
   async listCustomers(): Promise<CustomerRecord[]> {
     return this.customers.map((customer) => this.withDuplicatePhones(customer));
@@ -985,6 +1045,67 @@ class FakeCrmRepository implements CrmDataRepository {
         averageApprovedTicket: 0,
       },
     };
+  }
+
+  async listNotifications(actor: Actor, filters: NotificationFilters): Promise<NotificationListRecord> {
+    const filtered = this.notifications.filter((notification) => {
+      if (notification.userId !== actor.id) return false;
+      if (filters.status === "active" && !["unread", "read"].includes(notification.status)) return false;
+      if (filters.status && filters.status !== "active" && notification.status !== filters.status) return false;
+      if (filters.type && notification.type !== filters.type) return false;
+      if (filters.severity && notification.severity !== filters.severity) return false;
+      return true;
+    });
+    const limit = filters.limit ?? 20;
+    return { notifications: filtered.slice(0, limit), nextCursor: filtered.length > limit ? filtered[limit - 1]?.id ?? null : null };
+  }
+
+  async getUnreadNotificationsCount(actor: Actor): Promise<{ count: number }> {
+    return { count: this.notifications.filter((notification) => notification.userId === actor.id && notification.status === "unread" && !notification.archivedAt && !notification.resolvedAt).length };
+  }
+
+  async markNotificationRead(actor: Actor, id: string): Promise<NotificationRecord | null> {
+    const notification = this.notifications.find((item) => item.id === id && item.userId === actor.id && !item.archivedAt && !item.resolvedAt);
+    if (!notification) return null;
+    notification.status = "read";
+    notification.readAt = now;
+    notification.updatedAt = now;
+    return notification;
+  }
+
+  async markAllNotificationsRead(actor: Actor): Promise<{ updated: number }> {
+    let updated = 0;
+    for (const notification of this.notifications) {
+      if (notification.userId === actor.id && notification.status === "unread" && !notification.archivedAt && !notification.resolvedAt) {
+        notification.status = "read";
+        notification.readAt = now;
+        notification.updatedAt = now;
+        updated += 1;
+      }
+    }
+    return { updated };
+  }
+
+  async archiveNotification(actor: Actor, id: string): Promise<NotificationRecord | null> {
+    const notification = this.notifications.find((item) => item.id === id && item.userId === actor.id && !item.resolvedAt);
+    if (!notification) return null;
+    notification.status = "archived";
+    notification.archivedAt = now;
+    notification.updatedAt = now;
+    return notification;
+  }
+
+  async snoozeNotification(actor: Actor, id: string, input: SnoozeNotificationInput): Promise<NotificationRecord | null> {
+    const notification = this.notifications.find((item) => item.id === id && item.userId === actor.id && !item.archivedAt && !item.resolvedAt);
+    if (!notification) return null;
+    notification.snoozedUntil = input.snoozedUntil;
+    notification.updatedAt = now;
+    return notification;
+  }
+
+  async reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult> {
+    if (actor.role !== "gestor") throw new ApiError(403, "forbidden", "Apenas gestor pode reconciliar notificacoes.");
+    return { generated: 0, updated: 0, resolved: 0 };
   }
 
   async getNextAction(actor: Actor, id: string): Promise<NextActionRecord | null> {
@@ -1269,6 +1390,34 @@ function makeNextAction(overrides: Partial<NextActionRecord>): NextActionRecord 
     cancelledBy: null,
     cancellationReason: null,
     archivedAt: null,
+  };
+}
+
+function makeNotification(overrides: Partial<NotificationRecord>): NotificationRecord {
+  const id = overrides.id ?? randomUUID();
+  return {
+    id,
+    userId: overrides.userId ?? actorId,
+    type: overrides.type ?? "overdue_next_action",
+    priority: overrides.priority ?? "alta",
+    severity: overrides.severity ?? "urgent",
+    title: overrides.title ?? "Acao vencida",
+    body: overrides.body ?? "Existe uma acao que exige atencao.",
+    entityType: overrides.entityType ?? "next_action",
+    entityId: overrides.entityId ?? id,
+    customerId: overrides.customerId ?? customerId,
+    opportunityId: overrides.opportunityId ?? null,
+    nextActionId: overrides.nextActionId ?? null,
+    actionUrl: overrides.actionUrl ?? `/app/notifications/${id}`,
+    dedupeKey: overrides.dedupeKey ?? `notification:${id}`,
+    status: overrides.status ?? "unread",
+    readAt: overrides.readAt ?? null,
+    archivedAt: overrides.archivedAt ?? null,
+    snoozedUntil: overrides.snoozedUntil ?? null,
+    resolvedAt: overrides.resolvedAt ?? null,
+    metadata: overrides.metadata ?? {},
+    createdAt: overrides.createdAt ?? now,
+    updatedAt: overrides.updatedAt ?? now,
   };
 }
 
