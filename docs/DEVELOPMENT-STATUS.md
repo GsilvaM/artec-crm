@@ -8,7 +8,7 @@ Atualizado em: 2026-07-20
 - Remote esperado: `https://github.com/GsilvaM/artec-crm.git`
 - Branch: `main`
 - Base local observada: `08c9ee1 chore: extract artec crm project`
-- Marco trabalhado: Foundation conectada e homologada no Supabase/PostgreSQL via Prisma.
+- Marco trabalhado: Clientes e Oportunidades com banco real.
 - Commit/push: nao executado.
 
 ## Estado inicial observado
@@ -40,6 +40,8 @@ Status final:
 - `0006_harden_schema_access_and_membership_policies`: applied
 - `0007_complete_customers_opportunities_flow`: applied
 - `0008_create_activities_and_next_actions`: applied
+- `0009_fix_opportunity_responsible_trigger`: applied
+- `0010_split_responsible_trigger_branch`: applied
 
 ## Prisma, backend e frontend
 
@@ -69,6 +71,50 @@ Resultado da homologacao com sessao real:
 - Token ausente: `401`.
 - Estado final restaurado para membership `gestor` ativa.
 
+## Clientes
+
+Homologado com dados reais de teste identificados como homologacao:
+
+- Criar cliente: passou.
+- Telefone normalizado no backend: passou.
+- Duplicidade por telefone: passou, com alerta por `duplicatePhoneCustomerIds`.
+- Buscar/listar por termo: passou.
+- Visualizar ficha via `GET /api/customers/:id`: passou.
+- Editar cliente: passou.
+- Arquivar cliente: passou.
+- Cliente arquivado deixa de aparecer na listagem ativa: passou.
+- Cliente arquivado bloqueia criacao de oportunidade: passou.
+- Restaurar cliente: passou.
+- Auditoria em `crm.audit_log`: passou para insert/update.
+- RBAC: gestor, vendedor e atendimento validados conforme permissoes atuais.
+
+## Oportunidades
+
+Homologado com dados reais de teste identificados como homologacao:
+
+- Criar oportunidade ativa com responsavel, etapa, situacao, proxima acao e data: passou.
+- Bloquear criacao sem responsavel: passou.
+- Bloquear criacao sem proxima acao: passou.
+- Alterar etapa, situacao e proxima acao: passou.
+- Filtrar/listar oportunidades: passou.
+- Aprovar exige campos obrigatorios: passou.
+- Aprovar com forma de pagamento `a vista` forca 1 parcela: passou.
+- Perda exige motivo: passou.
+- Marcar como perdida: passou.
+- Arquivar e restaurar oportunidade: passou.
+- Auditoria em `crm.audit_log`: passou para insert/update.
+- Reatribuicao para outro responsavel nao foi homologada no banco real por ausencia de segundo usuario Auth disponivel; regra esta coberta por teste unitario/API e backend.
+
+## Correcoes do Marco 2
+
+- Backend passou a validar cliente inexistente/arquivado antes de criar ou mover oportunidade.
+- Backend passou a validar etapa inexistente antes de escrever.
+- Backend passou a validar motivo de perda ativo antes de marcar perda.
+- Backend passou a impedir vendedor de atribuir oportunidade a outro responsavel via chamada direta.
+- Rotas passaram a rejeitar ID malformado com `400` antes de chegar ao Prisma.
+- Migration `0009` recriou a funcao de validacao de responsavel no banco.
+- Migration `0010` separou os ramos da funcao por `IF/ELSE` para evitar referencia a coluna inexistente em trigger de oportunidades.
+
 ## Validacoes executadas
 
 - `npm run db:migrate:status`: passou, todas as migrations aplicadas.
@@ -76,7 +122,7 @@ Resultado da homologacao com sessao real:
 - `npm run prisma:validate`: passou.
 - `npm run prisma:generate`: passou.
 - `npm run typecheck`: passou.
-- `npm run test`: passou, 4 arquivos e 27 testes.
+- `npm run test`: passou, 4 arquivos e 31 testes.
 - `npm run build`: passou.
 - E2E: nao executado porque nao existe script `e2e` ou Playwright no `package.json`.
 
@@ -91,14 +137,9 @@ Resultado da homologacao com sessao real:
 ## Marcos
 
 - Marco 1, Homologacao conectada da Fundacao: concluido e homologado.
-- Marco 2, Clientes e Oportunidades: proximo marco recomendado.
+- Marco 2, Clientes e Oportunidades: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
+- Marco 3, Atividades e Proximas Acoes: proximo marco recomendado.
 
 ## Proximo marco
 
-Homologar Clientes e Oportunidades com banco real:
-
-1. Login no frontend com o usuario gestor.
-2. Criar, listar, buscar, editar, arquivar e restaurar clientes.
-3. Criar, editar, aprovar, perder, arquivar e restaurar oportunidades.
-4. Validar auditoria, RBAC e ausencia de qualquer efeito financeiro.
-
+Homologar e expandir Atividades + Proximas Acoes sem iniciar Central Comercial, Notificacoes, Auvo, Relatorios ou financeiro.

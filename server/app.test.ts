@@ -240,6 +240,65 @@ describe("CRM customers and opportunities API", () => {
     expect(lost.json().error.message).toBe("Oportunidade aprovada nao pode ser marcada como perdida.");
   });
 
+  it("rejects opportunities for archived customers", async () => {
+    const repository = new FakeCrmRepository();
+    const app = createTestServer({ crmRepository: repository });
+    await repository.setCustomerArchived({ id: actorId, role: "gestor" }, customerId, true);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/opportunities",
+      headers: { authorization: "Bearer valid" },
+      payload: makeCreateOpportunityInput(),
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.message).toBe("Restaure o cliente antes de criar ou mover uma oportunidade.");
+  });
+
+  it("rejects opportunities with invalid stage or loss reason", async () => {
+    const app = createTestServer({});
+    const invalidStage = await app.inject({
+      method: "POST",
+      url: "/api/opportunities",
+      headers: { authorization: "Bearer valid" },
+      payload: { ...makeCreateOpportunityInput(), etapaId: "88888888-8888-4888-8888-888888888888" },
+    });
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/opportunities",
+      headers: { authorization: "Bearer valid" },
+      payload: makeCreateOpportunityInput(),
+    });
+    const invalidLossReason = await app.inject({
+      method: "POST",
+      url: `/api/opportunities/${created.json().opportunity.id}/lose`,
+      headers: { authorization: "Bearer valid" },
+      payload: { motivoPerdaId: "99999999-9999-4999-8999-999999999999" },
+    });
+    await app.close();
+
+    expect(invalidStage.statusCode).toBe(422);
+    expect(invalidStage.json().error.message).toBe("Etapa informada nao existe.");
+    expect(invalidLossReason.statusCode).toBe(422);
+    expect(invalidLossReason.json().error.message).toBe("Motivo de perda informado nao existe ou esta inativo.");
+  });
+
+  it("prevents sellers from assigning opportunities to another responsible user", async () => {
+    const app = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/opportunities",
+      headers: { authorization: "Bearer valid" },
+      payload: { ...makeCreateOpportunityInput(), responsavelId: "77777777-7777-4777-8777-777777777777" },
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error.message).toBe("Vendedor nao pode atribuir oportunidade para outro responsavel.");
+  });
+
   it("keeps non-members out of customer routes", async () => {
     const app = createTestServer({ membership: null });
     const response = await app.inject({
@@ -251,6 +310,19 @@ describe("CRM customers and opportunities API", () => {
 
     expect(response.statusCode).toBe(403);
     expect(response.json().error.code).toBe("membership_missing");
+  });
+
+  it("rejects malformed route ids before repository access", async () => {
+    const app = createTestServer({});
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/opportunities/undefined",
+      headers: { authorization: "Bearer valid" },
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.message).toBe("ID invalido.");
   });
 });
 
@@ -561,7 +633,10 @@ class FakeCrmRepository implements CrmDataRepository {
 
   async createOpportunity(actor: Actor, input: CreateOpportunityInput): Promise<OpportunityRecord> {
     assertActiveOpportunityHasNextAction({ ...input, status: input.status ?? "ativa" });
+    this.assertCustomerCanReceiveOpportunity(input.clienteId);
     this.assertActiveUser(input.responsavelId);
+    this.assertCanAssignResponsible(actor, input.responsavelId);
+    if (input.etapaId) this.assertStageExists(input.etapaId);
     const nextActionId = randomUUID();
     const opportunity = makeOpportunity({
       id: randomUUID(),
@@ -580,11 +655,16 @@ class FakeCrmRepository implements CrmDataRepository {
     return opportunity;
   }
 
-  async updateOpportunity(_actor: Actor, id: string, input: UpdateOpportunityInput): Promise<OpportunityRecord | null> {
+  async updateOpportunity(actor: Actor, id: string, input: UpdateOpportunityInput): Promise<OpportunityRecord | null> {
     const opportunity = this.opportunities.find((item) => item.id === id);
     if (!opportunity) return null;
     this.assertEditableOpportunity(opportunity);
-    if (input.responsavelId) this.assertActiveUser(input.responsavelId);
+    if (input.clienteId) this.assertCustomerCanReceiveOpportunity(input.clienteId);
+    if (input.responsavelId) {
+      this.assertActiveUser(input.responsavelId);
+      this.assertCanAssignResponsible(actor, input.responsavelId);
+    }
+    if (input.etapaId) this.assertStageExists(input.etapaId);
     if (input.status === "ganha" || input.status === "perdida" || input.status === "arquivada") {
       throw new ApiError(409, "bad_request", "Use o fluxo proprio para aprovar, perder ou arquivar a oportunidade.");
     }
@@ -622,6 +702,7 @@ class FakeCrmRepository implements CrmDataRepository {
     const opportunity = this.opportunities.find((item) => item.id === id);
     if (!opportunity) return null;
     this.assertTransition(opportunity, "perdida");
+    this.assertActiveLossReason(input.motivoPerdaId);
     opportunity.status = "perdida";
     opportunity.etapaNome = "Perdido";
     opportunity.motivoPerdaId = input.motivoPerdaId;
@@ -814,6 +895,28 @@ class FakeCrmRepository implements CrmDataRepository {
 
   private assertActiveUser(userId: string): void {
     if (!this.activeUsers.has(userId)) throw new ApiError(422, "bad_request", "Informe um responsavel ativo no CRM.");
+  }
+
+  private assertCustomerCanReceiveOpportunity(customerId: string): void {
+    const customer = this.customers.find((item) => item.id === customerId);
+    if (!customer) throw new ApiError(422, "bad_request", "Cliente informado nao existe.");
+    if (customer.archivedAt) throw new ApiError(409, "bad_request", "Restaure o cliente antes de criar ou mover uma oportunidade.");
+  }
+
+  private assertStageExists(stageId: string): void {
+    if (!this.stages.some((stage) => stage.id === stageId)) throw new ApiError(422, "bad_request", "Etapa informada nao existe.");
+  }
+
+  private assertActiveLossReason(lossReasonId: string): void {
+    if (!this.lossReasons.some((reason) => reason.id === lossReasonId)) {
+      throw new ApiError(422, "bad_request", "Motivo de perda informado nao existe ou esta inativo.");
+    }
+  }
+
+  private assertCanAssignResponsible(actor: Actor, responsibleUserId: string): void {
+    if (actor.role === "vendedor" && responsibleUserId !== actor.id) {
+      throw new ApiError(403, "forbidden", "Vendedor nao pode atribuir oportunidade para outro responsavel.");
+    }
   }
 
   private assertEditableOpportunity(opportunity: OpportunityRecord): void {

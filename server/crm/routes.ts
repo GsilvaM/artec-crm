@@ -218,5 +218,8 @@ function getActor(request: FastifyRequest): Actor {
 function readIdParam(request: FastifyRequest): string {
   const params = request.params as { id?: string };
   if (!params.id) throw new ApiError(400, "bad_request", "ID obrigatorio.");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(params.id)) {
+    throw new ApiError(400, "bad_request", "ID invalido.");
+  }
   return params.id;
 }

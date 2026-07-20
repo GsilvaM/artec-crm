@@ -195,8 +195,11 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
   async createOpportunity(actor: Actor, input: CreateOpportunityInput): Promise<OpportunityRecord> {
     const status = input.status ?? "ativa";
     assertActiveOpportunityHasNextAction({ ...input, status });
+    await this.assertCustomerCanReceiveOpportunity(input.clienteId);
     await this.assertActiveResponsibleUser(input.responsavelId);
+    await this.assertCanAssignResponsible(actor, input.responsavelId);
     const etapaId = input.etapaId ?? (await this.getFirstStageId());
+    await this.assertStageExists(etapaId);
 
     const createdId = await this.prisma.$transaction(async (tx) => {
       const opportunity = await tx.opportunity.create({
@@ -254,7 +257,12 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     if (input.status === "ganha" || input.status === "perdida" || input.status === "arquivada") {
       throw new ApiError(409, "bad_request", "Use o fluxo proprio para aprovar, perder ou arquivar a oportunidade.");
     }
-    if (input.responsavelId) await this.assertActiveResponsibleUser(input.responsavelId);
+    if (input.clienteId) await this.assertCustomerCanReceiveOpportunity(input.clienteId);
+    if (input.responsavelId) {
+      await this.assertActiveResponsibleUser(input.responsavelId);
+      await this.assertCanAssignResponsible(actor, input.responsavelId);
+    }
+    if (input.etapaId) await this.assertStageExists(input.etapaId);
     const merged = {
       status: input.status ?? current.status,
       responsavelId: input.responsavelId ?? current.responsavelId,
@@ -372,6 +380,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     const current = await this.getOpportunity(actor, id);
     if (!current) return null;
     assertCanTransition(current, "perdida");
+    await this.assertActiveLossReason(input.motivoPerdaId);
     const stageId = await this.getStageIdByName("Perdido");
 
     await this.prisma.$transaction(async (tx) => {
@@ -725,6 +734,40 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       select: { id: true },
     });
     if (!opportunity) throw new ApiError(403, "forbidden", "Usuario sem permissao para esta oportunidade.");
+  }
+
+  private async assertCustomerCanReceiveOpportunity(customerId: string): Promise<void> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true, archivedAt: true },
+    });
+    if (!customer) throw new ApiError(422, "bad_request", "Cliente informado nao existe.");
+    if (customer.archivedAt) {
+      throw new ApiError(409, "bad_request", "Restaure o cliente antes de criar ou mover uma oportunidade.");
+    }
+  }
+
+  private async assertStageExists(stageId: string): Promise<void> {
+    const stage = await this.prisma.pipelineStage.findUnique({
+      where: { id: stageId },
+      select: { id: true },
+    });
+    if (!stage) throw new ApiError(422, "bad_request", "Etapa informada nao existe.");
+  }
+
+  private async assertActiveLossReason(lossReasonId: string): Promise<void> {
+    const reason = await this.prisma.lossReason.findFirst({
+      where: { id: lossReasonId, isActive: true },
+      select: { id: true },
+    });
+    if (!reason) throw new ApiError(422, "bad_request", "Motivo de perda informado nao existe ou esta inativo.");
+  }
+
+  private async assertCanAssignResponsible(actor: Actor, responsibleUserId: string): Promise<void> {
+    if (actor.role !== "vendedor") return;
+    if (responsibleUserId !== actor.id) {
+      throw new ApiError(403, "forbidden", "Vendedor nao pode atribuir oportunidade para outro responsavel.");
+    }
   }
 
   private async assertCanWriteNextAction(actor: Actor, responsibleUserId: string, opportunityId: string | null): Promise<void> {
