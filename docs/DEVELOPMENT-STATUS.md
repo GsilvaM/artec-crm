@@ -267,6 +267,7 @@ Fora do Marco 6:
 - `npm run build`: passou.
 - `npm run notifications:reconcile`: passou e confirmou idempotencia sem duplicar notificacoes abertas.
 - Teste local sintetico do webhook Auvo: backend respondeu `200` em health, `202` no recebimento e `202` na duplicidade; evento sintetico marcado como `ignored` em seguida.
+- `npm run auvo:homologation:status`: disponivel para auditar a captura sem imprimir segredo, headers ou payloads.
 - E2E: nao executado porque nao existe script `e2e` ou Playwright no `package.json`.
 
 ## Nao alterado

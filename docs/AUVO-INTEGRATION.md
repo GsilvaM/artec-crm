@@ -180,3 +180,34 @@ Depois acesse a tela administrativa de gestor e confira o evento em "Homologacao
 3. Enviar amostras reais para o receptor.
 4. Anonimizar as amostras antes de transforma-las em fixtures.
 5. So depois mapear campos reais e implementar Caixa de Entrada/processador.
+
+### Diagnostico seguro da captura
+
+Antes de configurar o Auvo, rode:
+
+```powershell
+npm run auvo:homologation:status
+```
+
+O comando nao imprime segredo, headers nem payloads. Ele informa apenas:
+
+- se `AUVO_WEBHOOK_SECRET` esta configurado;
+- total de eventos recebidos;
+- eventos sinteticos marcados com `homologation=true`;
+- eventos provavelmente reais;
+- pendentes, falhas, ignorados e processados;
+- data do ultimo evento recebido.
+
+Para liberar o proximo marco, e necessario capturar payloads reais suficientes para cobrir:
+
+- atendimento criado com contato novo;
+- atendimento criado com contato existente;
+- atendimento alterado;
+- atendimento concluido;
+- contato criado;
+- contato alterado;
+- evento repetido;
+- payload sem telefone;
+- erro temporario ou indisponibilidade relacionada a API, se ocorrer durante a homologacao.
+
+Sem essas amostras, nao mapear campos e nao implementar Caixa de Entrada definitiva.

@@ -124,6 +124,8 @@ Critério de aceite: eventos repetidos não duplicam entradas e erros são audit
 
 Status em 2026-07-20: receptor de homologacao concluido, migration `0013_harden_auvo_webhook_events` aplicada, APIs administrativas e tela de eventos disponiveis para gestor. A proxima etapa oficial e capturar payloads reais no Auvo antes de mapear eventos ou implementar Caixa de Entrada definitiva.
 
+Preparacao da captura real: comando `npm run auvo:homologation:status` disponivel para verificar, sem vazar dados sensiveis, se o segredo esta configurado e se chegaram eventos sinteticos ou reais.
+
 ## 6. Auvo — Caixa de Entrada
 
 - [ ] Mapear eventos reais.
