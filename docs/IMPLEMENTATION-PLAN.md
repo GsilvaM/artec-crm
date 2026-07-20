@@ -63,7 +63,7 @@ Riscos:
 - O backend depende das envs `CRM_SUPABASE_URL`, `CRM_SUPABASE_ANON_KEY`, `CRM_DATABASE_URL` e `CRM_ALLOWED_ORIGINS`.
 - As migrations dependem de `CRM_DATABASE_URL` para serem executadas.
 - A Fundacao ainda nao pode ser declarada pronta sem aplicar migrations reais e validar memberships reais no Supabase.
-- O webhook Auvo permanece fora da implementacao ate existirem payloads reais de homologacao.
+- O mapeamento definitivo do Auvo permanece bloqueado ate existirem payloads reais de homologacao.
 
 Comandos de validacao da fatia:
 
@@ -92,7 +92,7 @@ Status em 2026-07-20: concluido no codigo e validado por typecheck, testes e bui
 - [x] Follow-ups de hoje e vencidos como proximas acoes filtraveis.
 - [x] Concluir/reagendar/cancelar com resultado e historico.
 - [ ] Agenda comercial.
-- [ ] Central Comercial.
+- [x] Central Comercial.
 - [x] Detecção de oportunidade ativa sem próxima ação pendente no backend.
 
 Critério de aceite: nenhuma oportunidade ativa fica esquecida sem alerta.
@@ -102,25 +102,27 @@ Status em 2026-07-20: marco Atividades + Proximas Acoes concluido no codigo. For
 ## 4. Notificações
 
 - [ ] Toasts.
-- [ ] Central persistente.
-- [ ] Badge e contadores.
-- [ ] Deduplicação.
-- [ ] Adiar, ler e arquivar.
+- [x] Central persistente.
+- [x] Badge e contadores.
+- [x] Deduplicação.
+- [x] Adiar, ler e arquivar.
 - [ ] Preferências.
 
 Critério de aceite: alertas prioritários são acionáveis e não geram duplicidade.
 
 ## 5. Auvo — homologação
 
-- [ ] Endpoint público seguro.
-- [ ] Persistência de payload bruto.
-- [ ] Idempotência.
-- [ ] Tela de eventos.
-- [ ] Reprocessamento.
+- [x] Endpoint público seguro.
+- [x] Persistência de payload bruto.
+- [x] Idempotência.
+- [x] Tela de eventos.
+- [x] Reprocessamento.
 - [ ] Capturar payloads reais.
 - [ ] Fixtures anonimizadas e testes de contrato.
 
 Critério de aceite: eventos repetidos não duplicam entradas e erros são auditáveis.
+
+Status em 2026-07-20: receptor de homologacao concluido, migration `0013_harden_auvo_webhook_events` aplicada, APIs administrativas e tela de eventos disponiveis para gestor. A proxima etapa oficial e capturar payloads reais no Auvo antes de mapear eventos ou implementar Caixa de Entrada definitiva.
 
 ## 6. Auvo — Caixa de Entrada
 

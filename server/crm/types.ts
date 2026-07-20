@@ -251,6 +251,67 @@ export type NotificationReconcileResult = {
   resolved: number;
 };
 
+export type AuvoWebhookStatus = "received" | "processing" | "processed" | "ignored" | "failed";
+
+export type AuvoWebhookEventRecord = {
+  id: string;
+  provider: "auvo";
+  externalEventId: string | null;
+  eventType: string | null;
+  payloadHash: string;
+  sanitizedHeaders: Record<string, string>;
+  payload: unknown;
+  sanitizedPayload: unknown;
+  status: AuvoWebhookStatus;
+  attemptCount: number;
+  lastError: string | null;
+  receivedAt: string;
+  processingStartedAt: string | null;
+  processedAt: string | null;
+  ignoredAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sourceIpHash: string | null;
+  contentLength: number | null;
+  schemaVersion: number;
+  nextRetryAt: string | null;
+};
+
+export type AuvoWebhookEventListRecord = {
+  events: AuvoWebhookEventRecord[];
+  nextCursor: string | null;
+};
+
+export type AuvoWebhookEventFilters = {
+  status?: AuvoWebhookStatus;
+  eventType?: string | null;
+  from?: string | null;
+  to?: string | null;
+  limit?: number;
+  cursor?: string;
+};
+
+export type ReceiveAuvoWebhookEventInput = {
+  payload: unknown;
+  headers: Record<string, string>;
+  sourceIpHash: string | null;
+  contentLength: number | null;
+};
+
+export type ReceiveAuvoWebhookEventResult = {
+  event: AuvoWebhookEventRecord;
+  duplicate: boolean;
+};
+
+export type AuvoIntegrationStatusRecord = {
+  configured: boolean;
+  lastReceivedAt: string | null;
+  lastProcessedAt: string | null;
+  pendingCount: number;
+  failedCount: number;
+  recentEvents: AuvoWebhookEventRecord[];
+};
+
 export type SnoozeNotificationInput = {
   snoozedUntil: string;
 };
@@ -402,6 +463,12 @@ export type CrmDataRepository = {
   archiveNotification(actor: Actor, id: string): Promise<NotificationRecord | null>;
   snoozeNotification(actor: Actor, id: string, input: SnoozeNotificationInput): Promise<NotificationRecord | null>;
   reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult>;
+  receiveAuvoWebhookEvent(input: ReceiveAuvoWebhookEventInput): Promise<ReceiveAuvoWebhookEventResult>;
+  listAuvoWebhookEvents(actor: Actor, filters: AuvoWebhookEventFilters): Promise<AuvoWebhookEventListRecord>;
+  getAuvoWebhookEvent(actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null>;
+  reprocessAuvoWebhookEvent(actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null>;
+  ignoreAuvoWebhookEvent(actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null>;
+  getAuvoIntegrationStatus(actor: Actor, configured: boolean): Promise<AuvoIntegrationStatusRecord>;
   getNextAction(actor: Actor, id: string): Promise<NextActionRecord | null>;
   createNextAction(actor: Actor, input: CreateNextActionInput): Promise<NextActionRecord>;
   updateNextAction(actor: Actor, id: string, input: UpdateNextActionInput): Promise<NextActionRecord | null>;

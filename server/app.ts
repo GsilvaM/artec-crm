@@ -1,9 +1,10 @@
 import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { getPermissionsForRole, roleHasPermission, type Permission } from "./auth/rbac.js";
 import type { AuthenticatedUser, AuthVerifier, MembershipRepository } from "./auth/types.js";
 import type { ServerConfig } from "./config.js";
+import { AUVO_WEBHOOK_MAX_BYTES, sanitizeWebhookHeaders } from "./crm/auvo-webhook.js";
 import { createRouteGuards, registerCrmRoutes } from "./crm/routes.js";
 import type { CrmDataRepository } from "./crm/types.js";
 import type { DatabaseHealth } from "./database/health.js";
@@ -16,7 +17,7 @@ declare module "fastify" {
 }
 
 export type ServerDependencies = {
-  config: Pick<ServerConfig, "corsOrigins" | "CRM_LOG_LEVEL">;
+  config: Pick<ServerConfig, "corsOrigins" | "CRM_LOG_LEVEL" | "AUVO_WEBHOOK_SECRET">;
   authVerifier: AuthVerifier;
   membershipRepository: MembershipRepository;
   crmRepository: CrmDataRepository;
@@ -25,9 +26,10 @@ export type ServerDependencies = {
 
 export function buildServer(dependencies: ServerDependencies): FastifyInstance {
   const app = Fastify({
+    bodyLimit: AUVO_WEBHOOK_MAX_BYTES,
     logger: {
       level: dependencies.config.CRM_LOG_LEVEL,
-      redact: ["req.headers.authorization", "request.headers.authorization"],
+      redact: ["req.headers.authorization", "request.headers.authorization", "req.headers.cookie", "request.headers.cookie"],
     },
     genReqId: () => randomUUID(),
   });
@@ -74,6 +76,57 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
     database: await dependencies.databaseHealth.check(),
     timestamp: new Date().toISOString(),
   }));
+
+  app.post("/api/webhooks/auvo/:secret", async (request, reply) => {
+    const secret = readSecretParam(request);
+    const expectedSecret = dependencies.config.AUVO_WEBHOOK_SECRET;
+    if (!expectedSecret) throw new ApiError(503, "internal_error", "Webhook Auvo nao configurado.");
+    if (secret !== expectedSecret) throw new ApiError(403, "forbidden", "Webhook Auvo recusado.");
+
+    const contentType = request.headers["content-type"] ?? "";
+    if (!String(contentType).toLowerCase().includes("application/json")) {
+      throw new ApiError(415, "bad_request", "Webhook Auvo aceita somente application/json.");
+    }
+
+    const contentLength = readContentLength(request.headers["content-length"]);
+    if (contentLength !== null && contentLength > AUVO_WEBHOOK_MAX_BYTES) {
+      throw new ApiError(413, "bad_request", "Payload do webhook excede o limite permitido.");
+    }
+
+    if (!isJsonObject(request.body)) throw new ApiError(400, "bad_request", "Payload JSON obrigatorio.");
+
+    const startedAt = Date.now();
+    const result = await dependencies.crmRepository.receiveAuvoWebhookEvent({
+      payload: request.body,
+      headers: sanitizeWebhookHeaders(request.headers),
+      sourceIpHash: hashSourceIp(request.ip),
+      contentLength,
+    });
+    request.log.info(
+      {
+        eventId: result.event.id,
+        status: result.event.status,
+        eventType: result.event.eventType,
+        duplicate: result.duplicate,
+        durationMs: Date.now() - startedAt,
+      },
+      "auvo_webhook_received",
+    );
+
+    return reply.status(202).send({
+      status: result.duplicate ? "duplicate" : "received",
+      eventId: result.event.id,
+      duplicate: result.duplicate,
+    });
+  });
+
+  app.route({
+    method: ["GET", "PUT", "PATCH", "DELETE"],
+    url: "/api/webhooks/auvo/:secret",
+    handler: async () => {
+      throw new ApiError(405, "bad_request", "Use POST para enviar webhook Auvo.");
+    },
+  });
 
   app.get("/api/me", { preHandler: [authenticate(dependencies), requirePermission("self:read")] }, async (request) => {
     const user = request.crmUser;
@@ -156,4 +209,25 @@ function readBearerToken(header: string | undefined): string {
   }
 
   return token;
+}
+
+function readSecretParam(request: FastifyRequest): string {
+  const params = request.params as { secret?: string };
+  return params.secret ?? "";
+}
+
+function readContentLength(header: string | string[] | undefined): number | null {
+  const value = Array.isArray(header) ? header[0] : header;
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hashSourceIp(ip: string | undefined): string | null {
+  if (!ip) return null;
+  return createHash("sha256").update(ip).digest("hex");
 }

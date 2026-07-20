@@ -3,6 +3,10 @@ import type {
   Actor,
   ActivityRecord,
   ApproveOpportunityInput,
+  AuvoIntegrationStatusRecord,
+  AuvoWebhookEventFilters,
+  AuvoWebhookEventListRecord,
+  AuvoWebhookEventRecord,
   CancelNextActionInput,
   CommercialCenterFilters,
   CommercialCenterRecord,
@@ -24,6 +28,8 @@ import type {
   OpportunityRecord,
   PipelineStageRecord,
   PostponeNextActionInput,
+  ReceiveAuvoWebhookEventInput,
+  ReceiveAuvoWebhookEventResult,
   SnoozeNotificationInput,
   UpdateActivityInput,
   UpdateCustomerInput,
@@ -897,6 +903,30 @@ export class PgCrmDataRepository implements CrmDataRepository {
   async reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult> {
     if (actor.role !== "gestor") throw new ApiError(403, "forbidden", "Apenas gestor pode reconciliar notificacoes.");
     return { generated: 0, updated: 0, resolved: 0 };
+  }
+
+  async receiveAuvoWebhookEvent(_input: ReceiveAuvoWebhookEventInput): Promise<ReceiveAuvoWebhookEventResult> {
+    throw new ApiError(501, "internal_error", "Receptor Auvo exige Prisma Client neste backend.");
+  }
+
+  async listAuvoWebhookEvents(_actor: Actor, _filters: AuvoWebhookEventFilters): Promise<AuvoWebhookEventListRecord> {
+    return { events: [], nextCursor: null };
+  }
+
+  async getAuvoWebhookEvent(_actor: Actor, _id: string): Promise<AuvoWebhookEventRecord | null> {
+    return null;
+  }
+
+  async reprocessAuvoWebhookEvent(_actor: Actor, _id: string): Promise<AuvoWebhookEventRecord | null> {
+    return null;
+  }
+
+  async ignoreAuvoWebhookEvent(_actor: Actor, _id: string): Promise<AuvoWebhookEventRecord | null> {
+    return null;
+  }
+
+  async getAuvoIntegrationStatus(_actor: Actor, configured: boolean): Promise<AuvoIntegrationStatusRecord> {
+    return { configured, lastReceivedAt: null, lastProcessedAt: null, pendingCount: 0, failedCount: 0, recentEvents: [] };
   }
 
   async createNextAction(actor: Actor, input: CreateNextActionInput): Promise<NextActionRecord> {

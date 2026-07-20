@@ -23,7 +23,7 @@ CRM comercial independente da Artec Ambientes Climatizados. Este projeto nao dev
 Copie `.env.example` para `.env.local` no ambiente local e nunca versione segredos.
 
 - Frontend: `VITE_CRM_SUPABASE_URL`, `VITE_CRM_SUPABASE_ANON_KEY`, `VITE_CRM_API_URL`.
-- Backend: `CRM_SUPABASE_URL`, `CRM_SUPABASE_ANON_KEY`, `CRM_DATABASE_URL`, `CRM_ALLOWED_ORIGINS`, `CRM_PORT`, `CRM_LOG_LEVEL`.
+- Backend: `CRM_SUPABASE_URL`, `CRM_SUPABASE_ANON_KEY`, `CRM_DATABASE_URL`, `CRM_ALLOWED_ORIGINS`, `CRM_PORT`, `CRM_LOG_LEVEL`, `AUVO_WEBHOOK_SECRET`.
 - Segredos nunca devem usar prefixo `VITE_`.
 
 ## Limites
@@ -35,7 +35,7 @@ Copie `.env.example` para `.env.local` no ambiente local e nunca versione segred
 - Schemas permitidos: `crm` e `crm_internal`.
 - `crm_internal` nao deve receber grants diretos para frontend.
 - Sem integracao financeira.
-- Sem Auvo nesta fase.
+- Auvo somente em receptor de homologacao nesta fase; sem criacao automatica de cliente, oportunidade ou financeiro.
 
 ## Prisma e migrations
 
@@ -80,7 +80,25 @@ Todas exigem token Supabase valido e membership ativa.
 - `POST /api/notifications/:id/snooze`.
 - `POST /api/notifications/reconcile`, restrito a `gestor` para homologacao.
 
-As notificacoes sao persistentes, especificas por usuario e deduplicadas por condicao aberta. A reconciliacao pode ser chamada manualmente por `npm run notifications:reconcile` e futuramente por scheduler externo. Nao ha e-mail, WhatsApp, push web, webhook Auvo ou integracao externa nesta fase.
+As notificacoes sao persistentes, especificas por usuario e deduplicadas por condicao aberta. A reconciliacao pode ser chamada manualmente por `npm run notifications:reconcile` e futuramente por scheduler externo. Nao ha e-mail, WhatsApp ou push web nesta fase; o Auvo existe apenas como receptor de homologacao.
+
+## APIs do marco Auvo Homologacao
+
+O receptor publico usa segredo apenas no backend:
+
+- `POST /api/webhooks/auvo/:secret`.
+
+O endpoint aceita somente JSON, aplica limite de tamanho, sanitiza headers, calcula hash canonico do payload, deduplica por hash e persiste o evento bruto em `crm_internal.auvo_webhook_events`. Ele responde rapidamente e nao chama a API do Auvo antes da resposta.
+
+As APIs administrativas exigem token Supabase valido, membership ativa e permissao de gestor:
+
+- `GET /api/integrations/auvo/status`.
+- `GET /api/integrations/auvo/events`.
+- `GET /api/integrations/auvo/events/:id`.
+- `POST /api/integrations/auvo/events/:id/reprocess`.
+- `POST /api/integrations/auvo/events/:id/ignore`.
+
+Esta fase nao interpreta eventos reais, nao cria cliente, nao cria oportunidade, nao grava financeiro e nao sincroniza dados de volta para o Auvo.
 
 ## Homologacao
 

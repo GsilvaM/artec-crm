@@ -44,6 +44,7 @@ Status final:
 - `0010_split_responsible_trigger_branch`: applied
 - `0011_harden_activities_next_actions`: applied
 - `0012_harden_internal_notifications`: applied
+- `0013_harden_auvo_webhook_events`: applied
 
 ## Prisma, backend e frontend
 
@@ -189,7 +190,34 @@ Limitacoes:
 
 - Pagina dedicada `/notificacoes` ainda nao foi separada em rota propria; a visualizacao completa inicial fica na tela autenticada atual.
 - Playwright/E2E visual nao foi executado porque o projeto nao possui infraestrutura configurada.
-- Notificacoes de Auvo, webhook, e-mail, WhatsApp e push web nao foram implementadas.
+- Notificacoes de sucesso comum do Auvo, e-mail, WhatsApp e push web nao foram implementadas.
+- O Auvo esta limitado ao receptor de homologacao; ainda nao ha Caixa de Entrada definitiva, parsing de eventos reais ou criacao automatica de cliente/oportunidade.
+
+## Auvo - Receptor de homologacao
+
+Implementado no Marco 6:
+
+- Endpoint publico `POST /api/webhooks/auvo/:secret`, protegido por `AUVO_WEBHOOK_SECRET` do backend.
+- Validacao de metodo, content-type JSON e limite de payload de 256 KiB.
+- Persistencia de evento bruto em `crm_internal.auvo_webhook_events`.
+- Hash canonico do payload e deduplicacao por `dedupe_key`.
+- Headers persistidos por allowlist, sem `authorization`, `cookie`, `set-cookie`, tokens ou chaves sensiveis.
+- APIs administrativas restritas a gestor:
+  - `GET /api/integrations/auvo/status`;
+  - `GET /api/integrations/auvo/events`;
+  - `GET /api/integrations/auvo/events/:id`;
+  - `POST /api/integrations/auvo/events/:id/reprocess`;
+  - `POST /api/integrations/auvo/events/:id/ignore`.
+- Tela administrativa "Homologacao Auvo" com status, eventos recentes, filtro por status, detalhe sanitizado, copiar ID, reprocessar e ignorar.
+- Sucesso comum de webhook nao gera notificacao interna.
+
+Fora do Marco 6:
+
+- criacao automatica de clientes;
+- criacao automatica de oportunidades;
+- sincronizacao ou escrita no Auvo;
+- leitura da API Auvo antes da resposta do webhook;
+- pagamentos, financeiro, mensagens completas e card moves.
 
 ## Correcoes do Marco 5
 
@@ -235,9 +263,10 @@ Limitacoes:
 - `npm run prisma:validate`: passou.
 - `npm run prisma:generate`: passou.
 - `npm run typecheck`: passou.
-- `npm run test`: passou, 4 arquivos e 41 testes.
+- `npm run test`: passou, 4 arquivos e 44 testes.
 - `npm run build`: passou.
 - `npm run notifications:reconcile`: passou e confirmou idempotencia sem duplicar notificacoes abertas.
+- Teste local sintetico do webhook Auvo: backend respondeu `200` em health, `202` no recebimento e `202` na duplicidade; evento sintetico marcado como `ignored` em seguida.
 - E2E: nao executado porque nao existe script `e2e` ou Playwright no `package.json`.
 
 ## Nao alterado
@@ -246,7 +275,7 @@ Limitacoes:
 - Nenhum commit ou push.
 - Nenhum valor sensivel registrado.
 - Nenhum objeto financeiro foi alterado.
-- Nenhuma integracao Auvo foi iniciada.
+- Nenhuma integracao Auvo definitiva foi iniciada; existe apenas receptor de homologacao e tela admin de eventos.
 - Nenhuma funcionalidade de e-mail, WhatsApp, push web, relatorios avancados, Auvo real ou deploy foi iniciada.
 
 ## Marcos

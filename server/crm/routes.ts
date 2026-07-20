@@ -6,6 +6,7 @@ import type { Actor } from "./types.js";
 import {
   activityCreateSchema,
   activityUpdateSchema,
+  auvoWebhookEventQuerySchema,
   approveOpportunitySchema,
   cancelNextActionSchema,
   commercialCenterQuerySchema,
@@ -27,6 +28,38 @@ type PreHandlerFactory = ReturnType<typeof createRouteGuards>;
 
 export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDependencies, guards: PreHandlerFactory): void {
   const repository = dependencies.crmRepository;
+
+  app.get("/api/integrations/auvo/status", { preHandler: [guards.authenticate, guards.requirePermission("integrations:read")] }, async (request) => {
+    return repository.getAuvoIntegrationStatus(getActor(request), Boolean(dependencies.config.AUVO_WEBHOOK_SECRET));
+  });
+
+  app.get("/api/integrations/auvo/events", { preHandler: [guards.authenticate, guards.requirePermission("integrations:read")] }, async (request) => {
+    const query = parseBody(auvoWebhookEventQuerySchema, request.query);
+    return repository.listAuvoWebhookEvents(getActor(request), {
+      ...query,
+      eventType: query.eventType ?? undefined,
+      from: query.from ?? undefined,
+      to: query.to ?? undefined,
+    });
+  });
+
+  app.get("/api/integrations/auvo/events/:id", { preHandler: [guards.authenticate, guards.requirePermission("integrations:read")] }, async (request) => {
+    const event = await repository.getAuvoWebhookEvent(getActor(request), readIdParam(request));
+    if (!event) throw new ApiError(404, "not_found", "Evento Auvo nao encontrado.");
+    return { event };
+  });
+
+  app.post("/api/integrations/auvo/events/:id/reprocess", { preHandler: [guards.authenticate, guards.requirePermission("integrations:write")] }, async (request) => {
+    const event = await repository.reprocessAuvoWebhookEvent(getActor(request), readIdParam(request));
+    if (!event) throw new ApiError(404, "not_found", "Evento Auvo nao encontrado.");
+    return { event };
+  });
+
+  app.post("/api/integrations/auvo/events/:id/ignore", { preHandler: [guards.authenticate, guards.requirePermission("integrations:write")] }, async (request) => {
+    const event = await repository.ignoreAuvoWebhookEvent(getActor(request), readIdParam(request));
+    if (!event) throw new ApiError(404, "not_found", "Evento Auvo nao encontrado.");
+    return { event };
+  });
 
   app.get("/api/notifications", { preHandler: [guards.authenticate, guards.requirePermission("notifications:read")] }, async (request) => {
     const query = parseBody(notificationQuerySchema, request.query);

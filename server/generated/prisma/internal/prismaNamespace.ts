@@ -393,6 +393,7 @@ export const ModelName = {
   NextAction: 'NextAction',
   AuditLog: 'AuditLog',
   Notification: 'Notification',
+  AuvoWebhookEvent: 'AuvoWebhookEvent',
   MigrationHistory: 'MigrationHistory'
 } as const
 
@@ -409,7 +410,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "userMembership" | "customer" | "pipelineStage" | "lossReason" | "opportunity" | "activity" | "nextAction" | "auditLog" | "notification" | "migrationHistory"
+    modelProps: "userMembership" | "customer" | "pipelineStage" | "lossReason" | "opportunity" | "activity" | "nextAction" | "auditLog" | "notification" | "auvoWebhookEvent" | "migrationHistory"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1079,6 +1080,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AuvoWebhookEvent: {
+      payload: Prisma.$AuvoWebhookEventPayload<ExtArgs>
+      fields: Prisma.AuvoWebhookEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AuvoWebhookEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AuvoWebhookEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload>
+        }
+        findFirst: {
+          args: Prisma.AuvoWebhookEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AuvoWebhookEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload>
+        }
+        findMany: {
+          args: Prisma.AuvoWebhookEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload>[]
+        }
+        create: {
+          args: Prisma.AuvoWebhookEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload>
+        }
+        createMany: {
+          args: Prisma.AuvoWebhookEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AuvoWebhookEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload>[]
+        }
+        delete: {
+          args: Prisma.AuvoWebhookEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload>
+        }
+        update: {
+          args: Prisma.AuvoWebhookEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.AuvoWebhookEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AuvoWebhookEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AuvoWebhookEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.AuvoWebhookEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoWebhookEventPayload>
+        }
+        aggregate: {
+          args: Prisma.AuvoWebhookEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAuvoWebhookEvent>
+        }
+        groupBy: {
+          args: Prisma.AuvoWebhookEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuvoWebhookEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AuvoWebhookEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuvoWebhookEventCountAggregateOutputType> | number
+        }
+      }
+    }
     MigrationHistory: {
       payload: Prisma.$MigrationHistoryPayload<ExtArgs>
       fields: Prisma.MigrationHistoryFieldRefs
@@ -1377,6 +1452,33 @@ export const NotificationScalarFieldEnum = {
 export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
 
 
+export const AuvoWebhookEventScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  externalEventId: 'externalEventId',
+  eventType: 'eventType',
+  dedupeKey: 'dedupeKey',
+  status: 'status',
+  sanitizedHeadersJson: 'sanitizedHeadersJson',
+  rawPayloadJson: 'rawPayloadJson',
+  payloadHash: 'payloadHash',
+  attemptCount: 'attemptCount',
+  lastError: 'lastError',
+  receivedAt: 'receivedAt',
+  processingStartedAt: 'processingStartedAt',
+  processedAt: 'processedAt',
+  ignoredAt: 'ignoredAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  sourceIpHash: 'sourceIpHash',
+  contentLength: 'contentLength',
+  schemaVersion: 'schemaVersion',
+  nextRetryAt: 'nextRetryAt'
+} as const
+
+export type AuvoWebhookEventScalarFieldEnum = (typeof AuvoWebhookEventScalarFieldEnum)[keyof typeof AuvoWebhookEventScalarFieldEnum]
+
+
 export const MigrationHistoryScalarFieldEnum = {
   version: 'version',
   name: 'name',
@@ -1636,6 +1738,7 @@ export type GlobalOmitConfig = {
   nextAction?: Prisma.NextActionOmit
   auditLog?: Prisma.AuditLogOmit
   notification?: Prisma.NotificationOmit
+  auvoWebhookEvent?: Prisma.AuvoWebhookEventOmit
   migrationHistory?: Prisma.MigrationHistoryOmit
 }
 

@@ -122,3 +122,61 @@ Tela administrativa com:
 - dead_letter
 
 Erros devem ser reprocessáveis sem duplicar dados.
+
+## 11. Marco 6 - Receptor de homologacao
+
+Implementado localmente para capturar amostras reais antes de qualquer mapeamento definitivo:
+
+- `POST /api/webhooks/auvo/:secret`
+- `GET /api/integrations/auvo/status`
+- `GET /api/integrations/auvo/events`
+- `GET /api/integrations/auvo/events/:id`
+- `POST /api/integrations/auvo/events/:id/reprocess`
+- `POST /api/integrations/auvo/events/:id/ignore`
+
+Garantias atuais:
+
+- segredo apenas no backend via `AUVO_WEBHOOK_SECRET`;
+- sem `VITE_` para segredo;
+- somente `POST` e `application/json`;
+- limite de payload de 256 KiB;
+- headers persistidos somente por allowlist;
+- `authorization`, `cookie`, `set-cookie`, tokens e chaves privadas nao sao armazenados;
+- payload bruto preservado em `crm_internal.auvo_webhook_events`;
+- resposta rapida `202` sem chamada lenta a API do Auvo;
+- deduplicacao por hash canonico do payload;
+- tela administrativa restrita a gestor;
+- payload exibido no frontend e sanitizado recursivamente;
+- reprocessamento e ignorar manuais alteram somente status tecnico;
+- sucesso comum de webhook nao gera notificacao.
+
+Fora do Marco 6:
+
+- criacao automatica de clientes;
+- criacao automatica de oportunidades;
+- Caixa de Entrada definitiva;
+- leitura da API Auvo;
+- escrita/sync de volta para Auvo;
+- pagamentos, financeiro, mensagens completas e card moves.
+
+### Teste local sintetico
+
+Use apenas payload sintetico marcado como homologacao:
+
+```powershell
+Invoke-WebRequest `
+  -Method POST `
+  -Uri "http://127.0.0.1:4100/api/webhooks/auvo/SEU_SEGREDO_LOCAL" `
+  -ContentType "application/json" `
+  -Body '{"eventType":"attendance.created","id":"synthetic-homologation-1","homologation":true}'
+```
+
+Depois acesse a tela administrativa de gestor e confira o evento em "Homologacao Auvo". Nao registre o segredo, tokens ou headers sensiveis em logs, documentos, prompts ou commits.
+
+### Homologacao real futura
+
+1. Rotacionar qualquer credencial exposta antes de homologar.
+2. Configurar no Auvo somente os eventos do MVP descritos nesta documentacao.
+3. Enviar amostras reais para o receptor.
+4. Anonimizar as amostras antes de transforma-las em fixtures.
+5. So depois mapear campos reais e implementar Caixa de Entrada/processador.

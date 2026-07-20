@@ -60,6 +60,7 @@ export const ModelName = {
   NextAction: 'NextAction',
   AuditLog: 'AuditLog',
   Notification: 'Notification',
+  AuvoWebhookEvent: 'AuvoWebhookEvent',
   MigrationHistory: 'MigrationHistory'
 } as const
 
@@ -262,6 +263,33 @@ export const NotificationScalarFieldEnum = {
 } as const
 
 export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
+
+
+export const AuvoWebhookEventScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  externalEventId: 'externalEventId',
+  eventType: 'eventType',
+  dedupeKey: 'dedupeKey',
+  status: 'status',
+  sanitizedHeadersJson: 'sanitizedHeadersJson',
+  rawPayloadJson: 'rawPayloadJson',
+  payloadHash: 'payloadHash',
+  attemptCount: 'attemptCount',
+  lastError: 'lastError',
+  receivedAt: 'receivedAt',
+  processingStartedAt: 'processingStartedAt',
+  processedAt: 'processedAt',
+  ignoredAt: 'ignoredAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  sourceIpHash: 'sourceIpHash',
+  contentLength: 'contentLength',
+  schemaVersion: 'schemaVersion',
+  nextRetryAt: 'nextRetryAt'
+} as const
+
+export type AuvoWebhookEventScalarFieldEnum = (typeof AuvoWebhookEventScalarFieldEnum)[keyof typeof AuvoWebhookEventScalarFieldEnum]
 
 
 export const MigrationHistoryScalarFieldEnum = {

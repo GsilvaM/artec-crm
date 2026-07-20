@@ -9,6 +9,7 @@ const envSchema = z.object({
   CRM_DATABASE_URL: z.string().min(1),
   CRM_SUPABASE_URL: z.string().url(),
   CRM_SUPABASE_ANON_KEY: z.string().min(1),
+  AUVO_WEBHOOK_SECRET: z.string().min(8).optional(),
   CRM_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 

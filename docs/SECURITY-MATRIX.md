@@ -38,8 +38,8 @@ Atualizado em: 2026-07-20
 | Tabela | Navegador direto | Backend | Observacao |
 | --- | --- | --- | --- |
 | `crm_internal.migration_history` | Nao | Runner de migrations | Historico com checksum. |
-| `crm_internal.auvo_webhook_events` | Nao | Futuro receptor Auvo | Nao usar antes da fase Auvo. |
-| `crm_internal.auvo_inbox_items` | Nao | Futuro processamento Auvo | Nao usar antes da fase Auvo. |
+| `crm_internal.auvo_webhook_events` | Nao | Receptor de homologacao Auvo | Persistir payload bruto, hash e headers sanitizados; expor ao frontend apenas via API admin com payload sanitizado. |
+| `crm_internal.auvo_inbox_items` | Nao | Futuro processamento Auvo | Nao usar antes de payloads reais e Caixa de Entrada definitiva. |
 | `crm_internal.auvo_sync_jobs` | Nao | Futuro worker | Nao usar antes da fase Auvo. |
 | `crm_internal.integration_logs` | Nao | Backend/admin | Nao expor payload sensivel. |
 

@@ -219,6 +219,37 @@ model Notification {
   @@schema("crm")
 }
 
+model AuvoWebhookEvent {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider             String    @default("auvo") @db.Text
+  externalEventId      String?   @map("external_event_id") @db.Text
+  eventType            String?   @map("event_type") @db.Text
+  dedupeKey            String    @unique @map("dedupe_key") @db.Text
+  status               String    @db.Text
+  sanitizedHeadersJson Json      @map("sanitized_headers_json")
+  rawPayloadJson       Json      @map("raw_payload_json")
+  payloadHash          String    @map("payload_hash") @db.Text
+  attemptCount         Int       @default(0) @map("attempt_count")
+  lastError            String?   @map("last_error") @db.Text
+  receivedAt           DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  processingStartedAt  DateTime? @map("processing_started_at") @db.Timestamptz(6)
+  processedAt          DateTime? @map("processed_at") @db.Timestamptz(6)
+  ignoredAt            DateTime? @map("ignored_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  sourceIpHash         String?   @map("source_ip_hash") @db.Text
+  contentLength        Int?      @map("content_length")
+  schemaVersion        Int       @default(1) @map("schema_version")
+  nextRetryAt          DateTime? @map("next_retry_at") @db.Timestamptz(6)
+
+  @@index([status, receivedAt], map: "auvo_webhook_events_status_received_idx")
+  @@index([payloadHash], map: "auvo_webhook_events_payload_hash_idx")
+  @@index([receivedAt], map: "auvo_webhook_events_received_idx")
+  @@index([externalEventId], map: "auvo_webhook_events_external_event_idx")
+  @@map("auvo_webhook_events")
+  @@schema("crm_internal")
+}
+
 model MigrationHistory {
   version    String   @id @db.Text
   name       String   @db.Text

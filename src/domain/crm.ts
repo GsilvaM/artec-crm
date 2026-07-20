@@ -184,6 +184,34 @@ export type NotificationFilters = {
   cursor?: string;
 };
 
+export type AuvoWebhookStatus = "received" | "processing" | "processed" | "ignored" | "failed";
+
+export type AuvoWebhookEvent = {
+  id: string;
+  provider: "auvo";
+  externalEventId: string | null;
+  eventType: string | null;
+  payloadHash: string;
+  sanitizedHeaders: Record<string, string>;
+  sanitizedPayload: unknown;
+  status: AuvoWebhookStatus;
+  attemptCount: number;
+  lastError: string | null;
+  receivedAt: string;
+  processedAt: string | null;
+  ignoredAt: string | null;
+  contentLength: number | null;
+};
+
+export type AuvoIntegrationStatus = {
+  configured: boolean;
+  lastReceivedAt: string | null;
+  lastProcessedAt: string | null;
+  pendingCount: number;
+  failedCount: number;
+  recentEvents: AuvoWebhookEvent[];
+};
+
 export type CreateCustomerPayload = {
   tipoPessoa: "fisica" | "juridica";
   nome: string;
@@ -328,6 +356,26 @@ export async function archiveNotification(id: string): Promise<Notification> {
 
 export async function snoozeNotification(id: string, snoozedUntil: string): Promise<Notification> {
   return (await apiSend<{ notification: Notification }>(`/api/notifications/${id}/snooze`, "POST", { snoozedUntil })).notification;
+}
+
+export async function loadAuvoIntegrationStatus(): Promise<AuvoIntegrationStatus> {
+  return apiGet<AuvoIntegrationStatus>("/api/integrations/auvo/status");
+}
+
+export async function loadAuvoWebhookEvents(filters: { status?: AuvoWebhookStatus; eventType?: string; limit?: string; cursor?: string } = {}): Promise<{ events: AuvoWebhookEvent[]; nextCursor: string | null }> {
+  return apiGet<{ events: AuvoWebhookEvent[]; nextCursor: string | null }>(`/api/integrations/auvo/events${toQueryString(filters)}`);
+}
+
+export async function loadAuvoWebhookEvent(id: string): Promise<AuvoWebhookEvent> {
+  return (await apiGet<{ event: AuvoWebhookEvent }>(`/api/integrations/auvo/events/${id}`)).event;
+}
+
+export async function reprocessAuvoWebhookEvent(id: string): Promise<AuvoWebhookEvent> {
+  return (await apiSend<{ event: AuvoWebhookEvent }>(`/api/integrations/auvo/events/${id}/reprocess`, "POST")).event;
+}
+
+export async function ignoreAuvoWebhookEvent(id: string): Promise<AuvoWebhookEvent> {
+  return (await apiSend<{ event: AuvoWebhookEvent }>(`/api/integrations/auvo/events/${id}/ignore`, "POST")).event;
 }
 
 async function apiGet<T>(path: string): Promise<T> {

@@ -5,6 +5,10 @@ import type {
   Actor,
   ActivityRecord,
   ApproveOpportunityInput,
+  AuvoIntegrationStatusRecord,
+  AuvoWebhookEventFilters,
+  AuvoWebhookEventListRecord,
+  AuvoWebhookEventRecord,
   CancelNextActionInput,
   CommercialCenterFilters,
   CommercialCenterRecord,
@@ -25,12 +29,15 @@ import type {
   OpportunityRecord,
   PipelineStageRecord,
   PostponeNextActionInput,
+  ReceiveAuvoWebhookEventInput,
+  ReceiveAuvoWebhookEventResult,
   SnoozeNotificationInput,
   UpdateActivityInput,
   UpdateCustomerInput,
   UpdateNextActionInput,
   UpdateOpportunityInput,
 } from "./types.js";
+import { createWebhookPayloadHash, normalizeAuvoWebhookStatus, sanitizeWebhookPayload } from "./auvo-webhook.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./validation.js";
 
 type PrismaExecutor = Pick<
@@ -58,6 +65,7 @@ type NextActionWithRelations = NonNullable<Awaited<ReturnType<CrmPrismaClient["n
 };
 
 type NotificationEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["notification"]["findFirst"]>>>;
+type AuvoWebhookEventEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["auvoWebhookEvent"]["findFirst"]>>>;
 
 type NotificationPayload = {
   userId: string;
@@ -927,6 +935,116 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     return { generated, updated, resolved };
   }
 
+  async receiveAuvoWebhookEvent(input: ReceiveAuvoWebhookEventInput): Promise<ReceiveAuvoWebhookEventResult> {
+    const payloadHash = createWebhookPayloadHash(input.payload);
+    const dedupeKey = `payload-hash:${payloadHash}`;
+    const existing = await this.prisma.auvoWebhookEvent.findUnique({ where: { dedupeKey } });
+    if (existing) return { event: mapAuvoWebhookEvent(existing), duplicate: true };
+
+    const event = await this.prisma.auvoWebhookEvent.create({
+      data: {
+        provider: "auvo",
+        externalEventId: inferExternalEventId(input.payload),
+        eventType: inferEventType(input.payload),
+        dedupeKey,
+        status: "received",
+        sanitizedHeadersJson: input.headers,
+        rawPayloadJson: input.payload as Prisma.InputJsonValue,
+        payloadHash,
+        sourceIpHash: input.sourceIpHash,
+        contentLength: input.contentLength,
+        schemaVersion: 1,
+      },
+    });
+
+    return { event: mapAuvoWebhookEvent(event), duplicate: false };
+  }
+
+  async listAuvoWebhookEvents(_actor: Actor, filters: AuvoWebhookEventFilters): Promise<AuvoWebhookEventListRecord> {
+    const limit = filters.limit ?? 20;
+    const where: Prisma.AuvoWebhookEventWhereInput = {
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.eventType ? { eventType: filters.eventType } : {}),
+      ...(filters.from || filters.to
+        ? {
+            receivedAt: {
+              ...(filters.from ? { gte: new Date(filters.from) } : {}),
+              ...(filters.to ? { lte: new Date(filters.to) } : {}),
+            },
+          }
+        : {}),
+      ...(filters.cursor ? { id: { lt: filters.cursor } } : {}),
+    };
+
+    const events = await this.prisma.auvoWebhookEvent.findMany({
+      where,
+      orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+    });
+    const page = events.slice(0, limit);
+    return {
+      events: page.map(mapAuvoWebhookEvent),
+      nextCursor: events.length > limit ? page.at(-1)?.id ?? null : null,
+    };
+  }
+
+  async getAuvoWebhookEvent(_actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null> {
+    const event = await this.prisma.auvoWebhookEvent.findUnique({ where: { id } });
+    return event ? mapAuvoWebhookEvent(event) : null;
+  }
+
+  async reprocessAuvoWebhookEvent(_actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null> {
+    const current = await this.prisma.auvoWebhookEvent.findUnique({ where: { id } });
+    if (!current) return null;
+    if (current.status === "processed") throw new ApiError(409, "bad_request", "Evento ja processado nao pode voltar para a fila.");
+
+    const updated = await this.prisma.auvoWebhookEvent.update({
+      where: { id },
+      data: {
+        status: "received",
+        attemptCount: { increment: 1 },
+        lastError: null,
+        processingStartedAt: null,
+        processedAt: null,
+        ignoredAt: null,
+        nextRetryAt: null,
+        updatedAt: new Date(),
+      },
+    });
+    return mapAuvoWebhookEvent(updated);
+  }
+
+  async ignoreAuvoWebhookEvent(_actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null> {
+    const current = await this.prisma.auvoWebhookEvent.findUnique({ where: { id } });
+    if (!current) return null;
+    if (current.status === "processed") throw new ApiError(409, "bad_request", "Evento ja processado nao pode ser ignorado.");
+
+    const updated = await this.prisma.auvoWebhookEvent.update({
+      where: { id },
+      data: { status: "ignored", ignoredAt: new Date(), updatedAt: new Date() },
+    });
+    return mapAuvoWebhookEvent(updated);
+  }
+
+  async getAuvoIntegrationStatus(_actor: Actor, configured: boolean): Promise<AuvoIntegrationStatusRecord> {
+    const [lastReceived, lastProcessed, pendingCount, failedCount, recentEvents] = await Promise.all([
+      this.prisma.auvoWebhookEvent.findFirst({ orderBy: { receivedAt: "desc" } }),
+      this.prisma.auvoWebhookEvent.findFirst({ where: { status: "processed" }, orderBy: { processedAt: "desc" } }),
+      this.prisma.auvoWebhookEvent.count({ where: { status: { in: ["received", "processing"] } } }),
+      this.prisma.auvoWebhookEvent.count({ where: { status: "failed" } }),
+      this.prisma.auvoWebhookEvent.findMany({ orderBy: [{ receivedAt: "desc" }, { id: "desc" }], take: 5 }),
+    ]);
+
+    return {
+      configured,
+      lastReceivedAt: lastReceived?.receivedAt.toISOString() ?? null,
+      lastProcessedAt: lastProcessed?.processedAt?.toISOString() ?? null,
+      pendingCount,
+      failedCount,
+      recentEvents: recentEvents.map(mapAuvoWebhookEvent),
+    };
+  }
+
   async createNextAction(actor: Actor, input: CreateNextActionInput): Promise<NextActionRecord> {
     await this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
     await this.assertActiveResponsibleUser(input.responsibleUserId);
@@ -1454,6 +1572,53 @@ function mapNotification(row: NotificationEntity): NotificationRecord {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+function mapAuvoWebhookEvent(row: AuvoWebhookEventEntity): AuvoWebhookEventRecord {
+  const payload = row.rawPayloadJson as unknown;
+  return {
+    id: row.id,
+    provider: "auvo",
+    externalEventId: row.externalEventId,
+    eventType: row.eventType,
+    payloadHash: row.payloadHash,
+    sanitizedHeaders: row.sanitizedHeadersJson as Record<string, string>,
+    payload,
+    sanitizedPayload: sanitizeWebhookPayload(payload),
+    status: normalizeAuvoWebhookStatus(row.status),
+    attemptCount: row.attemptCount,
+    lastError: row.lastError,
+    receivedAt: row.receivedAt.toISOString(),
+    processingStartedAt: row.processingStartedAt?.toISOString() ?? null,
+    processedAt: row.processedAt?.toISOString() ?? null,
+    ignoredAt: row.ignoredAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    sourceIpHash: row.sourceIpHash,
+    contentLength: row.contentLength,
+    schemaVersion: row.schemaVersion,
+    nextRetryAt: row.nextRetryAt?.toISOString() ?? null,
+  };
+}
+
+function inferEventType(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const record = payload as Record<string, unknown>;
+  return firstText(record.eventType, record.event_type, record.type, record.event);
+}
+
+function inferExternalEventId(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const record = payload as Record<string, unknown>;
+  return firstText(record.eventId, record.event_id, record.id);
+}
+
+function firstText(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim().slice(0, 250);
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return null;
 }
 
 function mapOpportunity(row: OpportunityWithRelations): OpportunityRecord {

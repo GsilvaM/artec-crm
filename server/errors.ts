@@ -28,9 +28,21 @@ export function toPublicError(error: unknown): { statusCode: number; code: ApiEr
     };
   }
 
+  if (isHttpError(error) && error.statusCode >= 400 && error.statusCode < 500) {
+    return {
+      statusCode: error.statusCode,
+      code: "bad_request",
+      message: error.statusCode === 413 ? "Payload excede o limite permitido." : "Requisicao invalida.",
+    };
+  }
+
   return {
     statusCode: 500,
     code: "internal_error",
     message: "Erro interno ao processar a requisicao.",
   };
+}
+
+function isHttpError(error: unknown): error is { statusCode: number } {
+  return Boolean(error) && typeof error === "object" && typeof (error as { statusCode?: unknown }).statusCode === "number";
 }

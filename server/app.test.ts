@@ -8,6 +8,10 @@ import type {
   Actor,
   ActivityRecord,
   ApproveOpportunityInput,
+  AuvoIntegrationStatusRecord,
+  AuvoWebhookEventFilters,
+  AuvoWebhookEventListRecord,
+  AuvoWebhookEventRecord,
   CancelNextActionInput,
   CommercialCenterFilters,
   CommercialCenterRecord,
@@ -27,12 +31,15 @@ import type {
   OpportunityRecord,
   PipelineStageRecord,
   PostponeNextActionInput,
+  ReceiveAuvoWebhookEventInput,
+  ReceiveAuvoWebhookEventResult,
   SnoozeNotificationInput,
   UpdateActivityInput,
   UpdateCustomerInput,
   UpdateNextActionInput,
   UpdateOpportunityInput,
 } from "./crm/types.js";
+import { createWebhookPayloadHash, sanitizeWebhookPayload } from "./crm/auvo-webhook.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./crm/validation.js";
 
 const now = "2026-07-20T10:00:00.000Z";
@@ -42,6 +49,7 @@ const opportunityId = "33333333-3333-4333-8333-333333333333";
 const stageId = "44444444-4444-4444-8444-444444444444";
 const lostStageId = "55555555-5555-4555-8555-555555555555";
 const lossReasonId = "66666666-6666-4666-8666-666666666666";
+const auvoSecret = "local-auvo-secret";
 
 function createTestServer(options: {
   verifiedUser?: VerifiedTokenUser;
@@ -72,6 +80,7 @@ function createTestServer(options: {
     config: {
       corsOrigins: ["http://localhost:3100"],
       CRM_LOG_LEVEL: "silent",
+      AUVO_WEBHOOK_SECRET: auvoSecret,
     },
     authVerifier,
     membershipRepository,
@@ -758,17 +767,104 @@ describe("CRM activities and next actions API", () => {
     expect(allowed.statusCode).toBe(200);
     expect(allowed.json()).toEqual({ generated: 0, updated: 0, resolved: 0 });
   });
+
+  it("receives valid Auvo webhooks, stores sanitized headers and deduplicates by hash", async () => {
+    const repository = new FakeCrmRepository();
+    const app = createTestServer({ crmRepository: repository });
+    const payload = { eventType: "attendance.created", id: "evt-1", nested: { token: "sensitive" } };
+    const first = await app.inject({
+      method: "POST",
+      url: `/api/webhooks/auvo/${auvoSecret}`,
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "auvo-homologation",
+        authorization: "Bearer must-not-store",
+        cookie: "session=must-not-store",
+      },
+      payload,
+    });
+    const duplicate = await app.inject({
+      method: "POST",
+      url: `/api/webhooks/auvo/${auvoSecret}`,
+      headers: { "content-type": "application/json" },
+      payload: { id: "evt-1", nested: { token: "sensitive" }, eventType: "attendance.created" },
+    });
+    await app.close();
+
+    expect(first.statusCode).toBe(202);
+    expect(first.json()).toMatchObject({ status: "received", duplicate: false });
+    expect(duplicate.statusCode).toBe(202);
+    expect(duplicate.json()).toMatchObject({ status: "duplicate", duplicate: true });
+    expect(repository.auvoEvents).toHaveLength(1);
+    expect(repository.auvoEvents[0]?.payloadHash).toBe(createWebhookPayloadHash(payload));
+    expect(repository.auvoEvents[0]?.sanitizedHeaders.authorization).toBeUndefined();
+    expect(repository.auvoEvents[0]?.sanitizedHeaders.cookie).toBeUndefined();
+    expect(repository.auvoEvents[0]?.sanitizedPayload).toMatchObject({ nested: { token: "[redacted]" } });
+    expect(repository.customers).toHaveLength(1);
+    expect(repository.opportunities).toHaveLength(0);
+    expect(repository.notifications).toHaveLength(0);
+  });
+
+  it("rejects unsafe Auvo webhook requests without leaking secrets", async () => {
+    const app = createTestServer({});
+    const wrongSecret = await app.inject({ method: "POST", url: "/api/webhooks/auvo/wrong-secret", headers: { "content-type": "application/json" }, payload: { ok: true } });
+    const wrongType = await app.inject({ method: "POST", url: `/api/webhooks/auvo/${auvoSecret}`, headers: { "content-type": "text/plain" }, payload: "plain" });
+    const wrongMethod = await app.inject({ method: "GET", url: `/api/webhooks/auvo/${auvoSecret}` });
+    const oversized = await app.inject({
+      method: "POST",
+      url: `/api/webhooks/auvo/${auvoSecret}`,
+      headers: { "content-type": "application/json", "content-length": String(300 * 1024) },
+      payload: { ok: true },
+    });
+    await app.close();
+
+    expect(wrongSecret.statusCode).toBe(403);
+    expect(JSON.stringify(wrongSecret.json())).not.toContain("wrong-secret");
+    expect(wrongType.statusCode).toBe(415);
+    expect(wrongMethod.statusCode).toBe(405);
+    expect(oversized.statusCode).toBe(413);
+  });
+
+  it("keeps Auvo admin APIs restricted to gestor and supports detail, filters, reprocess and ignore", async () => {
+    const repository = new FakeCrmRepository();
+    const event = (await repository.receiveAuvoWebhookEvent({
+      payload: { eventType: "contact.updated", password: "sensitive" },
+      headers: { "content-type": "application/json" },
+      sourceIpHash: "ip-hash",
+      contentLength: 42,
+    })).event;
+    const sellerApp = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true }, crmRepository: repository });
+    const denied = await sellerApp.inject({ method: "GET", url: "/api/integrations/auvo/events", headers: { authorization: "Bearer valid" } });
+    await sellerApp.close();
+
+    const managerApp = createTestServer({ crmRepository: repository });
+    const status = await managerApp.inject({ method: "GET", url: "/api/integrations/auvo/status", headers: { authorization: "Bearer valid" } });
+    const list = await managerApp.inject({ method: "GET", url: "/api/integrations/auvo/events?status=received&eventType=contact.updated&limit=1", headers: { authorization: "Bearer valid" } });
+    const detail = await managerApp.inject({ method: "GET", url: `/api/integrations/auvo/events/${event.id}`, headers: { authorization: "Bearer valid" } });
+    const reprocess = await managerApp.inject({ method: "POST", url: `/api/integrations/auvo/events/${event.id}/reprocess`, headers: { authorization: "Bearer valid" } });
+    const ignore = await managerApp.inject({ method: "POST", url: `/api/integrations/auvo/events/${event.id}/ignore`, headers: { authorization: "Bearer valid" } });
+    await managerApp.close();
+
+    expect(denied.statusCode).toBe(403);
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({ configured: true, pendingCount: 1, failedCount: 0 });
+    expect(list.json().events).toHaveLength(1);
+    expect(detail.json().event.sanitizedPayload.password).toBe("[redacted]");
+    expect(reprocess.json().event.attemptCount).toBe(1);
+    expect(ignore.json().event.status).toBe("ignored");
+  });
 });
 
 class FakeCrmRepository implements CrmDataRepository {
   private activeUsers = new Set([actorId, "77777777-7777-4777-8777-777777777777"]);
-  private customers: CustomerRecord[] = [
+  customers: CustomerRecord[] = [
     makeCustomer({ id: customerId, nome: "Cliente Base" }),
   ];
-  private opportunities: OpportunityRecord[] = [];
+  opportunities: OpportunityRecord[] = [];
   private activities: ActivityRecord[] = [];
   private nextActions: NextActionRecord[] = [];
-  private notifications: NotificationRecord[] = [];
+  notifications: NotificationRecord[] = [];
+  auvoEvents: AuvoWebhookEventRecord[] = [];
   private stages: PipelineStageRecord[] = [
     { id: stageId, nome: "Novo lead", ordem: 1, isTerminal: false },
     { id: "30000000-0000-0000-0000-000000000007", nome: "Aprovado", ordem: 7, isTerminal: true },
@@ -1106,6 +1202,88 @@ class FakeCrmRepository implements CrmDataRepository {
   async reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult> {
     if (actor.role !== "gestor") throw new ApiError(403, "forbidden", "Apenas gestor pode reconciliar notificacoes.");
     return { generated: 0, updated: 0, resolved: 0 };
+  }
+
+  async receiveAuvoWebhookEvent(input: ReceiveAuvoWebhookEventInput): Promise<ReceiveAuvoWebhookEventResult> {
+    const payloadHash = createWebhookPayloadHash(input.payload);
+    const existing = this.auvoEvents.find((event) => event.payloadHash === payloadHash);
+    if (existing) return { event: existing, duplicate: true };
+
+    const payload = input.payload;
+    const event: AuvoWebhookEventRecord = {
+      id: randomUUID(),
+      provider: "auvo",
+      externalEventId: typeof (payload as { id?: unknown }).id === "string" ? (payload as { id: string }).id : null,
+      eventType: typeof (payload as { eventType?: unknown }).eventType === "string" ? (payload as { eventType: string }).eventType : null,
+      payloadHash,
+      sanitizedHeaders: input.headers,
+      payload,
+      sanitizedPayload: sanitizeWebhookPayload(payload),
+      status: "received",
+      attemptCount: 0,
+      lastError: null,
+      receivedAt: now,
+      processingStartedAt: null,
+      processedAt: null,
+      ignoredAt: null,
+      createdAt: now,
+      updatedAt: now,
+      sourceIpHash: input.sourceIpHash,
+      contentLength: input.contentLength,
+      schemaVersion: 1,
+      nextRetryAt: null,
+    };
+    this.auvoEvents.unshift(event);
+    return { event, duplicate: false };
+  }
+
+  async listAuvoWebhookEvents(_actor: Actor, filters: AuvoWebhookEventFilters): Promise<AuvoWebhookEventListRecord> {
+    const limit = filters.limit ?? 20;
+    const filtered = this.auvoEvents.filter((event) => {
+      if (filters.status && event.status !== filters.status) return false;
+      if (filters.eventType && event.eventType !== filters.eventType) return false;
+      return true;
+    });
+    return { events: filtered.slice(0, limit), nextCursor: filtered.length > limit ? filtered[limit - 1]?.id ?? null : null };
+  }
+
+  async getAuvoWebhookEvent(_actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null> {
+    return this.auvoEvents.find((event) => event.id === id) ?? null;
+  }
+
+  async reprocessAuvoWebhookEvent(_actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null> {
+    const event = this.auvoEvents.find((item) => item.id === id);
+    if (!event) return null;
+    if (event.status === "processed") throw new ApiError(409, "bad_request", "Evento ja processado nao pode voltar para a fila.");
+    event.status = "received";
+    event.attemptCount += 1;
+    event.lastError = null;
+    event.processingStartedAt = null;
+    event.processedAt = null;
+    event.ignoredAt = null;
+    event.updatedAt = now;
+    return event;
+  }
+
+  async ignoreAuvoWebhookEvent(_actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null> {
+    const event = this.auvoEvents.find((item) => item.id === id);
+    if (!event) return null;
+    if (event.status === "processed") throw new ApiError(409, "bad_request", "Evento ja processado nao pode ser ignorado.");
+    event.status = "ignored";
+    event.ignoredAt = now;
+    event.updatedAt = now;
+    return event;
+  }
+
+  async getAuvoIntegrationStatus(_actor: Actor, configured: boolean): Promise<AuvoIntegrationStatusRecord> {
+    return {
+      configured,
+      lastReceivedAt: this.auvoEvents[0]?.receivedAt ?? null,
+      lastProcessedAt: this.auvoEvents.find((event) => event.status === "processed")?.processedAt ?? null,
+      pendingCount: this.auvoEvents.filter((event) => event.status === "received" || event.status === "processing").length,
+      failedCount: this.auvoEvents.filter((event) => event.status === "failed").length,
+      recentEvents: this.auvoEvents.slice(0, 5),
+    };
   }
 
   async getNextAction(actor: Actor, id: string): Promise<NextActionRecord | null> {

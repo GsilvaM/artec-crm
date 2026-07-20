@@ -391,6 +391,103 @@ select:focus-visible {
   color: var(--foreground-muted);
 }
 
+.auvo-admin {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.auvo-admin > header,
+.auvo-detail header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auvo-admin h2,
+.auvo-detail h3 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.auvo-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-card {
+  display: grid;
+  gap: 4px;
+  min-height: 74px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.metric-card span {
+  color: var(--foreground-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.metric-card strong {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.auvo-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.auvo-detail {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.detail-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.detail-list dt {
+  color: var(--foreground-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.detail-list dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.payload-preview {
+  max-height: 360px;
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--foreground);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
 .severity {
   display: inline-flex;
   align-items: center;
@@ -933,6 +1030,11 @@ tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .auvo-status-grid,
+  .auvo-layout {
+    grid-template-columns: 1fr;
+  }
+
   .filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -963,6 +1065,9 @@ tr:last-child td {
 
   .work-list li,
   .notification-list li,
+  .auvo-admin > header,
+  .auvo-detail header,
+  .detail-list,
   .notification-popover header,
   .notifications-page header,
   .filter-grid,

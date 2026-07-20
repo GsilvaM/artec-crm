@@ -1,4 +1,4 @@
-import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Edit3, LogIn, LogOut, Plus, Search, UserRound, XCircle } from "lucide-react";
+import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Copy, Edit3, LogIn, LogOut, Plus, RefreshCw, Search, UserRound, XCircle } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
 import {
@@ -13,7 +13,11 @@ import {
   cancelNextAction,
   archiveNotification,
   loadCrmSnapshot,
+  ignoreAuvoWebhookEvent,
   loadCustomerActivities,
+  loadAuvoIntegrationStatus,
+  loadAuvoWebhookEvent,
+  loadAuvoWebhookEvents,
   loadNotifications,
   loadOpportunityActivities,
   loadUnreadNotificationsCount,
@@ -21,10 +25,14 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   postponeNextAction,
+  reprocessAuvoWebhookEvent,
   snoozeNotification,
   updateCustomer,
   updateOpportunity,
   type Activity,
+  type AuvoIntegrationStatus,
+  type AuvoWebhookEvent,
+  type AuvoWebhookStatus,
   type CommercialCenterActionItem,
   type CommercialCenterFilters,
   type CommercialCenterOpportunityItem,
@@ -153,6 +161,10 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<"active" | "read" | "archived">("active");
+  const [auvoStatus, setAuvoStatus] = useState<AuvoIntegrationStatus | null>(null);
+  const [auvoEvents, setAuvoEvents] = useState<AuvoWebhookEvent[]>([]);
+  const [selectedAuvoEvent, setSelectedAuvoEvent] = useState<AuvoWebhookEvent | null>(null);
+  const [auvoFilter, setAuvoFilter] = useState<AuvoWebhookStatus | "">("");
 
   const activeCustomers = snapshot?.customers.filter((customer) => !customer.archivedAt) ?? [];
   const activeOpportunities = snapshot?.opportunities.filter((opportunity) => opportunity.status === "ativa") ?? [];
@@ -180,6 +192,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     [snapshot?.opportunities],
   );
   const hasCommercialFilters = Object.values(commercialFilters).some((value) => Boolean(value));
+  const canManageIntegrations = authState.user.permissions.includes("integrations:read");
 
   const metrics = useMemo(
     () => [
@@ -201,6 +214,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
       const data = await loadCrmSnapshot(search, commercialFilters);
       setSnapshot(data);
       await refreshNotifications(notificationStatus);
+      if (canManageIntegrations) await refreshAuvo();
       setOpportunityForm((current) => ({ ...current, clienteId: current.clienteId || data.customers[0]?.id || "" }));
       setActivityForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
       setNextActionForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
@@ -218,6 +232,18 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     ]);
     setNotifications(list.notifications);
     setNotificationCount(count);
+  }
+
+  async function refreshAuvo(status = auvoFilter) {
+    const [integrationStatus, list] = await Promise.all([
+      loadAuvoIntegrationStatus(),
+      loadAuvoWebhookEvents({ status: status || undefined, limit: "10" }),
+    ]);
+    setAuvoStatus(integrationStatus);
+    setAuvoEvents(list.events);
+    if (selectedAuvoEvent) {
+      setSelectedAuvoEvent(list.events.find((event) => event.id === selectedAuvoEvent.id) ?? selectedAuvoEvent);
+    }
   }
 
   async function handleNotificationRead(id: string) {
@@ -244,6 +270,25 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   async function handleNotificationStatusChange(status: "active" | "read" | "archived") {
     setNotificationStatus(status);
     await refreshNotifications(status);
+  }
+
+  async function handleAuvoFilterChange(status: AuvoWebhookStatus | "") {
+    setAuvoFilter(status);
+    await refreshAuvo(status);
+  }
+
+  async function handleOpenAuvoEvent(id: string) {
+    setSelectedAuvoEvent(await loadAuvoWebhookEvent(id));
+  }
+
+  async function handleReprocessAuvoEvent(id: string) {
+    setSelectedAuvoEvent(await reprocessAuvoWebhookEvent(id));
+    await refreshAuvo();
+  }
+
+  async function handleIgnoreAuvoEvent(id: string) {
+    setSelectedAuvoEvent(await ignoreAuvoWebhookEvent(id));
+    await refreshAuvo();
   }
 
   async function handleCreateCustomer(event: FormEvent<HTMLFormElement>) {
@@ -614,6 +659,64 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
               <NotificationList items={notifications} onRead={handleNotificationRead} onArchive={handleNotificationArchive} onSnooze={handleNotificationSnooze} />
             </section>
 
+            {canManageIntegrations ? (
+              <section className="panel auvo-admin" aria-label="Integracao Auvo">
+                <header>
+                  <div>
+                    <p className="eyebrow">Marco 6</p>
+                    <h2>Homologacao Auvo</h2>
+                  </div>
+                  <div className="filter-actions">
+                    <select value={auvoFilter} onChange={(event) => void handleAuvoFilterChange(event.target.value as AuvoWebhookStatus | "")}>
+                      <option value="">Todos</option>
+                      <option value="received">Recebidos</option>
+                      <option value="processing">Processando</option>
+                      <option value="processed">Processados</option>
+                      <option value="ignored">Ignorados</option>
+                      <option value="failed">Falhas</option>
+                    </select>
+                    <button className="button secondary" type="button" onClick={() => void refreshAuvo()}>
+                      <RefreshCw aria-hidden="true" />
+                      Atualizar
+                    </button>
+                  </div>
+                </header>
+                <div className="auvo-status-grid">
+                  <Metric label="Webhook" value={auvoStatus?.configured ? "Configurado" : "Pendente"} />
+                  <Metric label="Pendentes" value={auvoStatus?.pendingCount ?? 0} />
+                  <Metric label="Falhas" value={auvoStatus?.failedCount ?? 0} />
+                  <Metric label="Ultimo evento" value={formatShortDate(auvoStatus?.lastReceivedAt)} />
+                </div>
+                <div className="auvo-layout">
+                  <div className="table-wrap">
+                    <table>
+                      <thead><tr><th>Recebido</th><th>Tipo</th><th>Status</th><th>Tentativas</th><th>Acoes</th></tr></thead>
+                      <tbody>
+                        {auvoEvents.map((event) => (
+                          <tr key={event.id}>
+                            <td>{formatShortDate(event.receivedAt)}</td>
+                            <td>{event.eventType ?? "Nao informado"}</td>
+                            <td>{formatAuvoStatus(event.status)}</td>
+                            <td>{event.attemptCount}</td>
+                            <td>
+                              <div className="row-actions">
+                                <button className="button ghost" type="button" onClick={() => void handleOpenAuvoEvent(event.id)}>Detalhe</button>
+                                <button className="button ghost" type="button" onClick={() => void navigator.clipboard?.writeText(event.id)} aria-label="Copiar ID do evento Auvo">
+                                  <Copy aria-hidden="true" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {!auvoEvents.length ? <tr><td colSpan={5}>Nenhum evento recebido nesta homologacao.</td></tr> : null}
+                      </tbody>
+                    </table>
+                  </div>
+                  <AuvoEventDetail event={selectedAuvoEvent} onReprocess={handleReprocessAuvoEvent} onIgnore={handleIgnoreAuvoEvent} />
+                </div>
+              </section>
+            ) : null}
+
             <section className="split-layout">
               <form className="panel compact-form" onSubmit={handleCreateCustomer}>
                 <h2>Novo cliente</h2>
@@ -933,6 +1036,54 @@ function CommercialOpportunityBlock({ title, emptyText, items, onOpen }: {
   );
 }
 
+function Metric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <article className="metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </article>
+  );
+}
+
+function AuvoEventDetail({ event, onReprocess, onIgnore }: {
+  event: AuvoWebhookEvent | null;
+  onReprocess: (id: string) => void | Promise<void>;
+  onIgnore: (id: string) => void | Promise<void>;
+}) {
+  if (!event) {
+    return (
+      <aside className="auvo-detail">
+        <EmptyState title="Selecione um evento" text="O payload exibido aqui sempre passa por sanitizacao." />
+      </aside>
+    );
+  }
+
+  const canChange = event.status !== "processed";
+
+  return (
+    <aside className="auvo-detail">
+      <header>
+        <div>
+          <p className="eyebrow">{event.eventType ?? "Evento sem tipo"}</p>
+          <h3>{formatAuvoStatus(event.status)}</h3>
+        </div>
+        <span className="badge">{event.id.slice(0, 8)}</span>
+      </header>
+      <dl className="detail-list">
+        <div><dt>Recebido</dt><dd>{formatDateTime(event.receivedAt)}</dd></div>
+        <div><dt>Hash</dt><dd>{event.payloadHash.slice(0, 16)}</dd></div>
+        <div><dt>Tamanho</dt><dd>{event.contentLength ?? "Nao informado"}</dd></div>
+        <div><dt>Erro</dt><dd>{event.lastError ?? "Nenhum"}</dd></div>
+      </dl>
+      <div className="quick-actions">
+        <button className="button secondary" type="button" disabled={!canChange} onClick={() => void onReprocess(event.id)}>Reprocessar</button>
+        <button className="button ghost" type="button" disabled={!canChange} onClick={() => void onIgnore(event.id)}>Ignorar</button>
+      </div>
+      <pre className="payload-preview">{JSON.stringify(event.sanitizedPayload, null, 2)}</pre>
+    </aside>
+  );
+}
+
 function NotificationList({ items, onRead, onArchive, onSnooze }: {
   items: Notification[];
   onRead: (id: string) => void | Promise<void>;
@@ -967,6 +1118,19 @@ function NotificationList({ items, onRead, onArchive, onSnooze }: {
 function formatDateTime(value: string | null): string {
   if (!value) return "";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+}
+
+function formatShortDate(value: string | null | undefined): string {
+  if (!value) return "Nunca";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+}
+
+function formatAuvoStatus(status: AuvoWebhookStatus): string {
+  if (status === "received") return "Recebido";
+  if (status === "processing") return "Processando";
+  if (status === "processed") return "Processado";
+  if (status === "ignored") return "Ignorado";
+  return "Falha";
 }
 
 function formatMoney(valueInCents: number): string {

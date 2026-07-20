@@ -22,6 +22,7 @@ const notificationTypeSchema = z.enum([
   "internal_error",
 ]);
 const notificationSeveritySchema = z.enum(["info", "attention", "urgent"]);
+const auvoWebhookStatusSchema = z.enum(["received", "processing", "processed", "ignored", "failed"]);
 
 export const customerCreateSchema = z.object({
   tipoPessoa: z.enum(["fisica", "juridica"]).default("fisica"),
@@ -179,6 +180,15 @@ export const notificationQuerySchema = z.object({
 
 export const notificationSnoozeSchema = z.object({
   snoozedUntil: z.string().trim().min(1, "Informe quando a notificacao deve reaparecer."),
+});
+
+export const auvoWebhookEventQuerySchema = z.object({
+  status: auvoWebhookStatusSchema.optional(),
+  eventType: optionalText,
+  from: optionalText,
+  to: optionalText,
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: uuid.optional(),
 });
 
 export function normalizePhone(phone: string | null | undefined): string | null {
