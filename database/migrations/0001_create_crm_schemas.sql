@@ -1,0 +1,11 @@
+CREATE SCHEMA IF NOT EXISTS crm;
+CREATE SCHEMA IF NOT EXISTS crm_internal;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+CREATE TABLE IF NOT EXISTS crm_internal.migration_history (
+  version TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  checksum TEXT NOT NULL,
+  executed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
