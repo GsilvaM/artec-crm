@@ -20,6 +20,7 @@
     "prisma:studio": "prisma studio",
     "notifications:reconcile": "tsx server/notifications-reconcile.ts",
     "auvo:homologation:status": "tsx server/auvo-homologation-status.ts",
+    "auvo:fixtures:export": "tsx server/auvo-fixtures-export.ts",
     "db:migrate": "tsx database/migrate.ts",
     "db:migrate:status": "tsx database/migration-status.ts",
     "db:migrate:create": "tsx database/create-migration.ts"

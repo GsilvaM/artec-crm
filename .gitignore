@@ -2,6 +2,7 @@
 dist/
 dist-server/
 coverage/
+tmp/
 .vite/
 *.tsbuildinfo
 .env

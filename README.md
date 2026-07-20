@@ -16,6 +16,7 @@ CRM comercial independente da Artec Ambientes Climatizados. Este projeto nao dev
 - `npm run prisma:format`: formata `prisma/schema.prisma`.
 - `npm run notifications:reconcile`: reconcilia notificacoes internas de forma idempotente.
 - `npm run auvo:homologation:status`: mostra um diagnostico seguro da captura de webhooks Auvo, sem exibir segredo, headers ou payloads.
+- `npm run auvo:fixtures:export`: exporta payloads Auvo reais capturados para fixtures anonimizadas em `tmp/auvo-fixtures`.
 - `npm run db:migrate`: aplica migrations do CRM.
 - `npm run db:migrate:status`: consulta status das migrations.
 

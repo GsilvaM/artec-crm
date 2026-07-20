@@ -211,3 +211,29 @@ Para liberar o proximo marco, e necessario capturar payloads reais suficientes p
 - erro temporario ou indisponibilidade relacionada a API, se ocorrer durante a homologacao.
 
 Sem essas amostras, nao mapear campos e nao implementar Caixa de Entrada definitiva.
+
+### Exportacao local de fixtures anonimizadas
+
+Depois que `likelyRealEvents` for maior que zero, gere fixtures locais:
+
+```powershell
+npm run auvo:fixtures:export
+```
+
+O comando grava arquivos em:
+
+```text
+tmp/auvo-fixtures
+```
+
+Esse diretorio e ignorado pelo Git. Antes de qualquer fixture ser versionada futuramente, revisar manualmente se a anonimização removeu:
+
+- nomes de clientes/contatos;
+- telefones e WhatsApp;
+- e-mails;
+- documentos;
+- enderecos;
+- textos livres de mensagens/observacoes;
+- tokens, chaves, assinaturas e cookies.
+
+O exportador nao deve ser usado como autorizacao para implementar mapeamento definitivo sozinho. Ele apenas prepara material anonimo para analise e testes de contrato apos a captura real.

@@ -126,6 +126,8 @@ Status em 2026-07-20: receptor de homologacao concluido, migration `0013_harden_
 
 Preparacao da captura real: comando `npm run auvo:homologation:status` disponivel para verificar, sem vazar dados sensiveis, se o segredo esta configurado e se chegaram eventos sinteticos ou reais.
 
+Preparacao de fixtures: comando `npm run auvo:fixtures:export` disponivel para gerar fixtures locais anonimizadas a partir de payloads reais capturados. O diretorio `tmp/auvo-fixtures` nao e versionado.
+
 ## 6. Auvo — Caixa de Entrada
 
 - [ ] Mapear eventos reais.
