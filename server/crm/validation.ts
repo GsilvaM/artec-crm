@@ -145,6 +145,17 @@ export const cancelNextActionSchema = z.object({
   nextAction: nextActionCreateSchema.optional().nullable(),
 });
 
+export const commercialCenterQuerySchema = z.object({
+  from: optionalText,
+  to: optionalText,
+  responsibleUserId: uuid.optional(),
+  stageId: uuid.optional(),
+  situation: optionalText,
+  demandType: optionalText,
+  category: nextActionCategorySchema.optional(),
+  priority: z.enum(["low", "normal", "high"]).optional(),
+});
+
 export function normalizePhone(phone: string | null | undefined): string | null {
   const digits = phone?.replace(/\D/g, "") ?? "";
   if (!digits) return null;

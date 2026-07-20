@@ -87,6 +87,69 @@ export type CrmSnapshot = {
   stages: PipelineStage[];
   lossReasons: LossReason[];
   nextActions: NextAction[];
+  commercialCenter: CommercialCenter;
+};
+
+export type CommercialCenterActionItem = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  opportunityId: string | null;
+  opportunityTitle: string | null;
+  opportunitySituation: string | null;
+  category: NextAction["category"];
+  title: string;
+  responsibleUserId: string;
+  dueAt: string;
+  overdueHours: number;
+  priority: NextAction["priority"];
+};
+
+export type CommercialCenterOpportunityItem = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  title: string;
+  stageName: string;
+  situation: string;
+  responsibleUserId: string;
+  budgetValue: number | null;
+  budgetSentAt: string | null;
+  nextActionTitle: string | null;
+  nextActionDueAt: string | null;
+  daysOpen: number;
+};
+
+export type CommercialCenter = {
+  generatedAt: string;
+  overdueActions: CommercialCenterActionItem[];
+  todayActions: CommercialCenterActionItem[];
+  opportunitiesWithoutNextAction: CommercialCenterOpportunityItem[];
+  quotesAwaitingReturn: CommercialCenterOpportunityItem[];
+  upcomingVisits: CommercialCenterActionItem[];
+  stalledOpportunities: CommercialCenterOpportunityItem[];
+  auvoInbox: { status: "homologation"; pending: number; message: string };
+  summary: {
+    newCustomers: number;
+    newOpportunities: number;
+    approvedOpportunities: number;
+    lostOpportunities: number;
+    budgetValue: number;
+    approvedValue: number;
+    simpleConversionRate: number;
+    averageApprovedTicket: number;
+  };
+};
+
+export type CommercialCenterFilters = {
+  from?: string;
+  to?: string;
+  responsibleUserId?: string;
+  stageId?: string;
+  situation?: string;
+  demandType?: string;
+  category?: NextAction["category"];
+  priority?: NextAction["priority"];
 };
 
 export type CreateCustomerPayload = {
@@ -112,13 +175,25 @@ export type CreateOpportunityPayload = {
   proximaAcaoEm: string;
 };
 
-export async function loadCrmSnapshot(search = ""): Promise<CrmSnapshot> {
+function toQueryString(params: Record<string, string | undefined>): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    const normalized = value?.trim();
+    if (normalized) query.set(key, normalized);
+  }
+  const text = query.toString();
+  return text ? `?${text}` : "";
+}
+
+export async function loadCrmSnapshot(search = "", commercialFilters: CommercialCenterFilters = {}): Promise<CrmSnapshot> {
   const query = search.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
-  const [customers, opportunities, stages, lossReasons] = await Promise.all([
+  const commercialQuery = toQueryString(commercialFilters);
+  const [customers, opportunities, stages, lossReasons, commercialCenter] = await Promise.all([
     apiGet<{ customers: Customer[] }>(`/api/customers${query}`),
     apiGet<{ opportunities: Opportunity[] }>(`/api/opportunities${query}`),
     apiGet<{ stages: PipelineStage[] }>("/api/pipeline-stages"),
     apiGet<{ lossReasons: LossReason[] }>("/api/loss-reasons"),
+    apiGet<{ commercialCenter: CommercialCenter }>(`/api/commercial-center${commercialQuery}`),
   ]);
 
   return {
@@ -127,6 +202,7 @@ export async function loadCrmSnapshot(search = ""): Promise<CrmSnapshot> {
     stages: stages.stages,
     lossReasons: lossReasons.lossReasons,
     nextActions: (await apiGet<{ nextActions: NextAction[] }>("/api/next-actions")).nextActions,
+    commercialCenter: commercialCenter.commercialCenter,
   };
 }
 

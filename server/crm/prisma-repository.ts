@@ -6,6 +6,8 @@ import type {
   ActivityRecord,
   ApproveOpportunityInput,
   CancelNextActionInput,
+  CommercialCenterFilters,
+  CommercialCenterRecord,
   CompleteNextActionInput,
   CreateActivityInput,
   CreateCustomerInput,
@@ -47,7 +49,7 @@ type ActivityEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["activity"]
 
 type NextActionWithRelations = NonNullable<Awaited<ReturnType<CrmPrismaClient["nextAction"]["findFirst"]>>> & {
   customer: { nome: string };
-  opportunity: { titulo: string } | null;
+  opportunity: { titulo: string; situacao: string | null } | null;
 };
 
 const opportunityInclude = {
@@ -58,8 +60,10 @@ const opportunityInclude = {
 
 const nextActionInclude = {
   customer: { select: { nome: true } },
-  opportunity: { select: { titulo: true } },
+  opportunity: { select: { titulo: true, situacao: true } },
 } as const;
+
+const STALLED_DAYS_THRESHOLD = 3;
 
 export class PrismaCrmDataRepository implements CrmDataRepository {
   constructor(private readonly prisma: CrmPrismaClient) {}
@@ -542,6 +546,116 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     return actions.map(mapNextAction);
   }
 
+  async getCommercialCenter(actor: Actor, filters: CommercialCenterFilters): Promise<CommercialCenterRecord> {
+    const now = new Date();
+    const startOfToday = startOfLocalDay(now);
+    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    const from = filters.from ? new Date(filters.from) : new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const to = filters.to ? new Date(filters.to) : now;
+    const responsibleScope =
+      actor.role === "vendedor"
+        ? { responsavelId: actor.id }
+        : actor.role === "gestor" && filters.responsibleUserId
+          ? { responsavelId: filters.responsibleUserId }
+          : {};
+    const actionResponsibleScope =
+      actor.role === "vendedor"
+        ? { responsibleUserId: actor.id }
+        : actor.role === "gestor" && filters.responsibleUserId
+          ? { responsibleUserId: filters.responsibleUserId }
+          : {};
+    const opportunityFilters = {
+      archivedAt: null,
+      ...responsibleScope,
+      ...(filters.stageId ? { etapaId: filters.stageId } : {}),
+      ...(filters.situation ? { situacao: filters.situation } : {}),
+      ...(filters.demandType ? { tipoDemanda: filters.demandType } : {}),
+    };
+
+    const [pendingActions, activeOpportunities, periodOpportunities, newCustomers] = await Promise.all([
+      this.prisma.nextAction.findMany({
+        where: {
+          archivedAt: null,
+          status: "pending",
+          ...actionResponsibleScope,
+          ...(filters.category ? { category: filters.category } : {}),
+          ...(filters.priority ? { priority: filters.priority } : {}),
+        },
+        include: nextActionInclude,
+        orderBy: { dueAt: "asc" },
+        take: 200,
+      }),
+      this.prisma.opportunity.findMany({
+        where: { ...opportunityFilters, status: "ativa" },
+        include: opportunityInclude,
+        orderBy: { updatedAt: "desc" },
+        take: 200,
+      }),
+      this.prisma.opportunity.findMany({
+        where: {
+          archivedAt: null,
+          ...responsibleScope,
+          createdAt: { gte: from, lte: to },
+        },
+        include: opportunityInclude,
+        take: 500,
+      }),
+      this.prisma.customer.count({
+        where: {
+          archivedAt: null,
+          createdAt: { gte: from, lte: to },
+        },
+      }),
+    ]);
+
+    const actionItems = pendingActions.map((action) => mapCommercialAction(action, now));
+    const pendingById = new Map(pendingActions.map((action) => [action.id, action]));
+    const activeItems = activeOpportunities.map((opportunity) => mapCommercialOpportunity(opportunity, now));
+    const stalledCutoff = new Date(now.getTime() - STALLED_DAYS_THRESHOLD * 24 * 60 * 60 * 1000);
+    const approved = periodOpportunities.filter((opportunity) => opportunity.status === "ganha");
+    const lost = periodOpportunities.filter((opportunity) => opportunity.status === "perdida");
+    const approvedValue = approved.reduce((sum, opportunity) => sum + (opportunity.valorAprovado ?? 0), 0);
+    const budgetValue = periodOpportunities.reduce((sum, opportunity) => sum + (opportunity.valorOrcamento ?? 0), 0);
+    const closedCount = approved.length + lost.length;
+
+    return {
+      generatedAt: now.toISOString(),
+      filters,
+      overdueActions: actionItems.filter((action) => new Date(action.dueAt) < startOfToday).sort(sortCommercialActions),
+      todayActions: actionItems.filter((action) => {
+        const dueAt = new Date(action.dueAt);
+        return dueAt >= startOfToday && dueAt < startOfTomorrow;
+      }),
+      opportunitiesWithoutNextAction: activeOpportunities
+        .filter((opportunity) => !opportunity.currentNextActionId || !pendingById.has(opportunity.currentNextActionId))
+        .map((opportunity) => mapCommercialOpportunity(opportunity, now)),
+      quotesAwaitingReturn: activeItems.filter((opportunity) => ["Orcamento enviado", "Negociacao"].includes(opportunity.stageName)),
+      upcomingVisits: actionItems.filter((action) => /visita/i.test(`${action.title} ${action.opportunitySituation ?? ""}`) && new Date(action.dueAt) >= startOfToday),
+      stalledOpportunities: activeOpportunities
+        .filter((opportunity) => {
+          if (opportunity.updatedAt > stalledCutoff) return false;
+          if (opportunity.proximaAcaoEm && new Date(opportunity.proximaAcaoEm) > now) return false;
+          return true;
+        })
+        .map((opportunity) => mapCommercialOpportunity(opportunity, now)),
+      auvoInbox: {
+        status: "homologation",
+        pending: 0,
+        message: "Nenhum atendimento recebido do Auvo. A integracao ainda esta em homologacao.",
+      },
+      summary: {
+        newCustomers,
+        newOpportunities: periodOpportunities.length,
+        approvedOpportunities: approved.length,
+        lostOpportunities: lost.length,
+        budgetValue,
+        approvedValue,
+        simpleConversionRate: closedCount ? approved.length / closedCount : 0,
+        averageApprovedTicket: approved.length ? Math.round(approvedValue / approved.length) : 0,
+      },
+    };
+  }
+
   async getNextAction(actor: Actor, id: string): Promise<NextActionRecord | null> {
     const action = await this.prisma.nextAction.findFirst({
       where: {
@@ -1010,6 +1124,52 @@ function mapNextAction(row: NextActionWithRelations): NextActionRecord {
     cancellationReason: row.cancellationReason,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   };
+}
+
+function mapCommercialAction(row: NextActionWithRelations, now: Date) {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    customerName: row.customer.nome,
+    opportunityId: row.opportunityId,
+    opportunityTitle: row.opportunity?.titulo ?? null,
+    opportunitySituation: row.opportunity?.situacao ?? null,
+    category: row.category as NextActionRecord["category"],
+    title: row.title,
+    responsibleUserId: row.responsibleUserId,
+    dueAt: row.dueAt.toISOString(),
+    overdueHours: Math.max(0, Math.floor((now.getTime() - row.dueAt.getTime()) / (60 * 60 * 1000))),
+    priority: row.priority as NextActionRecord["priority"],
+  };
+}
+
+function mapCommercialOpportunity(row: OpportunityWithRelations, now: Date) {
+  return {
+    id: row.id,
+    customerId: row.clienteId,
+    customerName: row.cliente.nome,
+    title: row.titulo,
+    stageName: row.etapa.nome,
+    situation: row.situacao,
+    responsibleUserId: row.responsavelId,
+    budgetValue: row.valorOrcamento,
+    budgetSentAt: row.dataOrcamento?.toISOString() ?? null,
+    nextActionTitle: row.proximaAcao,
+    nextActionDueAt: row.proximaAcaoEm?.toISOString() ?? null,
+    daysOpen: Math.max(0, Math.floor((now.getTime() - row.dataEntrada.getTime()) / (24 * 60 * 60 * 1000))),
+  };
+}
+
+function sortCommercialActions(left: ReturnType<typeof mapCommercialAction>, right: ReturnType<typeof mapCommercialAction>): number {
+  if (right.overdueHours !== left.overdueHours) return right.overdueHours - left.overdueHours;
+  const priorityOrder = { high: 0, normal: 1, low: 2 };
+  const priorityDiff = priorityOrder[left.priority] - priorityOrder[right.priority];
+  if (priorityDiff) return priorityDiff;
+  return new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime();
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function toDateOnly(value: string): Date {

@@ -8,6 +8,7 @@ import {
   activityUpdateSchema,
   approveOpportunitySchema,
   cancelNextActionSchema,
+  commercialCenterQuerySchema,
   completeNextActionSchema,
   customerCreateSchema,
   customerUpdateSchema,
@@ -24,6 +25,19 @@ type PreHandlerFactory = ReturnType<typeof createRouteGuards>;
 
 export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDependencies, guards: PreHandlerFactory): void {
   const repository = dependencies.crmRepository;
+
+  app.get("/api/commercial-center", { preHandler: [guards.authenticate, guards.requirePermission("next_actions:read")] }, async (request) => {
+    const query = parseBody(commercialCenterQuerySchema, request.query);
+    return {
+      commercialCenter: await repository.getCommercialCenter(getActor(request), {
+        ...query,
+        from: query.from ?? undefined,
+        to: query.to ?? undefined,
+        situation: query.situation ?? undefined,
+        demandType: query.demandType ?? undefined,
+      }),
+    };
+  });
 
   app.get("/api/customers", { preHandler: [guards.authenticate, guards.requirePermission("customers:read")] }, async (request) => {
     const query = request.query as { search?: string; archived?: string };

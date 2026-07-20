@@ -4,6 +4,8 @@ import type {
   ActivityRecord,
   ApproveOpportunityInput,
   CancelNextActionInput,
+  CommercialCenterFilters,
+  CommercialCenterRecord,
   CompleteNextActionInput,
   CreateActivityInput,
   CreateCustomerInput,
@@ -682,6 +684,83 @@ export class PgCrmDataRepository implements CrmDataRepository {
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const result = await this.pool.query<NextActionRow>(`${nextActionSelectSql()} ${whereSql} ORDER BY action.due_at ASC LIMIT 150`, values);
     return result.rows.map(mapNextAction);
+  }
+
+  async getCommercialCenter(actor: Actor, filters: CommercialCenterFilters): Promise<CommercialCenterRecord> {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    const actions = await this.listNextActions(actor, {
+      status: "pending",
+      responsibleUserId: filters.responsibleUserId,
+      category: filters.category,
+      priority: filters.priority,
+    });
+    const opportunities = await this.listOpportunities(actor, {
+      status: "ativa",
+      etapaId: filters.stageId,
+      responsavelId: filters.responsibleUserId,
+    });
+    const actionItems = actions.map((action) => ({
+      id: action.id,
+      customerId: action.customerId,
+      customerName: action.customerName,
+      opportunityId: action.opportunityId,
+      opportunityTitle: action.opportunityTitle,
+      opportunitySituation: opportunities.find((opportunity) => opportunity.id === action.opportunityId)?.situacao ?? null,
+      category: action.category,
+      title: action.title,
+      responsibleUserId: action.responsibleUserId,
+      dueAt: action.dueAt,
+      overdueHours: Math.max(0, Math.floor((now.getTime() - new Date(action.dueAt).getTime()) / (60 * 60 * 1000))),
+      priority: action.priority,
+    }));
+    const opportunityItems = opportunities.map((opportunity) => ({
+      id: opportunity.id,
+      customerId: opportunity.clienteId,
+      customerName: opportunity.clienteNome,
+      title: opportunity.titulo,
+      stageName: opportunity.etapaNome,
+      situation: opportunity.situacao,
+      responsibleUserId: opportunity.responsavelId,
+      budgetValue: opportunity.valorOrcamento,
+      budgetSentAt: opportunity.dataOrcamento,
+      nextActionTitle: opportunity.proximaAcao,
+      nextActionDueAt: opportunity.proximaAcaoEm,
+      daysOpen: Math.max(0, Math.floor((now.getTime() - new Date(opportunity.dataEntrada).getTime()) / (24 * 60 * 60 * 1000))),
+    }));
+    const closed = opportunities.filter((opportunity) => opportunity.status === "ganha" || opportunity.status === "perdida");
+    const approved = closed.filter((opportunity) => opportunity.status === "ganha");
+    const approvedValue = approved.reduce((sum, opportunity) => sum + (opportunity.valorAprovado ?? 0), 0);
+
+    return {
+      generatedAt: now.toISOString(),
+      filters,
+      overdueActions: actionItems.filter((action) => new Date(action.dueAt) < startOfToday),
+      todayActions: actionItems.filter((action) => {
+        const dueAt = new Date(action.dueAt);
+        return dueAt >= startOfToday && dueAt < startOfTomorrow;
+      }),
+      opportunitiesWithoutNextAction: opportunityItems.filter((opportunity) => !opportunity.nextActionTitle || !opportunity.nextActionDueAt),
+      quotesAwaitingReturn: opportunityItems.filter((opportunity) => ["Orcamento enviado", "Negociacao"].includes(opportunity.stageName)),
+      upcomingVisits: actionItems.filter((action) => /visita/i.test(action.title)),
+      stalledOpportunities: opportunityItems.filter((opportunity) => opportunity.daysOpen >= 3 && !opportunity.nextActionDueAt),
+      auvoInbox: {
+        status: "homologation",
+        pending: 0,
+        message: "Nenhum atendimento recebido do Auvo. A integracao ainda esta em homologacao.",
+      },
+      summary: {
+        newCustomers: 0,
+        newOpportunities: opportunities.length,
+        approvedOpportunities: approved.length,
+        lostOpportunities: closed.length - approved.length,
+        budgetValue: opportunities.reduce((sum, opportunity) => sum + (opportunity.valorOrcamento ?? 0), 0),
+        approvedValue,
+        simpleConversionRate: closed.length ? approved.length / closed.length : 0,
+        averageApprovedTicket: approved.length ? Math.round(approvedValue / approved.length) : 0,
+      },
+    };
   }
 
   async getNextAction(actor: Actor, id: string): Promise<NextActionRecord | null> {

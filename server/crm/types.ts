@@ -125,6 +125,75 @@ export type NextActionRecord = {
   archivedAt: string | null;
 };
 
+export type CommercialCenterFilters = {
+  from?: string;
+  to?: string;
+  responsibleUserId?: string;
+  stageId?: string;
+  situation?: string;
+  demandType?: string;
+  category?: NextActionCategory;
+  priority?: NextActionPriority;
+};
+
+export type CommercialCenterActionItem = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  opportunityId: string | null;
+  opportunityTitle: string | null;
+  opportunitySituation: string | null;
+  category: NextActionCategory;
+  title: string;
+  responsibleUserId: string;
+  dueAt: string;
+  overdueHours: number;
+  priority: NextActionPriority;
+};
+
+export type CommercialCenterOpportunityItem = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  title: string;
+  stageName: string;
+  situation: string;
+  responsibleUserId: string;
+  budgetValue: number | null;
+  budgetSentAt: string | null;
+  nextActionTitle: string | null;
+  nextActionDueAt: string | null;
+  daysOpen: number;
+};
+
+export type CommercialCenterSummary = {
+  newCustomers: number;
+  newOpportunities: number;
+  approvedOpportunities: number;
+  lostOpportunities: number;
+  budgetValue: number;
+  approvedValue: number;
+  simpleConversionRate: number;
+  averageApprovedTicket: number;
+};
+
+export type CommercialCenterRecord = {
+  generatedAt: string;
+  filters: CommercialCenterFilters;
+  overdueActions: CommercialCenterActionItem[];
+  todayActions: CommercialCenterActionItem[];
+  opportunitiesWithoutNextAction: CommercialCenterOpportunityItem[];
+  quotesAwaitingReturn: CommercialCenterOpportunityItem[];
+  upcomingVisits: CommercialCenterActionItem[];
+  stalledOpportunities: CommercialCenterOpportunityItem[];
+  auvoInbox: {
+    status: "homologation";
+    pending: number;
+    message: string;
+  };
+  summary: CommercialCenterSummary;
+};
+
 export type PipelineStageRecord = {
   id: string;
   nome: string;
@@ -264,6 +333,7 @@ export type CrmDataRepository = {
       priority?: NextActionPriority;
     },
   ): Promise<NextActionRecord[]>;
+  getCommercialCenter(actor: Actor, filters: CommercialCenterFilters): Promise<CommercialCenterRecord>;
   getNextAction(actor: Actor, id: string): Promise<NextActionRecord | null>;
   createNextAction(actor: Actor, input: CreateNextActionInput): Promise<NextActionRecord>;
   updateNextAction(actor: Actor, id: string, input: UpdateNextActionInput): Promise<NextActionRecord | null>;

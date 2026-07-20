@@ -19,6 +19,9 @@ import {
   updateCustomer,
   updateOpportunity,
   type Activity,
+  type CommercialCenterActionItem,
+  type CommercialCenterFilters,
+  type CommercialCenterOpportunityItem,
   type CrmSnapshot,
   type Customer,
   type NextAction,
@@ -135,6 +138,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [activityForm, setActivityForm] = useState({ customerId: "", opportunityId: "", type: "note" as Activity["type"], description: "" });
   const [nextActionForm, setNextActionForm] = useState({ customerId: "", opportunityId: "", category: "commercial" as NextAction["category"], title: "", dueAt: "", priority: "normal" as NextAction["priority"] });
   const [actionFilter, setActionFilter] = useState<ActionFilter>("overdue");
+  const [commercialFilters, setCommercialFilters] = useState<CommercialCenterFilters>({});
   const [actionOperation, setActionOperation] = useState<ActionOperation | null>(null);
   const [timeline, setTimeline] = useState<Activity[]>([]);
   const [timelineTitle, setTimelineTitle] = useState("Linha do tempo");
@@ -148,6 +152,23 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     () => filterNextActions(snapshot?.nextActions ?? [], actionFilter),
     [snapshot?.nextActions, actionFilter],
   );
+  const responsibleOptions = useMemo(
+    () => uniqueValues([
+      authState.user.id,
+      ...(snapshot?.opportunities.map((opportunity) => opportunity.responsavelId) ?? []),
+      ...(snapshot?.nextActions.map((action) => action.responsibleUserId) ?? []),
+    ]),
+    [authState.user.id, snapshot?.nextActions, snapshot?.opportunities],
+  );
+  const situationOptions = useMemo(
+    () => uniqueValues(snapshot?.opportunities.map((opportunity) => opportunity.situacao) ?? []),
+    [snapshot?.opportunities],
+  );
+  const demandTypeOptions = useMemo(
+    () => uniqueValues(snapshot?.opportunities.map((opportunity) => opportunity.tipoDemanda) ?? []),
+    [snapshot?.opportunities],
+  );
+  const hasCommercialFilters = Object.values(commercialFilters).some((value) => Boolean(value));
 
   const metrics = useMemo(
     () => [
@@ -166,7 +187,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     setIsLoading(true);
     setError(null);
     try {
-      const data = await loadCrmSnapshot(search);
+      const data = await loadCrmSnapshot(search, commercialFilters);
       setSnapshot(data);
       setOpportunityForm((current) => ({ ...current, clienteId: current.clienteId || data.customers[0]?.id || "" }));
       setActivityForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
@@ -359,6 +380,25 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     setTimelineTitle(opportunity ? `Linha do tempo de ${opportunity.titulo}` : "Linha do tempo da oportunidade");
   }
 
+  function openCenterAction(id: string, mode: ActionOperation["mode"]) {
+    const action = snapshot?.nextActions.find((item) => item.id === id);
+    if (action) openActionOperation(action, mode);
+  }
+
+  async function clearCommercialFilters() {
+    setCommercialFilters({});
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await loadCrmSnapshot(search, {});
+      setSnapshot(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel carregar a Central Comercial.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Navegacao principal">
@@ -394,8 +434,8 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
 
         <section className="page-heading">
           <div>
-            <p className="eyebrow">Marco 2</p>
-            <h1>Clientes e oportunidades</h1>
+            <p className="eyebrow">Marco 4</p>
+            <h1>Central Comercial</h1>
           </div>
           <button className="button secondary" type="button" onClick={refresh} disabled={isLoading}>Buscar/atualizar</button>
         </section>
@@ -412,6 +452,86 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                   <strong>{metric.value}</strong>
                 </article>
               ))}
+            </section>
+
+            <section className="panel commercial-filters" aria-label="Filtros da Central Comercial">
+              <div>
+                <p className="eyebrow">Filtros globais</p>
+                <h2>Central Comercial</h2>
+              </div>
+              <div className="filter-grid">
+                <label>De<input type="date" value={commercialFilters.from ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, from: event.target.value })} /></label>
+                <label>Ate<input type="date" value={commercialFilters.to ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, to: event.target.value })} /></label>
+                <label>Responsavel
+                  <select value={commercialFilters.responsibleUserId ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, responsibleUserId: event.target.value || undefined })}>
+                    <option value="">Todos permitidos</option>
+                    {responsibleOptions.map((id) => <option key={id} value={id}>{id === authState.user.id ? "Meu usuario" : `Usuario ${id.slice(0, 8)}`}</option>)}
+                  </select>
+                </label>
+                <label>Etapa
+                  <select value={commercialFilters.stageId ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, stageId: event.target.value || undefined })}>
+                    <option value="">Todas</option>
+                    {snapshot.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
+                  </select>
+                </label>
+                <label>Situacao
+                  <select value={commercialFilters.situation ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, situation: event.target.value || undefined })}>
+                    <option value="">Todas</option>
+                    {situationOptions.map((situation) => <option key={situation} value={situation}>{situation}</option>)}
+                  </select>
+                </label>
+                <label>Tipo de demanda
+                  <select value={commercialFilters.demandType ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, demandType: event.target.value || undefined })}>
+                    <option value="">Todos</option>
+                    {demandTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                  </select>
+                </label>
+                <label>Categoria
+                  <select value={commercialFilters.category ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, category: (event.target.value || undefined) as CommercialCenterFilters["category"] })}>
+                    <option value="">Todas</option>
+                    <option value="commercial">Comercial</option>
+                    <option value="warranty">Garantia</option>
+                    <option value="support">Suporte</option>
+                    <option value="after_sales">Pos-venda</option>
+                  </select>
+                </label>
+                <label>Prioridade
+                  <select value={commercialFilters.priority ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, priority: (event.target.value || undefined) as CommercialCenterFilters["priority"] })}>
+                    <option value="">Todas</option>
+                    <option value="high">Alta</option>
+                    <option value="normal">Normal</option>
+                    <option value="low">Baixa</option>
+                  </select>
+                </label>
+              </div>
+              <div className="filter-actions">
+                <button className="button secondary" type="button" onClick={refresh} disabled={isLoading}>Aplicar filtros</button>
+                <button className="button ghost" type="button" onClick={clearCommercialFilters} disabled={isLoading || !hasCommercialFilters}>Limpar filtros</button>
+              </div>
+            </section>
+
+            <section className="commercial-center" aria-label="Central Comercial">
+              <CommercialActionBlock title="Acoes vencidas" emptyText="Nenhuma acao vencida." items={snapshot.commercialCenter.overdueActions} onAction={openCenterAction} />
+              <CommercialActionBlock title="Acoes de hoje" emptyText="Nenhuma acao prevista para hoje." items={snapshot.commercialCenter.todayActions} onAction={openCenterAction} />
+              <CommercialOpportunityBlock title="Oportunidades sem proxima acao" emptyText="Todas as oportunidades ativas possuem acompanhamento." items={snapshot.commercialCenter.opportunitiesWithoutNextAction} onOpen={openOpportunityTimeline} />
+              <CommercialOpportunityBlock title="Orcamentos aguardando retorno" emptyText="Nenhum orcamento aguardando retorno." items={snapshot.commercialCenter.quotesAwaitingReturn} onOpen={openOpportunityTimeline} />
+              <CommercialActionBlock title="Visitas proximas" emptyText="Nenhuma visita proxima." items={snapshot.commercialCenter.upcomingVisits} onAction={openCenterAction} />
+              <CommercialOpportunityBlock title="Oportunidades paradas" emptyText="Nenhuma oportunidade parada." items={snapshot.commercialCenter.stalledOpportunities} onOpen={openOpportunityTimeline} />
+              <article className="panel commercial-card">
+                <h2>Caixa Auvo</h2>
+                <p>{snapshot.commercialCenter.auvoInbox.message}</p>
+              </article>
+              <article className="panel commercial-card summary-card">
+                <h2>Resumo comercial</h2>
+                <dl>
+                  <div><dt>Novas oportunidades</dt><dd>{snapshot.commercialCenter.summary.newOpportunities}</dd></div>
+                  <div><dt>Aprovadas</dt><dd>{snapshot.commercialCenter.summary.approvedOpportunities}</dd></div>
+                  <div><dt>Perdidas</dt><dd>{snapshot.commercialCenter.summary.lostOpportunities}</dd></div>
+                  <div><dt>Valor aprovado</dt><dd>{formatMoney(snapshot.commercialCenter.summary.approvedValue)}</dd></div>
+                  <div><dt>Ticket medio</dt><dd>{formatMoney(snapshot.commercialCenter.summary.averageApprovedTicket)}</dd></div>
+                  <div><dt>Conversao simples</dt><dd>{formatPercent(snapshot.commercialCenter.summary.simpleConversionRate)}</dd></div>
+                </dl>
+              </article>
             </section>
 
             <section className="split-layout">
@@ -670,9 +790,80 @@ function EmptyState({ title, text }: { title: string; text: string }) {
   );
 }
 
+function CommercialActionBlock({ title, emptyText, items, onAction }: {
+  title: string;
+  emptyText: string;
+  items: CommercialCenterActionItem[];
+  onAction: (id: string, mode: ActionOperation["mode"]) => void;
+}) {
+  return (
+    <article className="panel commercial-card">
+      <header>
+        <h2>{title}</h2>
+        <span className="badge">{items.length}</span>
+      </header>
+      {items.length ? (
+        <ul className="work-list">
+          {items.slice(0, 5).map((item) => (
+            <li key={item.id}>
+              <div>
+                <strong>{item.title}</strong>
+                <span>{item.customerName}{item.opportunityTitle ? ` - ${item.opportunityTitle}` : ""}</span>
+                <small>{formatActionCategory(item.category)} - {formatDateTime(item.dueAt)}{item.overdueHours ? ` - ${item.overdueHours}h em atraso` : ""}</small>
+              </div>
+              <div className="quick-actions">
+                <button className="button secondary" type="button" onClick={() => onAction(item.id, "complete")}>Concluir</button>
+                <button className="button secondary" type="button" onClick={() => onAction(item.id, "postpone")}>Reagendar</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : <EmptyState title={emptyText} text="Nada exige acao imediata neste bloco." />}
+    </article>
+  );
+}
+
+function CommercialOpportunityBlock({ title, emptyText, items, onOpen }: {
+  title: string;
+  emptyText: string;
+  items: CommercialCenterOpportunityItem[];
+  onOpen: (id: string) => Promise<void>;
+}) {
+  return (
+    <article className="panel commercial-card">
+      <header>
+        <h2>{title}</h2>
+        <span className="badge">{items.length}</span>
+      </header>
+      {items.length ? (
+        <ul className="work-list">
+          {items.slice(0, 5).map((item) => (
+            <li key={item.id}>
+              <div>
+                <strong>{item.title}</strong>
+                <span>{item.customerName} - {item.stageName}</span>
+                <small>{item.situation} - {item.daysOpen} dias em aberto{item.nextActionDueAt ? ` - ${formatDateTime(item.nextActionDueAt)}` : ""}</small>
+              </div>
+              <button className="button secondary" type="button" onClick={() => void onOpen(item.id)}>Abrir</button>
+            </li>
+          ))}
+        </ul>
+      ) : <EmptyState title={emptyText} text="A Central nao encontrou pendencias neste bloco." />}
+    </article>
+  );
+}
+
 function formatDateTime(value: string | null): string {
   if (!value) return "";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+}
+
+function formatMoney(valueInCents: number): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valueInCents / 100);
+}
+
+function formatPercent(value: number): string {
+  return new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 }).format(value);
 }
 
 function toDateTimeLocalValue(value: string | null): string {
@@ -711,6 +902,10 @@ function formatActionFilter(filter: ActionFilter): string {
     cancelled: "Canceladas",
   };
   return labels[filter];
+}
+
+function uniqueValues(values: Array<string | null | undefined>): string[] {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value?.trim()))));
 }
 
 function formatOperationTitle(mode: ActionOperation["mode"]): string {

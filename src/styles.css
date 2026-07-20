@@ -441,6 +441,146 @@ select:focus-visible {
   margin-top: 22px;
 }
 
+.commercial-filters {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.commercial-filters h2 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.filter-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.filter-grid input,
+.filter-grid select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.commercial-center {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.commercial-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.commercial-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.commercial-card h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.commercial-card > p {
+  margin: 0;
+  color: var(--foreground-muted);
+  line-height: 1.5;
+}
+
+.work-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-muted) 42%, var(--surface));
+}
+
+.work-list strong,
+.work-list span,
+.work-list small {
+  display: block;
+}
+
+.work-list span,
+.work-list small {
+  color: var(--foreground-muted);
+}
+
+.work-list small {
+  margin-top: 4px;
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.summary-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.summary-card div {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.summary-card dt {
+  color: var(--foreground-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.summary-card dd {
+  margin: 4px 0 0;
+  font-weight: 900;
+}
+
 .table-wrap {
   overflow-x: auto;
   margin-top: 10px;
@@ -681,6 +821,14 @@ tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .commercial-center {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .topbar,
   .page-heading {
     align-items: stretch;
@@ -703,5 +851,11 @@ tr:last-child td {
 
   .search-box {
     flex-basis: 100%;
+  }
+
+  .work-list li,
+  .filter-grid,
+  .summary-card dl {
+    grid-template-columns: 1fr;
   }
 }

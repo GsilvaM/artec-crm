@@ -8,7 +8,7 @@ Atualizado em: 2026-07-20
 - Remote esperado: `https://github.com/GsilvaM/artec-crm.git`
 - Branch: `main`
 - Base local observada: `7e7fffa feat: homologate customers and opportunities`
-- Marco trabalhado: Atividades e Proximas Acoes com banco real.
+- Marco trabalhado: Central Comercial com banco real.
 - Commit/push: nao executado.
 
 ## Estado inicial observado
@@ -133,6 +133,33 @@ Homologado com dados reais de teste identificados como homologacao:
 - Filtros por categoria, status, vencidas, hoje, futuras, cliente, oportunidade e prioridade: cobertos no backend.
 - Auditoria em `crm.audit_log`: passou para proximas acoes.
 
+## Central Comercial
+
+Homologado com dados reais de teste identificados como homologacao:
+
+- Endpoint agregado `GET /api/commercial-center`: passou.
+- Acoes vencidas: passou.
+- Acoes de hoje: passou.
+- Acoes futuras nao aparecem no bloco de hoje: passou.
+- Filtro por categoria de proxima acao: passou.
+- Filtros globais de periodo, responsavel, etapa, situacao, tipo de demanda, categoria e prioridade: implementados no endpoint e expostos na tela.
+- Orcamentos aguardando retorno por etapa comercial: passou.
+- Visitas proximas por titulo/situacao de acao: passou.
+- Caixa Auvo em estado vazio real de homologacao: passou.
+- Resumo comercial com novas oportunidades, valor orcado e valor aprovado: passou.
+- Escopo de vendedor no backend: coberto por teste automatizado.
+- Gestor visualiza blocos agregados: coberto por teste automatizado.
+
+## Correcoes do Marco 4
+
+- Backend ganhou endpoint `GET /api/commercial-center`.
+- Repository Prisma passou a montar blocos agregados sem sequencia N+1 no frontend.
+- Frontend passou a carregar a Central Comercial junto do snapshot autenticado.
+- Tela inicial autenticada passou a destacar pendencias operacionais antes dos cadastros.
+- Tela inicial passou a ter painel de filtros globais da Central com aplicar e limpar filtros sem recarregamento completo.
+- Blocos implementados: acoes vencidas, acoes de hoje, oportunidades sem proxima acao, orcamentos aguardando retorno, visitas proximas, oportunidades paradas, Caixa Auvo vazia e resumo comercial.
+- Acoes rapidas reutilizam o fluxo existente de concluir e reagendar proximas acoes.
+
 ## Correcoes do Marco 3
 
 - Migration `0011` adicionou `category` e `archived_at` a `crm.next_actions`.
@@ -159,7 +186,7 @@ Homologado com dados reais de teste identificados como homologacao:
 - `npm run prisma:validate`: passou.
 - `npm run prisma:generate`: passou.
 - `npm run typecheck`: passou.
-- `npm run test`: passou, 4 arquivos e 33 testes.
+- `npm run test`: passou, 4 arquivos e 38 testes.
 - `npm run build`: passou.
 - E2E: nao executado porque nao existe script `e2e` ou Playwright no `package.json`.
 
@@ -170,15 +197,16 @@ Homologado com dados reais de teste identificados como homologacao:
 - Nenhum valor sensivel registrado.
 - Nenhum objeto financeiro foi alterado.
 - Nenhuma integracao Auvo foi iniciada.
-- Nenhuma funcionalidade de Central Comercial, notificacoes completas, relatorios ou deploy foi iniciada.
+- Nenhuma funcionalidade de notificacoes completas, relatorios avancados, Auvo real ou deploy foi iniciada.
 
 ## Marcos
 
 - Marco 1, Homologacao conectada da Fundacao: concluido e homologado.
 - Marco 2, Clientes e Oportunidades: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
 - Marco 3, Atividades e Proximas Acoes: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
-- Marco 4, Central Comercial: proximo marco recomendado.
+- Marco 4, Central Comercial: concluido e homologado por API/backend/banco; validacao visual automatizada limitada pela ausencia de Playwright/E2E.
+- Marco 5, Notificacoes internas: proximo marco recomendado.
 
 ## Proximo marco
 
-Criar a Central Comercial, usando os dados ja estruturados de clientes, oportunidades, atividades e proximas acoes para destacar o que precisa ser feito hoje, sem iniciar Auvo, relatorios, financeiro ou deploy.
+Implementar notificacoes internas usando eventos e consultas ja existentes, sem iniciar Auvo, relatorios avancados, financeiro ou deploy.

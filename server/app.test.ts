@@ -9,6 +9,8 @@ import type {
   ActivityRecord,
   ApproveOpportunityInput,
   CancelNextActionInput,
+  CommercialCenterFilters,
+  CommercialCenterRecord,
   CompleteNextActionInput,
   CreateActivityInput,
   CreateCustomerInput,
@@ -616,6 +618,93 @@ describe("CRM activities and next actions API", () => {
     expect(managerResponse.json().nextActions).toHaveLength(2);
     expect(sellerResponse.json().nextActions).toHaveLength(1);
   });
+
+  it("returns commercial center work blocks and summary", async () => {
+    const repository = new FakeCrmRepository();
+    await repository.createOpportunity({ id: actorId, role: "gestor" }, { ...makeCreateOpportunityInput(), proximaAcao: "Visita tecnica", proximaAcaoEm: "2026-07-20T13:00:00.000Z" });
+    await repository.createNextAction({ id: actorId, role: "gestor" }, { customerId, responsibleUserId: actorId, category: "support", title: "Acao vencida", dueAt: "2026-07-19T13:00:00.000Z", priority: "high" });
+    const app = createTestServer({ crmRepository: repository });
+    const response = await app.inject({ method: "GET", url: "/api/commercial-center?category=support", headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().commercialCenter.overdueActions).toHaveLength(1);
+    expect(response.json().commercialCenter.todayActions).toHaveLength(0);
+    expect(response.json().commercialCenter.auvoInbox.status).toBe("homologation");
+    expect(response.json().commercialCenter.summary.newOpportunities).toBeGreaterThan(0);
+  });
+
+  it("keeps seller scope in commercial center", async () => {
+    const repository = new FakeCrmRepository();
+    await repository.createNextAction({ id: actorId, role: "gestor" }, { customerId, responsibleUserId: actorId, title: "Acao propria", dueAt: "2026-07-19T13:00:00.000Z" });
+    await repository.createNextAction({ id: actorId, role: "gestor" }, { customerId, responsibleUserId: "77777777-7777-4777-8777-777777777777", title: "Acao de outro", dueAt: "2026-07-19T14:00:00.000Z" });
+    const app = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true }, crmRepository: repository });
+    const response = await app.inject({ method: "GET", url: "/api/commercial-center", headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().commercialCenter.overdueActions).toHaveLength(1);
+    expect(response.json().commercialCenter.overdueActions[0].responsibleUserId).toBe(actorId);
+  });
+
+  it("applies combined commercial center filters", async () => {
+    const repository = new FakeCrmRepository();
+    await repository.createOpportunity({ id: actorId, role: "gestor" }, {
+      ...makeCreateOpportunityInput(),
+      tipoDemanda: "manutencao",
+      situacao: "aguardando cliente",
+      proximaAcao: "Follow-up importante",
+      proximaAcaoEm: "2026-07-20T13:00:00.000Z",
+    });
+    await repository.createNextAction({ id: actorId, role: "gestor" }, {
+      customerId,
+      responsibleUserId: actorId,
+      category: "commercial",
+      title: "Follow-up importante",
+      dueAt: "2026-07-20T13:00:00.000Z",
+      priority: "high",
+    });
+    await repository.createNextAction({ id: actorId, role: "gestor" }, {
+      customerId,
+      responsibleUserId: actorId,
+      category: "support",
+      title: "Suporte fora do filtro",
+      dueAt: "2026-07-20T14:00:00.000Z",
+      priority: "normal",
+    });
+    const app = createTestServer({ crmRepository: repository });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/commercial-center?from=2026-07-01&to=2026-07-31&responsibleUserId=${actorId}&situation=aguardando%20cliente&demandType=manutencao&category=commercial&priority=high`,
+      headers: { authorization: "Bearer valid" },
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().commercialCenter.todayActions).toHaveLength(1);
+    expect(response.json().commercialCenter.todayActions[0].priority).toBe("high");
+    expect(response.json().commercialCenter.summary.newOpportunities).toBe(1);
+  });
+
+  it("rejects invalid commercial center query values", async () => {
+    const app = createTestServer({});
+    const response = await app.inject({ method: "GET", url: "/api/commercial-center?category=invalid", headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("keeps atendimento limited to allowed commercial center context", async () => {
+    const repository = new FakeCrmRepository();
+    await repository.createNextAction({ id: actorId, role: "gestor" }, { customerId, responsibleUserId: actorId, category: "support", title: "Suporte hoje", dueAt: "2026-07-20T13:00:00.000Z" });
+    const app = createTestServer({ membership: { userId: actorId, role: "atendimento", isActive: true }, crmRepository: repository });
+    const response = await app.inject({ method: "GET", url: "/api/commercial-center?category=support", headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().commercialCenter.todayActions).toHaveLength(1);
+    expect(response.json().commercialCenter.auvoInbox.pending).toBe(0);
+  });
 });
 
 class FakeCrmRepository implements CrmDataRepository {
@@ -669,8 +758,18 @@ class FakeCrmRepository implements CrmDataRepository {
     return customer;
   }
 
-  async listOpportunities(): Promise<OpportunityRecord[]> {
-    return this.opportunities;
+  async listOpportunities(actor: Actor, filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; situation?: string; demandType?: string; from?: string; to?: string }): Promise<OpportunityRecord[]> {
+    return this.opportunities.filter((opportunity) => {
+      if (actor.role === "vendedor" && opportunity.responsavelId !== actor.id) return false;
+      if (filters.status && opportunity.status !== filters.status) return false;
+      if (filters.etapaId && opportunity.etapaId !== filters.etapaId) return false;
+      if (filters.responsavelId && opportunity.responsavelId !== filters.responsavelId) return false;
+      if (filters.situation && opportunity.situacao !== filters.situation) return false;
+      if (filters.demandType && opportunity.tipoDemanda !== filters.demandType) return false;
+      if (filters.from && opportunity.createdAt.slice(0, 10) < filters.from) return false;
+      if (filters.to && opportunity.createdAt.slice(0, 10) > filters.to) return false;
+      return true;
+    });
   }
 
   async getOpportunity(_actor: Actor, id: string): Promise<OpportunityRecord | null> {
@@ -823,6 +922,69 @@ class FakeCrmRepository implements CrmDataRepository {
       if (filters.future && !(action.status === "pending" && action.dueAt >= "2026-07-21T00:00:00.000Z")) return false;
       return true;
     });
+  }
+
+  async getCommercialCenter(actor: Actor, filters: CommercialCenterFilters): Promise<CommercialCenterRecord> {
+    const actions = await this.listNextActions(actor, { status: "pending", responsibleUserId: filters.responsibleUserId, category: filters.category, priority: filters.priority });
+    const opportunities = await this.listOpportunities(actor, {
+      status: "ativa",
+      etapaId: filters.stageId,
+      responsavelId: filters.responsibleUserId,
+      situation: filters.situation,
+      demandType: filters.demandType,
+      from: filters.from,
+      to: filters.to,
+    });
+    const actionItems = actions.map((action) => ({
+      id: action.id,
+      customerId: action.customerId,
+      customerName: action.customerName,
+      opportunityId: action.opportunityId,
+      opportunityTitle: action.opportunityTitle,
+      opportunitySituation: opportunities.find((opportunity) => opportunity.id === action.opportunityId)?.situacao ?? null,
+      category: action.category,
+      title: action.title,
+      responsibleUserId: action.responsibleUserId,
+      dueAt: action.dueAt,
+      overdueHours: Math.max(0, Math.floor((new Date(now).getTime() - new Date(action.dueAt).getTime()) / (60 * 60 * 1000))),
+      priority: action.priority,
+    }));
+    const opportunityItems = opportunities.map((opportunity) => ({
+      id: opportunity.id,
+      customerId: opportunity.clienteId,
+      customerName: opportunity.clienteNome,
+      title: opportunity.titulo,
+      stageName: opportunity.etapaNome,
+      situation: opportunity.situacao,
+      responsibleUserId: opportunity.responsavelId,
+      budgetValue: opportunity.valorOrcamento,
+      budgetSentAt: opportunity.dataOrcamento,
+      nextActionTitle: opportunity.proximaAcao,
+      nextActionDueAt: opportunity.proximaAcaoEm,
+      daysOpen: 1,
+    }));
+
+    return {
+      generatedAt: now,
+      filters,
+      overdueActions: actionItems.filter((action) => action.dueAt < "2026-07-20T00:00:00.000Z"),
+      todayActions: actionItems.filter((action) => action.dueAt.startsWith("2026-07-20")),
+      opportunitiesWithoutNextAction: opportunityItems.filter((opportunity) => !opportunity.nextActionTitle || !opportunity.nextActionDueAt),
+      quotesAwaitingReturn: opportunityItems.filter((opportunity) => ["Orcamento enviado", "Negociacao"].includes(opportunity.stageName)),
+      upcomingVisits: actionItems.filter((action) => /visita/i.test(action.title)),
+      stalledOpportunities: opportunityItems.filter((opportunity) => opportunity.daysOpen >= 3 && !opportunity.nextActionDueAt),
+      auvoInbox: { status: "homologation", pending: 0, message: "Nenhum atendimento recebido do Auvo. A integracao ainda esta em homologacao." },
+      summary: {
+        newCustomers: this.customers.length,
+        newOpportunities: opportunities.length,
+        approvedOpportunities: this.opportunities.filter((opportunity) => opportunity.status === "ganha").length,
+        lostOpportunities: this.opportunities.filter((opportunity) => opportunity.status === "perdida").length,
+        budgetValue: opportunities.reduce((sum, opportunity) => sum + (opportunity.valorOrcamento ?? 0), 0),
+        approvedValue: this.opportunities.reduce((sum, opportunity) => sum + (opportunity.valorAprovado ?? 0), 0),
+        simpleConversionRate: 0,
+        averageApprovedTicket: 0,
+      },
+    };
   }
 
   async getNextAction(actor: Actor, id: string): Promise<NextActionRecord | null> {
