@@ -7,6 +7,8 @@ test("creates a customer, creates an opportunity for it, and sees it on the pipe
   const opportunityTitle = `E2E Oportunidade ${suffix}`;
 
   await loginAsHomologationGestor(page);
+  await page.getByRole("link", { name: "Clientes" }).click();
+  await page.waitForURL(/\/clientes$/);
 
   await page.getByRole("heading", { name: "Novo cliente" }).scrollIntoViewIfNeeded();
   const customerForm = page.locator("form", { has: page.getByRole("heading", { name: "Novo cliente" }) });

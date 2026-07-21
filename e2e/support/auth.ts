@@ -15,5 +15,5 @@ export async function loginAsHomologationGestor(page: Page): Promise<void> {
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill(password);
   await page.getByRole("button", { name: /Entrar no CRM/i }).click();
-  await page.waitForSelector("text=Funil comercial", { timeout: 20_000 });
+  await page.getByRole("heading", { level: 1, name: "Central Comercial" }).waitFor({ timeout: 20_000 });
 }

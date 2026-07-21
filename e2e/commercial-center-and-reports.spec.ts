@@ -11,6 +11,8 @@ test("shows the commercial center with its work blocks and summary", async ({ pa
 
 test("shows the commercial reports dashboard with metrics and breakdown tables", async ({ page }) => {
   await loginAsHomologationGestor(page);
+  await page.getByRole("link", { name: "Funil" }).click();
+  await page.waitForURL(/\/pipeline$/);
   const reports = page.locator("section.reports-panel");
   await expect(reports).toBeVisible();
   await expect(reports.getByText("Oportunidades por etapa")).toBeVisible({ timeout: 15_000 });

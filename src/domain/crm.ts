@@ -395,6 +395,15 @@ export async function updateOpportunity(id: string, payload: Partial<CreateOppor
   return response.opportunity;
 }
 
+export async function loadOpportunity(id: string): Promise<Opportunity> {
+  return (await apiGet<{ opportunity: Opportunity }>(`/api/opportunities/${id}`)).opportunity;
+}
+
+export async function loadCommercialCenter(filters: CommercialCenterFilters = {}): Promise<CommercialCenter> {
+  const query = toQueryString(filters as Record<string, string | undefined>);
+  return (await apiGet<{ commercialCenter: CommercialCenter }>(`/api/commercial-center${query}`)).commercialCenter;
+}
+
 export async function archiveCustomer(id: string): Promise<Customer> {
   const response = await apiSend<{ customer: Customer }>(`/api/customers/${id}/archive`, "POST");
   return response.customer;
@@ -485,6 +494,10 @@ export async function reprocessAuvoWebhookEvent(id: string): Promise<AuvoWebhook
 
 export async function ignoreAuvoWebhookEvent(id: string): Promise<AuvoWebhookEvent> {
   return (await apiSend<{ event: AuvoWebhookEvent }>(`/api/integrations/auvo/events/${id}/ignore`, "POST")).event;
+}
+
+export async function loadPipelineStages(): Promise<PipelineStage[]> {
+  return (await apiGet<{ stages: PipelineStage[] }>("/api/pipeline-stages")).stages;
 }
 
 export async function createPipelineStage(payload: { nome: string; ordem: number }): Promise<PipelineStage> {

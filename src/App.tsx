@@ -1,8 +1,8 @@
-import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Copy, Edit3, LogIn, LogOut, Plus, RefreshCw, Search, UserRound, XCircle } from "lucide-react";
+import { AlertCircle, Archive, CheckCircle2, Clock, Copy, Edit3, LogIn, LogOut, Plus, RefreshCw, Search, XCircle } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
-import { formatDateTime, formatMoney } from "./domain/format";
+import { formatActivityType, formatDateTime, formatMoney } from "./domain/format";
 import {
   approveOpportunity,
   archiveOpportunity,
@@ -13,8 +13,6 @@ import {
   createOpportunity,
   createQuote,
   completeNextAction,
-  globalSearch,
-  type GlobalSearchResult,
   cancelNextAction,
   archiveNotification,
   loadCrmSnapshot,
@@ -28,7 +26,6 @@ import {
   loadAuvoWebhookEvents,
   loadNotifications,
   loadOpportunityActivities,
-  loadUnreadNotificationsCount,
   loseOpportunity,
   markAllNotificationsRead,
   markNotificationRead,
@@ -41,9 +38,6 @@ import {
   type AuvoIntegrationStatus,
   type AuvoWebhookEvent,
   type AuvoWebhookStatus,
-  type CommercialCenterActionItem,
-  type CommercialCenterFilters,
-  type CommercialCenterOpportunityItem,
   type CrmSnapshot,
   type Customer,
   type NextAction,
@@ -58,9 +52,11 @@ import { AdminPanel } from "./components/AdminPanel";
 import { QuotesPanel } from "./components/QuotesPanel";
 import { ReportsPanel } from "./components/ReportsPanel";
 import { AuvoInboxPanel } from "./components/AuvoInboxPanel";
-import { Sidebar } from "./components/layout/Sidebar";
+import { AppLayout } from "./components/layout/AppLayout";
 import { EmptyState } from "./components/ui/EmptyState";
 import { LoadingPanels } from "./components/ui/Skeleton";
+import { NotificationList, formatNotificationStatus } from "./components/ui/NotificationList";
+import { CentralComercialPage } from "./features/commercial-center/CentralComercialPage";
 
 const SECTION_ID_BY_PATH: Record<string, string> = {
   "/central-comercial": "central-comercial",
@@ -169,9 +165,15 @@ export function App() {
     );
   }
 
+  const canManageIntegrations = authState.user.permissions.includes("integrations:read");
+
   return (
     <Routes>
-      <Route path="*" element={<AuthenticatedApp authState={authState} onLogout={handleLogout} />} />
+      <Route element={<AppLayout userEmail={authState.user.email} onLogout={handleLogout} canManageIntegrations={canManageIntegrations} />}>
+        <Route path="central-comercial" element={<CentralComercialPage currentUserId={authState.user.id} />} />
+        <Route index element={<Navigate to="/central-comercial" replace />} />
+        <Route path="*" element={<AuthenticatedApp authState={authState} onLogout={handleLogout} />} />
+      </Route>
     </Routes>
   );
 }
@@ -186,13 +188,10 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [activityForm, setActivityForm] = useState({ customerId: "", opportunityId: "", type: "note" as Activity["type"], description: "" });
   const [nextActionForm, setNextActionForm] = useState({ customerId: "", opportunityId: "", category: "commercial" as NextAction["category"], title: "", dueAt: "", priority: "normal" as NextAction["priority"] });
   const [actionFilter, setActionFilter] = useState<ActionFilter>("overdue");
-  const [commercialFilters, setCommercialFilters] = useState<CommercialCenterFilters>({});
   const [actionOperation, setActionOperation] = useState<ActionOperation | null>(null);
   const [timeline, setTimeline] = useState<Activity[]>([]);
   const [timelineTitle, setTimelineTitle] = useState("Linha do tempo");
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<"active" | "read" | "archived">("active");
   const [auvoStatus, setAuvoStatus] = useState<AuvoIntegrationStatus | null>(null);
   const [auvoEvents, setAuvoEvents] = useState<AuvoWebhookEvent[]>([]);
@@ -200,7 +199,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [auvoFilter, setAuvoFilter] = useState<AuvoWebhookStatus | "">("");
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [quotesOpportunity, setQuotesOpportunity] = useState<Opportunity | null>(null);
-  const [searchResults, setSearchResults] = useState<GlobalSearchResult | null>(null);
   const [isLoadingMoreCustomers, setIsLoadingMoreCustomers] = useState(false);
   const [isLoadingMoreOpportunities, setIsLoadingMoreOpportunities] = useState(false);
 
@@ -213,36 +211,10 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     () => filterNextActions(snapshot?.nextActions ?? [], actionFilter),
     [snapshot?.nextActions, actionFilter],
   );
-  const responsibleOptions = useMemo(
-    () => uniqueValues([
-      authState.user.id,
-      ...(snapshot?.opportunities.map((opportunity) => opportunity.responsavelId) ?? []),
-      ...(snapshot?.nextActions.map((action) => action.responsibleUserId) ?? []),
-    ]),
-    [authState.user.id, snapshot?.nextActions, snapshot?.opportunities],
-  );
-  const situationOptions = useMemo(
-    () => uniqueValues(snapshot?.opportunities.map((opportunity) => opportunity.situacao) ?? []),
-    [snapshot?.opportunities],
-  );
-  const demandTypeOptions = useMemo(
-    () => uniqueValues(snapshot?.opportunities.map((opportunity) => opportunity.tipoDemanda) ?? []),
-    [snapshot?.opportunities],
-  );
-  const hasCommercialFilters = Object.values(commercialFilters).some((value) => Boolean(value));
   const canManageIntegrations = authState.user.permissions.includes("integrations:read");
   const canManageUsers = authState.user.permissions.includes("users:manage");
   const canViewReports = authState.user.permissions.includes("reports:read");
   const canManageAuvoInbox = authState.user.permissions.includes("auvo_inbox:read");
-
-  const metrics = useMemo(
-    () => [
-      { label: "Clientes ativos", value: activeCustomers.length },
-      { label: "Oportunidades ativas", value: activeOpportunities.length },
-      { label: "Sem proxima acao", value: opportunitiesWithoutNextAction.length },
-    ],
-    [activeCustomers.length, activeOpportunities.length, opportunitiesWithoutNextAction.length],
-  );
 
   const location = useLocation();
 
@@ -256,22 +228,11 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [location.pathname]);
 
-  useEffect(() => {
-    if (search.trim().length < 2) {
-      setSearchResults(null);
-      return;
-    }
-    const timeout = setTimeout(() => {
-      void globalSearch(search).then(setSearchResults).catch(() => setSearchResults(null));
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, [search]);
-
   async function refresh() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await loadCrmSnapshot(search, commercialFilters);
+      const data = await loadCrmSnapshot(search);
       setSnapshot(data);
       await refreshNotifications(notificationStatus);
       if (canManageIntegrations) await refreshAuvo();
@@ -286,12 +247,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   }
 
   async function refreshNotifications(status = notificationStatus) {
-    const [list, count] = await Promise.all([
-      loadNotifications({ status, limit: "20" }),
-      loadUnreadNotificationsCount(),
-    ]);
-    setNotifications(list.notifications);
-    setNotificationCount(count);
+    setNotifications((await loadNotifications({ status, limit: "20" })).notifications);
   }
 
   async function refreshAuvo(status = auvoFilter) {
@@ -598,193 +554,13 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     }
   }
 
-  function openCenterAction(id: string, mode: ActionOperation["mode"]) {
-    const action = snapshot?.nextActions.find((item) => item.id === id);
-    if (action) openActionOperation(action, mode);
-  }
-
-  async function clearCommercialFilters() {
-    setCommercialFilters({});
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await loadCrmSnapshot(search, {});
-      setSnapshot(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar a Central Comercial.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
   return (
-    <div className="app-shell">
-      <Sidebar canManageIntegrations={canManageIntegrations} />
-
-      <main className="workspace">
-        <header className="topbar">
-          <div className="search-shell">
-            <label className="search-box">
-              <Search aria-hidden="true" />
-              <input type="search" placeholder="Buscar no CRM" aria-label="Buscar no CRM" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => {
-                if (event.key === "Enter") void refresh();
-                if (event.key === "Escape") setSearchResults(null);
-              }} />
-            </label>
-            {searchResults && (searchResults.customers.length || searchResults.opportunities.length) ? (
-              <div className="search-dropdown" role="listbox" aria-label="Resultados da busca">
-                {searchResults.customers.length ? (
-                  <div className="search-dropdown-group">
-                    <span className="search-dropdown-label">Clientes</span>
-                    {searchResults.customers.map((customer) => (
-                      <button key={customer.id} type="button" className="search-dropdown-item" onClick={() => { void openCustomerTimeline(customer.id); setSearchResults(null); }}>
-                        <strong>{customer.nome}</strong>
-                        <span>{customer.telefone ?? customer.empresa ?? ""}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                {searchResults.opportunities.length ? (
-                  <div className="search-dropdown-group">
-                    <span className="search-dropdown-label">Oportunidades</span>
-                    {searchResults.opportunities.map((opportunity) => (
-                      <button key={opportunity.id} type="button" className="search-dropdown-item" onClick={() => { void openOpportunityTimeline(opportunity.id); setSearchResults(null); }}>
-                        <strong>{opportunity.titulo}</strong>
-                        <span>{opportunity.clienteNome} - {opportunity.etapaNome}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-          <div className="user-chip">
-            <UserRound aria-hidden="true" />
-            <span>{authState.user.email}</span>
-          </div>
-          <div className="notification-shell">
-            <button className="icon-button" type="button" aria-label="Abrir notificacoes" onClick={() => setNotificationPanelOpen((open) => !open)}>
-              <Bell aria-hidden="true" />
-              {notificationCount > 0 ? <span>{notificationCount > 9 ? "9+" : notificationCount}</span> : null}
-            </button>
-            {notificationPanelOpen ? (
-              <div className="notification-popover" role="dialog" aria-label="Notificacoes recentes">
-                <header>
-                  <strong>Notificacoes</strong>
-                  <button className="button ghost" type="button" onClick={handleAllNotificationsRead}>Ler todas</button>
-                </header>
-                <NotificationList items={notifications.slice(0, 5)} onRead={handleNotificationRead} onArchive={handleNotificationArchive} onSnooze={handleNotificationSnooze} />
-              </div>
-            ) : null}
-          </div>
-          <button className="button ghost" type="button" onClick={onLogout}>
-            <LogOut aria-hidden="true" />
-            Sair
-          </button>
-        </header>
-
-        <section id="central-comercial" className="page-heading">
-          <div>
-            <p className="eyebrow">Marco 4</p>
-            <h1>Central Comercial</h1>
-          </div>
-          <button className="button secondary" type="button" onClick={refresh} disabled={isLoading}>Buscar/atualizar</button>
-        </section>
-
+    <>
         {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
         {isLoading ? <LoadingPanels /> : null}
 
         {!isLoading && snapshot ? (
           <>
-            <section className="grid metrics-row" aria-label="Resumo comercial">
-              {metrics.map((metric) => (
-                <article className="panel metric" key={metric.label}>
-                  <span>{metric.label}</span>
-                  <strong>{metric.value}</strong>
-                </article>
-              ))}
-            </section>
-
-            <section className="panel commercial-filters" aria-label="Filtros da Central Comercial">
-              <div>
-                <p className="eyebrow">Filtros globais</p>
-                <h2>Central Comercial</h2>
-              </div>
-              <div className="filter-grid">
-                <label>De<input type="date" value={commercialFilters.from ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, from: event.target.value })} /></label>
-                <label>Ate<input type="date" value={commercialFilters.to ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, to: event.target.value })} /></label>
-                <label>Responsavel
-                  <select value={commercialFilters.responsibleUserId ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, responsibleUserId: event.target.value || undefined })}>
-                    <option value="">Todos permitidos</option>
-                    {responsibleOptions.map((id) => <option key={id} value={id}>{id === authState.user.id ? "Meu usuario" : `Usuario ${id.slice(0, 8)}`}</option>)}
-                  </select>
-                </label>
-                <label>Etapa
-                  <select value={commercialFilters.stageId ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, stageId: event.target.value || undefined })}>
-                    <option value="">Todas</option>
-                    {snapshot.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
-                  </select>
-                </label>
-                <label>Situacao
-                  <select value={commercialFilters.situation ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, situation: event.target.value || undefined })}>
-                    <option value="">Todas</option>
-                    {situationOptions.map((situation) => <option key={situation} value={situation}>{situation}</option>)}
-                  </select>
-                </label>
-                <label>Tipo de demanda
-                  <select value={commercialFilters.demandType ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, demandType: event.target.value || undefined })}>
-                    <option value="">Todos</option>
-                    {demandTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
-                  </select>
-                </label>
-                <label>Categoria
-                  <select value={commercialFilters.category ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, category: (event.target.value || undefined) as CommercialCenterFilters["category"] })}>
-                    <option value="">Todas</option>
-                    <option value="commercial">Comercial</option>
-                    <option value="warranty">Garantia</option>
-                    <option value="support">Suporte</option>
-                    <option value="after_sales">Pos-venda</option>
-                  </select>
-                </label>
-                <label>Prioridade
-                  <select value={commercialFilters.priority ?? ""} onChange={(event) => setCommercialFilters({ ...commercialFilters, priority: (event.target.value || undefined) as CommercialCenterFilters["priority"] })}>
-                    <option value="">Todas</option>
-                    <option value="high">Alta</option>
-                    <option value="normal">Normal</option>
-                    <option value="low">Baixa</option>
-                  </select>
-                </label>
-              </div>
-              <div className="filter-actions">
-                <button className="button secondary" type="button" onClick={refresh} disabled={isLoading}>Aplicar filtros</button>
-                <button className="button ghost" type="button" onClick={clearCommercialFilters} disabled={isLoading || !hasCommercialFilters}>Limpar filtros</button>
-              </div>
-            </section>
-
-            <section className="commercial-center" aria-label="Central Comercial">
-              <CommercialActionBlock title="Acoes vencidas" emptyText="Nenhuma acao vencida." items={snapshot.commercialCenter.overdueActions} onAction={openCenterAction} />
-              <CommercialActionBlock title="Acoes de hoje" emptyText="Nenhuma acao prevista para hoje." items={snapshot.commercialCenter.todayActions} onAction={openCenterAction} />
-              <CommercialOpportunityBlock title="Oportunidades sem proxima acao" emptyText="Todas as oportunidades ativas possuem acompanhamento." items={snapshot.commercialCenter.opportunitiesWithoutNextAction} onOpen={openOpportunityTimeline} />
-              <CommercialOpportunityBlock title="Orcamentos aguardando retorno" emptyText="Nenhum orcamento aguardando retorno." items={snapshot.commercialCenter.quotesAwaitingReturn} onOpen={openOpportunityTimeline} />
-              <CommercialActionBlock title="Visitas proximas" emptyText="Nenhuma visita proxima." items={snapshot.commercialCenter.upcomingVisits} onAction={openCenterAction} />
-              <CommercialOpportunityBlock title="Oportunidades paradas" emptyText="Nenhuma oportunidade parada." items={snapshot.commercialCenter.stalledOpportunities} onOpen={openOpportunityTimeline} />
-              <article className="panel commercial-card">
-                <h2>Caixa Auvo</h2>
-                <p>{snapshot.commercialCenter.auvoInbox.message}</p>
-              </article>
-              <article className="panel commercial-card summary-card">
-                <h2>Resumo comercial</h2>
-                <dl>
-                  <div><dt>Novas oportunidades</dt><dd>{snapshot.commercialCenter.summary.newOpportunities}</dd></div>
-                  <div><dt>Aprovadas</dt><dd>{snapshot.commercialCenter.summary.approvedOpportunities}</dd></div>
-                  <div><dt>Perdidas</dt><dd>{snapshot.commercialCenter.summary.lostOpportunities}</dd></div>
-                  <div><dt>Valor aprovado</dt><dd>{formatMoney(snapshot.commercialCenter.summary.approvedValue)}</dd></div>
-                  <div><dt>Ticket medio</dt><dd>{formatMoney(snapshot.commercialCenter.summary.averageApprovedTicket)}</dd></div>
-                  <div><dt>Conversao simples</dt><dd>{formatPercent(snapshot.commercialCenter.summary.simpleConversionRate)}</dd></div>
-                </dl>
-              </article>
-            </section>
-
             <section id="pipeline-section" className="data-section pipeline-section" aria-label="Funil comercial">
               <header className="pipeline-section-header">
                 <div>
@@ -1028,7 +804,22 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
             </section>
 
             <section id="clientes-section" className="data-section">
-              <h2>Clientes</h2>
+              <div className="pipeline-section-header">
+                <h2>Clientes e oportunidades</h2>
+                <label className="search-box">
+                  <Search aria-hidden="true" />
+                  <input
+                    type="search"
+                    placeholder="Filtrar por nome, telefone ou empresa"
+                    aria-label="Filtrar clientes e oportunidades"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void refresh();
+                    }}
+                  />
+                </label>
+              </div>
               {activeCustomers.length ? (
                 <div className="table-wrap">
                   <table>
@@ -1107,8 +898,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
             <QuotesPanel opportunity={quotesOpportunity} quotes={quotes} onCreate={handleCreateQuote} onUpdateStatus={handleUpdateQuoteStatus} />
           </>
         ) : null}
-      </main>
-    </div>
+    </>
   );
 }
 
@@ -1137,69 +927,6 @@ function LoginForm({ email, password, isSubmitting, onEmailChange, onPasswordCha
         {isSubmitting ? "Entrando" : "Entrar no CRM"}
       </button>
     </form>
-  );
-}
-
-function CommercialActionBlock({ title, emptyText, items, onAction }: {
-  title: string;
-  emptyText: string;
-  items: CommercialCenterActionItem[];
-  onAction: (id: string, mode: ActionOperation["mode"]) => void;
-}) {
-  return (
-    <article className="panel commercial-card">
-      <header>
-        <h2>{title}</h2>
-        <span className="badge">{items.length}</span>
-      </header>
-      {items.length ? (
-        <ul className="work-list">
-          {items.slice(0, 5).map((item) => (
-            <li key={item.id}>
-              <div>
-                <strong>{item.title}</strong>
-                <span>{item.customerName}{item.opportunityTitle ? ` - ${item.opportunityTitle}` : ""}</span>
-                <small>{formatActionCategory(item.category)} - {formatDateTime(item.dueAt)}{item.overdueHours ? ` - ${item.overdueHours}h em atraso` : ""}</small>
-              </div>
-              <div className="quick-actions">
-                <button className="button secondary" type="button" onClick={() => onAction(item.id, "complete")}>Concluir</button>
-                <button className="button secondary" type="button" onClick={() => onAction(item.id, "postpone")}>Reagendar</button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : <EmptyState title={emptyText} text="Nada exige acao imediata neste bloco." />}
-    </article>
-  );
-}
-
-function CommercialOpportunityBlock({ title, emptyText, items, onOpen }: {
-  title: string;
-  emptyText: string;
-  items: CommercialCenterOpportunityItem[];
-  onOpen: (id: string) => Promise<void>;
-}) {
-  return (
-    <article className="panel commercial-card">
-      <header>
-        <h2>{title}</h2>
-        <span className="badge">{items.length}</span>
-      </header>
-      {items.length ? (
-        <ul className="work-list">
-          {items.slice(0, 5).map((item) => (
-            <li key={item.id}>
-              <div>
-                <strong>{item.title}</strong>
-                <span>{item.customerName} - {item.stageName}</span>
-                <small>{item.situation} - {item.daysOpen} dias em aberto{item.nextActionDueAt ? ` - ${formatDateTime(item.nextActionDueAt)}` : ""}</small>
-              </div>
-              <button className="button secondary" type="button" onClick={() => void onOpen(item.id)}>Abrir</button>
-            </li>
-          ))}
-        </ul>
-      ) : <EmptyState title={emptyText} text="A Central nao encontrou pendencias neste bloco." />}
-    </article>
   );
 }
 
@@ -1251,37 +978,6 @@ function AuvoEventDetail({ event, onReprocess, onIgnore }: {
   );
 }
 
-function NotificationList({ items, onRead, onArchive, onSnooze }: {
-  items: Notification[];
-  onRead: (id: string) => void | Promise<void>;
-  onArchive: (id: string) => void | Promise<void>;
-  onSnooze: (id: string) => void | Promise<void>;
-}) {
-  if (items.length === 0) {
-    return <EmptyState title="Nenhuma notificacao pendente" text="Voce esta em dia." />;
-  }
-
-  return (
-    <ul className="notification-list">
-      {items.map((item) => (
-        <li key={item.id} className={item.status === "unread" ? "is-unread" : ""}>
-          <div>
-            <span className={`severity ${item.severity}`}>{formatNotificationSeverity(item.severity)}</span>
-            <strong>{item.title}</strong>
-            <p>{item.body}</p>
-            <small>{formatDateTime(item.createdAt)} - {formatNotificationStatus(item.status)}</small>
-          </div>
-          <div className="quick-actions">
-            {item.status === "unread" ? <button className="button ghost" type="button" onClick={() => void onRead(item.id)}>Lida</button> : null}
-            <button className="button ghost" type="button" onClick={() => void onSnooze(item.id)}>Adiar</button>
-            <button className="button ghost" type="button" onClick={() => void onArchive(item.id)}>Arquivar</button>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function formatShortDate(value: string | null | undefined): string {
   if (!value) return "Nunca";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
@@ -1293,24 +989,6 @@ function formatAuvoStatus(status: AuvoWebhookStatus): string {
   if (status === "processed") return "Processado";
   if (status === "ignored") return "Ignorado";
   return "Falha";
-}
-
-function formatPercent(value: number): string {
-  return new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 }).format(value);
-}
-
-function formatNotificationSeverity(severity: Notification["severity"]): string {
-  if (severity === "urgent") return "Urgente";
-  if (severity === "attention") return "Atencao";
-  return "Informativa";
-}
-
-function formatNotificationStatus(status: Notification["status"] | "active"): string {
-  if (status === "active") return "Pendentes";
-  if (status === "unread") return "Nao lida";
-  if (status === "read") return "Lida";
-  if (status === "archived") return "Arquivada";
-  return "Resolvida";
 }
 
 function toDateTimeLocalValue(value: string | null): string {
@@ -1385,23 +1063,3 @@ function formatActionCategory(category: NextAction["category"]): string {
   return labels[category];
 }
 
-function formatActivityType(type: Activity["type"]): string {
-  const labels: Record<Activity["type"], string> = {
-    note: "Observacao",
-    message: "Mensagem",
-    call: "Ligacao",
-    visit: "Visita",
-    meeting: "Reuniao",
-    follow_up: "Follow-up",
-    quote_sent: "Orcamento enviado",
-    stage_change: "Mudanca de etapa",
-    owner_change: "Mudanca de responsavel",
-    approval: "Aprovacao",
-    loss: "Perda",
-    warranty: "Garantia",
-    support: "Suporte",
-    after_sales: "Pos-venda",
-    system: "Sistema",
-  };
-  return labels[type];
-}

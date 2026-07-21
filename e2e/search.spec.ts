@@ -10,5 +10,5 @@ test("finds an existing customer via global search and opens its timeline", asyn
   const label = await firstResult.locator("strong").textContent();
   await firstResult.click();
   await expect(dropdown).toHaveCount(0);
-  await expect(page.locator(".timeline-section h2")).toContainText(label ?? "");
+  await expect(page.locator(".drawer-header h2")).toContainText(label ?? "");
 });
