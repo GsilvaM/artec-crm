@@ -207,7 +207,7 @@ function UserMembershipRow({ user, isSelf, onSave }: {
     <tr>
       <td>{user.email ?? user.userId.slice(0, 8)}{isSelf ? <span className="badge">voce</span> : null}</td>
       <td>
-        <select value={role} onChange={(event) => setRole(event.target.value as CrmRole)}>
+        <select aria-label={`Papel de ${user.email ?? user.userId}`} value={role} onChange={(event) => setRole(event.target.value as CrmRole)}>
           <option value="gestor">Gestor</option>
           <option value="vendedor">Vendedor</option>
           <option value="atendimento">Atendimento</option>

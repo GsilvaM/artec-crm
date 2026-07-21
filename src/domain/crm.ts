@@ -176,7 +176,9 @@ export type CommercialReport = {
 
 export type CrmSnapshot = {
   customers: Customer[];
+  customersNextCursor: string | null;
   opportunities: Opportunity[];
+  opportunitiesNextCursor: string | null;
   stages: PipelineStage[];
   lossReasons: LossReason[];
   nextActions: NextAction[];
@@ -342,8 +344,8 @@ export async function loadCrmSnapshot(search = "", commercialFilters: Commercial
   const query = search.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
   const commercialQuery = toQueryString(commercialFilters);
   const [customers, opportunities, stages, lossReasons, commercialCenter] = await Promise.all([
-    apiGet<{ customers: Customer[] }>(`/api/customers${query}`),
-    apiGet<{ opportunities: Opportunity[] }>(`/api/opportunities${query}`),
+    apiGet<{ customers: Customer[]; nextCursor: string | null }>(`/api/customers${query}`),
+    apiGet<{ opportunities: Opportunity[]; nextCursor: string | null }>(`/api/opportunities${query}`),
     apiGet<{ stages: PipelineStage[] }>("/api/pipeline-stages"),
     apiGet<{ lossReasons: LossReason[] }>("/api/loss-reasons"),
     apiGet<{ commercialCenter: CommercialCenter }>(`/api/commercial-center${commercialQuery}`),
@@ -351,12 +353,26 @@ export async function loadCrmSnapshot(search = "", commercialFilters: Commercial
 
   return {
     customers: customers.customers,
+    customersNextCursor: customers.nextCursor,
     opportunities: opportunities.opportunities,
+    opportunitiesNextCursor: opportunities.nextCursor,
     stages: stages.stages,
     lossReasons: lossReasons.lossReasons,
     nextActions: (await apiGet<{ nextActions: NextAction[] }>("/api/next-actions")).nextActions,
     commercialCenter: commercialCenter.commercialCenter,
   };
+}
+
+export async function loadMoreCustomers(cursor: string, search = ""): Promise<{ customers: Customer[]; nextCursor: string | null }> {
+  const params = new URLSearchParams({ cursor });
+  if (search.trim()) params.set("search", search.trim());
+  return apiGet<{ customers: Customer[]; nextCursor: string | null }>(`/api/customers?${params.toString()}`);
+}
+
+export async function loadMoreOpportunities(cursor: string, search = ""): Promise<{ opportunities: Opportunity[]; nextCursor: string | null }> {
+  const params = new URLSearchParams({ cursor });
+  if (search.trim()) params.set("search", search.trim());
+  return apiGet<{ opportunities: Opportunity[]; nextCursor: string | null }>(`/api/opportunities?${params.toString()}`);
 }
 
 export async function createCustomer(payload: CreateCustomerPayload): Promise<Customer> {

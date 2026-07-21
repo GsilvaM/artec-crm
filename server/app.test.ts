@@ -221,6 +221,32 @@ describe("CRM customers and opportunities API", () => {
     expect(response.json().customer.duplicatePhoneCustomerIds).toHaveLength(1);
   });
 
+  it("paginates customers by cursor without repeating or skipping records", async () => {
+    const repository = new FakeCrmRepository();
+    for (let i = 0; i < 4; i += 1) {
+      await repository.createCustomer({ id: actorId, role: "gestor" }, { tipoPessoa: "fisica", nome: `Cliente ${i}` });
+    }
+    const totalCustomers = repository.customers.length;
+    const app = createTestServer({ crmRepository: repository });
+
+    const firstPage = await app.inject({ method: "GET", url: "/api/customers?limit=2", headers: { authorization: "Bearer valid" } });
+    expect(firstPage.json().customers).toHaveLength(2);
+    expect(firstPage.json().nextCursor).toBeTruthy();
+
+    const secondPage = await app.inject({
+      method: "GET",
+      url: `/api/customers?limit=${totalCustomers}&cursor=${firstPage.json().nextCursor}`,
+      headers: { authorization: "Bearer valid" },
+    });
+    await app.close();
+
+    expect(secondPage.json().customers).toHaveLength(totalCustomers - 2);
+    const firstIds = firstPage.json().customers.map((customer: { id: string }) => customer.id);
+    const secondIds = secondPage.json().customers.map((customer: { id: string }) => customer.id);
+    expect(new Set([...firstIds, ...secondIds]).size).toBe(totalCustomers);
+    expect(secondPage.json().nextCursor).toBeNull();
+  });
+
   it("rejects active opportunities without next action", async () => {
     const app = createTestServer({});
     const response = await app.inject({
@@ -1244,8 +1270,12 @@ class FakeCrmRepository implements CrmDataRepository {
     return notification;
   }
 
-  async listCustomers(): Promise<CustomerRecord[]> {
-    return this.customers.map((customer) => this.withDuplicatePhones(customer));
+  async listCustomers(_actor: Actor, filters: { cursor?: string; limit?: number } = {}): Promise<{ customers: CustomerRecord[]; nextCursor: string | null }> {
+    const all = this.customers.map((customer) => this.withDuplicatePhones(customer));
+    const limit = filters.limit ?? 100;
+    const startIndex = filters.cursor ? all.findIndex((customer) => customer.id === filters.cursor) + 1 : 0;
+    const page = all.slice(startIndex, startIndex + limit);
+    return { customers: page, nextCursor: startIndex + limit < all.length ? page.at(-1)?.id ?? null : null };
   }
 
   async getCustomer(_actor: Actor, id: string): Promise<CustomerRecord | null> {
@@ -1280,7 +1310,18 @@ class FakeCrmRepository implements CrmDataRepository {
     return customer;
   }
 
-  async listOpportunities(actor: Actor, filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; situation?: string; demandType?: string; from?: string; to?: string }): Promise<OpportunityRecord[]> {
+  async listOpportunities(
+    actor: Actor,
+    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; situation?: string; demandType?: string; from?: string; to?: string; cursor?: string; limit?: number },
+  ): Promise<{ opportunities: OpportunityRecord[]; nextCursor: string | null }> {
+    const all = this.filterOpportunities(actor, filters);
+    const limit = filters.limit ?? 100;
+    const startIndex = filters.cursor ? all.findIndex((opportunity) => opportunity.id === filters.cursor) + 1 : 0;
+    const page = all.slice(startIndex, startIndex + limit);
+    return { opportunities: page, nextCursor: startIndex + limit < all.length ? page.at(-1)?.id ?? null : null };
+  }
+
+  filterOpportunities(actor: Actor, filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; situation?: string; demandType?: string; from?: string; to?: string }): OpportunityRecord[] {
     return this.opportunities.filter((opportunity) => {
       if (actor.role === "vendedor" && opportunity.responsavelId !== actor.id) return false;
       if (filters.status && opportunity.status !== filters.status) return false;
@@ -1448,7 +1489,7 @@ class FakeCrmRepository implements CrmDataRepository {
 
   async getCommercialCenter(actor: Actor, filters: CommercialCenterFilters): Promise<CommercialCenterRecord> {
     const actions = await this.listNextActions(actor, { status: "pending", responsibleUserId: filters.responsibleUserId, category: filters.category, priority: filters.priority });
-    const opportunities = await this.listOpportunities(actor, {
+    const opportunities = this.filterOpportunities(actor, {
       status: "ativa",
       etapaId: filters.stageId,
       responsavelId: filters.responsibleUserId,

@@ -17,6 +17,8 @@ import {
   cancelNextAction,
   archiveNotification,
   loadCrmSnapshot,
+  loadMoreCustomers,
+  loadMoreOpportunities,
   ignoreAuvoWebhookEvent,
   loadCustomerActivities,
   loadOpportunityQuotes,
@@ -181,6 +183,8 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [quotesOpportunity, setQuotesOpportunity] = useState<Opportunity | null>(null);
   const [searchResults, setSearchResults] = useState<GlobalSearchResult | null>(null);
+  const [isLoadingMoreCustomers, setIsLoadingMoreCustomers] = useState(false);
+  const [isLoadingMoreOpportunities, setIsLoadingMoreOpportunities] = useState(false);
 
   const activeCustomers = snapshot?.customers.filter((customer) => !customer.archivedAt) ?? [];
   const activeOpportunities = snapshot?.opportunities.filter((opportunity) => opportunity.status === "ativa") ?? [];
@@ -353,6 +357,36 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     if (!window.confirm(`Arquivar ${customer.nome}? O historico sera preservado.`)) return;
     await archiveCustomer(customer.id);
     await refresh();
+  }
+
+  async function handleLoadMoreCustomers() {
+    if (!snapshot?.customersNextCursor) return;
+    setIsLoadingMoreCustomers(true);
+    try {
+      const page = await loadMoreCustomers(snapshot.customersNextCursor, search);
+      setSnapshot((current) =>
+        current ? { ...current, customers: [...current.customers, ...page.customers], customersNextCursor: page.nextCursor } : current,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel carregar mais clientes.");
+    } finally {
+      setIsLoadingMoreCustomers(false);
+    }
+  }
+
+  async function handleLoadMoreOpportunities() {
+    if (!snapshot?.opportunitiesNextCursor) return;
+    setIsLoadingMoreOpportunities(true);
+    try {
+      const page = await loadMoreOpportunities(snapshot.opportunitiesNextCursor, search);
+      setSnapshot((current) =>
+        current ? { ...current, opportunities: [...current.opportunities, ...page.opportunities], opportunitiesNextCursor: page.nextCursor } : current,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel carregar mais oportunidades.");
+    } finally {
+      setIsLoadingMoreOpportunities(false);
+    }
   }
 
   async function handleCreateActivity(event: FormEvent<HTMLFormElement>) {
@@ -783,7 +817,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                     <h2>Homologacao Auvo</h2>
                   </div>
                   <div className="filter-actions">
-                    <select value={auvoFilter} onChange={(event) => void handleAuvoFilterChange(event.target.value as AuvoWebhookStatus | "")}>
+                    <select aria-label="Filtrar eventos Auvo por status" value={auvoFilter} onChange={(event) => void handleAuvoFilterChange(event.target.value as AuvoWebhookStatus | "")}>
                       <option value="">Todos</option>
                       <option value="received">Recebidos</option>
                       <option value="processing">Processando</option>
@@ -1000,6 +1034,11 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                   </table>
                 </div>
               ) : <EmptyState title="Nenhum cliente cadastrado" text="Cadastre o primeiro cliente para criar oportunidades comerciais." />}
+              {snapshot.customersNextCursor ? (
+                <button className="button secondary" type="button" disabled={isLoadingMoreCustomers} onClick={() => void handleLoadMoreCustomers()}>
+                  {isLoadingMoreCustomers ? "Carregando..." : "Carregar mais clientes"}
+                </button>
+              ) : null}
             </section>
 
             <section className="data-section">
@@ -1028,6 +1067,11 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                   </table>
                 </div>
               ) : <EmptyState title="Nenhuma oportunidade cadastrada" text="Crie uma oportunidade com responsavel, proxima acao e data." />}
+              {snapshot.opportunitiesNextCursor ? (
+                <button className="button secondary" type="button" disabled={isLoadingMoreOpportunities} onClick={() => void handleLoadMoreOpportunities()}>
+                  {isLoadingMoreOpportunities ? "Carregando..." : "Carregar mais oportunidades"}
+                </button>
+              ) : null}
             </section>
 
             <section className="data-section timeline-section">

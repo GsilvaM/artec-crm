@@ -29,6 +29,11 @@ export type CustomerRecord = {
   duplicatePhoneCustomerIds: string[];
 };
 
+export type CustomerListRecord = {
+  customers: CustomerRecord[];
+  nextCursor: string | null;
+};
+
 export type OpportunityRecord = {
   id: string;
   clienteId: string;
@@ -60,6 +65,11 @@ export type OpportunityRecord = {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+};
+
+export type OpportunityListRecord = {
+  opportunities: OpportunityRecord[];
+  nextCursor: string | null;
 };
 
 export type ActivityType =
@@ -546,12 +556,15 @@ export type LoseOpportunityInput = {
 };
 
 export type CrmDataRepository = {
-  listCustomers(actor: Actor, filters: { search?: string; archived?: boolean }): Promise<CustomerRecord[]>;
+  listCustomers(actor: Actor, filters: { search?: string; archived?: boolean; cursor?: string; limit?: number }): Promise<CustomerListRecord>;
   getCustomer(actor: Actor, id: string): Promise<CustomerRecord | null>;
   createCustomer(actor: Actor, input: CreateCustomerInput): Promise<CustomerRecord>;
   updateCustomer(actor: Actor, id: string, input: UpdateCustomerInput): Promise<CustomerRecord | null>;
   setCustomerArchived(actor: Actor, id: string, archived: boolean): Promise<CustomerRecord | null>;
-  listOpportunities(actor: Actor, filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string }): Promise<OpportunityRecord[]>;
+  listOpportunities(
+    actor: Actor,
+    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; cursor?: string; limit?: number },
+  ): Promise<OpportunityListRecord>;
   getOpportunity(actor: Actor, id: string): Promise<OpportunityRecord | null>;
   createOpportunity(actor: Actor, input: CreateOpportunityInput): Promise<OpportunityRecord>;
   updateOpportunity(actor: Actor, id: string, input: UpdateOpportunityInput): Promise<OpportunityRecord | null>;

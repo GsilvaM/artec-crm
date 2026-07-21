@@ -158,13 +158,13 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
   });
 
   app.get("/api/customers", { preHandler: [guards.authenticate, guards.requirePermission("customers:read")] }, async (request) => {
-    const query = request.query as { search?: string; archived?: string };
-    return {
-      customers: await repository.listCustomers(getActor(request), {
-        search: query.search,
-        archived: query.archived === "true",
-      }),
-    };
+    const query = request.query as { search?: string; archived?: string; cursor?: string; limit?: string };
+    return repository.listCustomers(getActor(request), {
+      search: query.search,
+      archived: query.archived === "true",
+      cursor: query.cursor,
+      limit: query.limit ? Number(query.limit) : undefined,
+    });
   });
 
   app.post("/api/customers", { preHandler: [guards.authenticate, guards.requirePermission("customers:write")] }, async (request, reply) => {
@@ -197,10 +197,11 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
   });
 
   app.get("/api/opportunities", { preHandler: [guards.authenticate, guards.requirePermission("opportunities:read")] }, async (request) => {
-    const query = request.query as { search?: string; status?: string; etapaId?: string; responsavelId?: string };
-    return {
-      opportunities: await repository.listOpportunities(getActor(request), query),
-    };
+    const query = request.query as { search?: string; status?: string; etapaId?: string; responsavelId?: string; cursor?: string; limit?: string };
+    return repository.listOpportunities(getActor(request), {
+      ...query,
+      limit: query.limit ? Number(query.limit) : undefined,
+    });
   });
 
   app.post("/api/opportunities", { preHandler: [guards.authenticate, guards.requirePermission("opportunities:write")] }, async (request, reply) => {

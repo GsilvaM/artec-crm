@@ -469,3 +469,31 @@ Hardening adicionado para reduzir recorrencia (`server/crm/prisma-repository.ts`
 ## Proximo marco
 
 Implementar o receptor de homologacao do Auvo, ainda sem transformar automaticamente atendimentos em oportunidades e sem iniciar mapeamento definitivo antes de capturar payloads reais.
+
+## Hardening final: os 5 itens pendentes da secao "Nao feito nesta sessao" (2026-07-21)
+
+Fecha os 5 itens registrados como pendentes no "Hardening final e E2E minimo" acima.
+
+### Paginacao por cursor em clientes/oportunidades
+
+`GET /api/customers` e `GET /api/opportunities` passaram a aceitar `?cursor=<id>&limit=<n>` (mesmo padrao ja usado por `/api/integrations/auvo/events` e `/api/notifications`: `id: {lt: cursor}` com `orderBy [chave, id desc]`, `take: limit + 1` para detectar `nextCursor`). Limite default 100 (igual ao comportamento anterior, sem regressao), maximo 200 por pagina. Resposta agora e `{ customers, nextCursor }` / `{ opportunities, nextCursor }` em vez de array cru — mudanca de contrato compativel, pois o frontend so lia `.customers`/`.opportunities`. UI recebeu botao "Carregar mais" nas duas listas (`src/App.tsx`) que acumula paginas no estado local. Teste novo: `paginates customers by cursor without repeating or skipping records` em `server/app.test.ts`.
+
+### Rate limit em rotas autenticadas
+
+`server/app.ts`: as rotas de `/api/me` e todas as de `registerCrmRoutes` passaram a rodar dentro de um contexto Fastify encapsulado com `@fastify/rate-limit` (`global: true`, 600 req/min por IP), isolado do rate limit especifico do webhook Auvo (60 req/min, ja existente). Mesma tecnica de encapsulamento ja usada para o webhook (registrar o plugin e as rotas no mesmo `app.register(async (instance) => {...})` para evitar o problema de ordenacao do avvio ja documentado nesta sessao).
+
+### Auditoria formal de acessibilidade (WCAG)
+
+`@axe-core/playwright` adicionado; `e2e/accessibility.spec.ts` varre login, tela principal autenticada e a secao de clientes/oportunidades contra as regras `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`. Primeira execucao encontrou 25 violacoes automatizadas reduzveis a 3 causas-raiz reais: contraste insuficiente de `--foreground-muted` (4.41:1, corrigido para `#525f70`) e de `--warning` (4.22:1, corrigido para `#8a5306`) em `src/styles.css`, e dois `<select>` sem nome acessivel (filtro de eventos Auvo e seletor de papel na administracao de usuarios), corrigidos com `aria-label`. Apos as correcoes, as 3 execucoes passam com zero violacoes automatizadas. Detalhe completo, metodologia e pendencias de revisao manual (teclado, leitor de tela real, zoom 200%) em `docs/ACCESSIBILITY-AUDIT.md`.
+
+### Runbook de incidentes e politica de backup
+
+`docs/INCIDENT-RUNBOOK.md` (novo): politica de backup do Supabase (o que verificar no painel, pois este repositorio nao tem acesso a ele), e runbook para 6 tipos de incidente (banco fora do ar, migration travada, rotacao do segredo do webhook Auvo, deploy quebrado na Vercel, rate limit bloqueando usuario legitimo, exclusao indevida de dados). Distinto do `docs/HOMOLOGATION-RUNBOOK.md` existente, que cobre apenas setup inicial de homologacao, nao operacao de incidentes.
+
+### Analise de plano de consulta nas queries de relatorios
+
+`EXPLAIN (ANALYZE, BUFFERS)` real contra o Supabase de homologacao nas queries de `getCommercialReport`/`getCommercialCenter`. Com o volume atual (dezenas de linhas), tudo ja roda em <0.3ms com `Seq Scan` — comportamento correto do planejador, nao um problema. Foram encontrados 4 predicados sem indice dedicado (filtro de periodo em `oportunidades.created_at`, `oportunidades.archived_at+status+updated_at` do centro comercial, `clientes.archived_at+created_at`, `next_actions.category+status+completed_at`); indices criados em `database/migrations/0016_criar_indices_relatorios.sql` e aplicados contra o banco real, confirmados usaveis via `EXPLAIN` com `enable_seqscan = off`. Detalhe completo em `docs/QUERY-PERFORMANCE.md`.
+
+### Validacoes
+
+`npm run typecheck`, `npm test` (68 testes), `npm run build` e `npx playwright test` (11 specs, incluindo os 3 novos de acessibilidade) passaram apos todas as mudancas acima.

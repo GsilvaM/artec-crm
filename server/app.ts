@@ -95,22 +95,31 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
     registerAuvoWebhookRoutes(instance, dependencies);
   });
 
-  app.get("/api/me", { preHandler: [authenticate(dependencies), requirePermission("self:read")] }, async (request) => {
-    const user = request.crmUser;
-    if (!user) {
-      throw new ApiError(401, "unauthorized", "Autenticacao obrigatoria.");
-    }
+  void app.register(async (instance) => {
+    await instance.register(rateLimit, {
+      global: true,
+      max: 600,
+      timeWindow: "1 minute",
+      errorResponseBuilder: () => new ApiError(429, "rate_limited", "Muitas requisicoes. Tente novamente em instantes."),
+    });
 
-    return {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      membershipStatus: user.membershipStatus,
-      permissions: user.permissions,
-    };
+    instance.get("/api/me", { preHandler: [authenticate(dependencies), requirePermission("self:read")] }, async (request) => {
+      const user = request.crmUser;
+      if (!user) {
+        throw new ApiError(401, "unauthorized", "Autenticacao obrigatoria.");
+      }
+
+      return {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        membershipStatus: user.membershipStatus,
+        permissions: user.permissions,
+      };
+    });
+
+    registerCrmRoutes(instance, dependencies, createRouteGuards(authenticate(dependencies), requirePermission));
   });
-
-  registerCrmRoutes(app, dependencies, createRouteGuards(authenticate(dependencies), requirePermission));
 
   app.setNotFoundHandler((request, reply) => {
     void reply.status(404).send({

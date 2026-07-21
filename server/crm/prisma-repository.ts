@@ -24,6 +24,7 @@ import type {
   CreateOpportunityInput,
   CreatePipelineStageInput,
   CrmDataRepository,
+  CustomerListRecord,
   CustomerRecord,
   GlobalSearchResult,
   LossReasonAdminRecord,
@@ -35,6 +36,7 @@ import type {
   NotificationReconcileResult,
   NextActionPriority,
   NextActionRecord,
+  OpportunityListRecord,
   OpportunityRecord,
   PipelineStageRecord,
   PostponeNextActionInput,
@@ -57,6 +59,14 @@ import type { CrmRole } from "../auth/rbac.js";
 import { createWebhookPayloadHash, normalizeAuvoWebhookStatus, sanitizeWebhookPayload } from "./auvo-webhook.js";
 import { isAuvoSessionEventType, parseAuvoSessionPayload } from "./auvo-parser.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./validation.js";
+
+const DEFAULT_LIST_LIMIT = 100;
+const MAX_LIST_LIMIT = 200;
+
+function clampLimit(limit: number | undefined): number {
+  if (!limit || !Number.isFinite(limit) || limit <= 0) return DEFAULT_LIST_LIMIT;
+  return Math.min(Math.trunc(limit), MAX_LIST_LIMIT);
+}
 
 type PrismaExecutor = Pick<
   CrmPrismaClient,
@@ -160,7 +170,11 @@ function translatePipelineStageWriteError(error: unknown): unknown {
 export class PrismaCrmDataRepository implements CrmDataRepository {
   constructor(private readonly prisma: CrmPrismaClient) {}
 
-  async listCustomers(_actor: Actor, filters: { search?: string; archived?: boolean }): Promise<CustomerRecord[]> {
+  async listCustomers(
+    _actor: Actor,
+    filters: { search?: string; archived?: boolean; cursor?: string; limit?: number },
+  ): Promise<CustomerListRecord> {
+    const limit = clampLimit(filters.limit);
     const customers = await this.prisma.customer.findMany({
       where: {
         archivedAt: filters.archived ? { not: null } : null,
@@ -174,13 +188,18 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
               ],
             }
           : {}),
+        ...(filters.cursor ? { id: { lt: filters.cursor } } : {}),
       },
       include: { _count: { select: { opportunities: true } } },
-      orderBy: { updatedAt: "desc" },
-      take: 100,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
     });
 
-    return Promise.all(customers.map((customer) => this.mapCustomer(customer)));
+    const page = customers.slice(0, limit);
+    return {
+      customers: await Promise.all(page.map((customer) => this.mapCustomer(customer))),
+      nextCursor: customers.length > limit ? page.at(-1)?.id ?? null : null,
+    };
   }
 
   async getCustomer(_actor: Actor, id: string): Promise<CustomerRecord | null> {
@@ -254,7 +273,11 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     return this.mapCustomer(customer);
   }
 
-  async listOpportunities(actor: Actor, filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string }): Promise<OpportunityRecord[]> {
+  async listOpportunities(
+    actor: Actor,
+    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; cursor?: string; limit?: number },
+  ): Promise<OpportunityListRecord> {
+    const limit = clampLimit(filters.limit);
     const opportunities = await this.prisma.opportunity.findMany({
       where: {
         archivedAt: null,
@@ -270,12 +293,17 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.etapaId ? { etapaId: filters.etapaId } : {}),
         ...(filters.responsavelId ? { responsavelId: filters.responsavelId } : {}),
+        ...(filters.cursor ? { id: { lt: filters.cursor } } : {}),
       },
       include: opportunityInclude,
-      orderBy: { updatedAt: "desc" },
-      take: 100,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
     });
-    return opportunities.map(mapOpportunity);
+    const page = opportunities.slice(0, limit);
+    return {
+      opportunities: page.map(mapOpportunity),
+      nextCursor: opportunities.length > limit ? page.at(-1)?.id ?? null : null,
+    };
   }
 
   async getOpportunity(actor: Actor, id: string): Promise<OpportunityRecord | null> {
@@ -893,8 +921,8 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     ]);
 
     return {
-      customers: customers.slice(0, 8),
-      opportunities: opportunities.slice(0, 8),
+      customers: customers.customers.slice(0, 8),
+      opportunities: opportunities.opportunities.slice(0, 8),
     };
   }
 
