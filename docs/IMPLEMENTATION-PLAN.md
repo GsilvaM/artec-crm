@@ -163,13 +163,16 @@ Status em 2026-07-21: rotas `/api/admin/*` restritas a `gestor` (permissoes `set
 
 ## 8. Relatórios e hardening
 
-- [ ] Dashboard por período.
-- [ ] Conversão, ticket, origens e perdas.
+- [x] Dashboard por período (`GET /api/reports/commercial`, restrito a gestor via permissao `reports:read` ja existente no RBAC).
+- [x] Conversão, ticket, origens e perdas (conversao simples, conversao por origem, ticket medio aprovado, distribuicao de motivos de perda).
+- [x] Metricas adicionais nao listadas originalmente: novos leads, oportunidades por etapa, tempo medio ate orcamento/aprovacao/perda, follow-ups vencidos e concluidos.
 - [ ] Performance e índices.
 - [ ] Testes E2E dos fluxos críticos.
 - [ ] Auditoria de acessibilidade.
 - [ ] Backup e runbook.
 - [ ] Revisão de segurança.
+
+Nota de escopo: "tempo médio de triagem da Caixa Auvo" (citado no `CLAUDE-ARTEC-CRM.md`) nao foi implementado porque a Caixa de Entrada do Auvo ainda nao existe (bloqueada por payloads reais de atendimento, conforme Marco 6/7). "Recuperação após follow-up" tambem nao foi implementada nesta fatia — decisao de escopo, nao esquecimento.
 
 ## Registro de decisões
 

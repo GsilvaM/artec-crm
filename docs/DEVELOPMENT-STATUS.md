@@ -309,6 +309,16 @@ Bug de ferramenta encontrado e corrigido no caminho: `database/create-migration.
 
 Validacao: `npm run typecheck`, `npm run test` (57 testes, 1 novo cobrindo criacao/versionamento/transicoes invalidas/trava de edicao apos envio) e `npm run build` passaram. Migration aplicada com `npm run db:migrate` contra o banco real de homologacao (mesmo usado pela producao). Verificado com Playwright ponta a ponta: criar orcamento, enviar, aprovar — sem erros de console, valores e datas corretos na UI. Dados de teste (1 orcamento e os campos denormalizados da oportunidade) limpos do banco ao final.
 
+## Relatorios comerciais (2026-07-21)
+
+Novo endpoint `GET /api/reports/commercial` (permissao `reports:read`, ja existia no RBAC desde a fundacao mas sem rota nenhuma) e painel `src/components/ReportsPanel.tsx`. Filtros: periodo (`from`/`to`, padrao ultimos 30 dias), responsavel, origem, tipo de demanda, etapa.
+
+Metricas: novos leads, oportunidades criadas, oportunidades por etapa, valor orcado, valor aprovado, numero de aprovacoes, ticket medio aprovado, taxa de conversao simples (aprovadas / (aprovadas + perdidas) no periodo), conversao por origem, distribuicao de motivos de perda, tempo medio (dias) ate orcamento/aprovacao/perda, follow-ups vencidos (situacao atual) e concluidos no periodo.
+
+Fora do escopo desta fatia, por decisao e nao por esquecimento: tempo medio de triagem da Caixa Auvo (a Caixa ainda nao existe), recuperacao apos follow-up, exportacao/graficos (a tela usa tabelas e cartoes de metrica, reaproveitando os componentes visuais ja existentes).
+
+Validacao: `npm run typecheck`, `npm run test` (58 testes, 1 novo cobrindo RBAC e presenca das metricas agregadas) e `npm run build` passaram. Verificado com Playwright contra o ambiente real de homologacao: metricas renderizadas batem entre si (ex.: soma de "oportunidades por etapa" bate com "oportunidades criadas"; "dias ate orcamento" retornou corretamente "Sem dados" apos a limpeza do orcamento de teste do marco anterior, em vez de um numero fabricado).
+
 ## Incidente: eventos fora de escopo capturados na primeira ativacao do webhook (2026-07-21)
 
 O usuario cadastrou o webhook no Auvo com **18 eventos marcados**, incluindo todos os proibidos pelo escopo do MVP (`CLAUDE.md`, secoes 5 e 10.4): pagamento criado/alterado, mensagens (enviada/recebida/atualizada), eventos de painel/card, anotacoes de painel e modelo de mensagem. O webhook ficou `ATIVO` por alguns minutos nessa configuracao.

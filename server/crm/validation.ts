@@ -157,6 +157,15 @@ export const cancelNextActionSchema = z.object({
   nextAction: nextActionCreateSchema.optional().nullable(),
 });
 
+export const commercialReportQuerySchema = z.object({
+  from: optionalText,
+  to: optionalText,
+  responsibleUserId: uuid.optional(),
+  origem: optionalText,
+  tipoDemanda: optionalText,
+  stageId: uuid.optional(),
+});
+
 export const commercialCenterQuerySchema = z.object({
   from: optionalText,
   to: optionalText,

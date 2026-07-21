@@ -345,6 +345,35 @@ export type UpsertMembershipInput = {
   isActive: boolean;
 };
 
+export type CommercialReportFilters = {
+  from?: string;
+  to?: string;
+  responsibleUserId?: string;
+  origem?: string;
+  tipoDemanda?: string;
+  stageId?: string;
+};
+
+export type CommercialReportRecord = {
+  generatedAt: string;
+  filters: CommercialReportFilters;
+  newLeads: number;
+  opportunitiesCreated: number;
+  opportunitiesByStage: { stageId: string; stageName: string; count: number }[];
+  budgetValue: number;
+  approvedValue: number;
+  approvedCount: number;
+  averageApprovedTicket: number;
+  conversionRate: number;
+  conversionByOrigin: { origem: string; created: number; approved: number; conversionRate: number }[];
+  lossReasons: { reason: string; count: number }[];
+  averageDaysToQuote: number | null;
+  averageDaysToApproval: number | null;
+  averageDaysToLoss: number | null;
+  overdueFollowUps: number;
+  completedFollowUps: number;
+};
+
 export type QuoteStatus = "rascunho" | "enviado" | "revisado" | "aprovado" | "recusado" | "expirado";
 
 export type QuoteRecord = {
@@ -542,6 +571,7 @@ export type CrmDataRepository = {
   setLossReasonActive(actor: Actor, id: string, isActive: boolean): Promise<LossReasonAdminRecord | null>;
   listMembershipCandidates(actor: Actor): Promise<MembershipCandidateRecord[]>;
   upsertMembership(actor: Actor, userId: string, input: UpsertMembershipInput): Promise<MembershipCandidateRecord>;
+  getCommercialReport(actor: Actor, filters: CommercialReportFilters): Promise<CommercialReportRecord>;
   listQuotes(actor: Actor, opportunityId: string): Promise<QuoteRecord[]>;
   createQuote(actor: Actor, input: CreateQuoteInput): Promise<QuoteRecord>;
   updateQuote(actor: Actor, id: string, input: UpdateQuoteInput): Promise<QuoteRecord | null>;

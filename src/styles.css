@@ -972,8 +972,16 @@ tr:last-child td {
   gap: 6px;
 }
 
-.quotes-panel {
+.quotes-panel,
+.reports-panel {
   margin-top: 22px;
+}
+
+.reports-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .quotes-empty {

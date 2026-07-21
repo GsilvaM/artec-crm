@@ -12,6 +12,8 @@ import type {
   CancelNextActionInput,
   CommercialCenterFilters,
   CommercialCenterRecord,
+  CommercialReportFilters,
+  CommercialReportRecord,
   CompleteNextActionInput,
   CreateActivityInput,
   CreateCustomerInput,
@@ -778,6 +780,100 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         simpleConversionRate: closedCount ? approved.length / closedCount : 0,
         averageApprovedTicket: approved.length ? Math.round(approvedValue / approved.length) : 0,
       },
+    };
+  }
+
+  async getCommercialReport(actor: Actor, filters: CommercialReportFilters): Promise<CommercialReportRecord> {
+    const now = new Date();
+    const from = filters.from ? toDateOnly(filters.from) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const to = filters.to ? new Date(`${filters.to}T23:59:59.999Z`) : now;
+    const responsibleScope =
+      actor.role === "vendedor"
+        ? { responsavelId: actor.id }
+        : filters.responsibleUserId
+          ? { responsavelId: filters.responsibleUserId }
+          : {};
+    const opportunityWhere = {
+      createdAt: { gte: from, lte: to },
+      ...responsibleScope,
+      ...(filters.origem ? { origem: filters.origem } : {}),
+      ...(filters.tipoDemanda ? { tipoDemanda: filters.tipoDemanda } : {}),
+      ...(filters.stageId ? { etapaId: filters.stageId } : {}),
+    };
+
+    const [periodOpportunities, newLeads, overdueFollowUps, completedFollowUps] = await Promise.all([
+      this.prisma.opportunity.findMany({ where: opportunityWhere, include: opportunityInclude }),
+      this.prisma.customer.count({ where: { createdAt: { gte: from, lte: to }, archivedAt: null } }),
+      this.prisma.nextAction.count({
+        where: {
+          status: "pending",
+          dueAt: { lt: now },
+          category: "commercial",
+          archivedAt: null,
+          ...(actor.role === "vendedor" ? { responsibleUserId: actor.id } : filters.responsibleUserId ? { responsibleUserId: filters.responsibleUserId } : {}),
+        },
+      }),
+      this.prisma.nextAction.count({
+        where: {
+          status: "completed",
+          completedAt: { gte: from, lte: to },
+          category: "commercial",
+          ...(actor.role === "vendedor" ? { responsibleUserId: actor.id } : filters.responsibleUserId ? { responsibleUserId: filters.responsibleUserId } : {}),
+        },
+      }),
+    ]);
+
+    const approved = periodOpportunities.filter((opportunity) => opportunity.status === "ganha");
+    const lost = periodOpportunities.filter((opportunity) => opportunity.status === "perdida");
+    const approvedValue = approved.reduce((sum, opportunity) => sum + (opportunity.valorAprovado ?? 0), 0);
+    const budgetValue = periodOpportunities.reduce((sum, opportunity) => sum + (opportunity.valorOrcamento ?? 0), 0);
+    const closedCount = approved.length + lost.length;
+
+    const stageCounts = new Map<string, { stageName: string; count: number }>();
+    for (const opportunity of periodOpportunities) {
+      const entry = stageCounts.get(opportunity.etapaId) ?? { stageName: opportunity.etapa.nome, count: 0 };
+      entry.count += 1;
+      stageCounts.set(opportunity.etapaId, entry);
+    }
+
+    const originGroups = new Map<string, { created: number; approved: number }>();
+    for (const opportunity of periodOpportunities) {
+      const key = opportunity.origem?.trim() || "Sem origem";
+      const entry = originGroups.get(key) ?? { created: 0, approved: 0 };
+      entry.created += 1;
+      if (opportunity.status === "ganha") entry.approved += 1;
+      originGroups.set(key, entry);
+    }
+
+    const lossReasonCounts = new Map<string, number>();
+    for (const opportunity of lost) {
+      const key = opportunity.motivoPerda?.nome ?? "Sem motivo registrado";
+      lossReasonCounts.set(key, (lossReasonCounts.get(key) ?? 0) + 1);
+    }
+
+    return {
+      generatedAt: now.toISOString(),
+      filters,
+      newLeads,
+      opportunitiesCreated: periodOpportunities.length,
+      opportunitiesByStage: [...stageCounts.entries()].map(([stageId, value]) => ({ stageId, stageName: value.stageName, count: value.count })),
+      budgetValue,
+      approvedValue,
+      approvedCount: approved.length,
+      averageApprovedTicket: approved.length ? Math.round(approvedValue / approved.length) : 0,
+      conversionRate: closedCount ? approved.length / closedCount : 0,
+      conversionByOrigin: [...originGroups.entries()].map(([origem, value]) => ({
+        origem,
+        created: value.created,
+        approved: value.approved,
+        conversionRate: value.created ? value.approved / value.created : 0,
+      })),
+      lossReasons: [...lossReasonCounts.entries()].map(([reason, count]) => ({ reason, count })),
+      averageDaysToQuote: averageDays(periodOpportunities.map((opportunity) => [opportunity.dataEntrada, opportunity.dataOrcamento])),
+      averageDaysToApproval: averageDays(approved.map((opportunity) => [opportunity.dataEntrada, opportunity.dataAprovacao])),
+      averageDaysToLoss: averageDays(lost.map((opportunity) => [opportunity.dataEntrada, opportunity.dataPerda])),
+      overdueFollowUps,
+      completedFollowUps,
     };
   }
 
@@ -2010,6 +2106,14 @@ function sortCommercialActions(left: ReturnType<typeof mapCommercialAction>, rig
   const priorityDiff = priorityOrder[left.priority] - priorityOrder[right.priority];
   if (priorityDiff) return priorityDiff;
   return new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime();
+}
+
+function averageDays(pairs: Array<[Date, Date | null]>): number | null {
+  const diffs = pairs
+    .filter((pair): pair is [Date, Date] => pair[1] !== null)
+    .map(([start, end]) => (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+  if (!diffs.length) return null;
+  return Math.round((diffs.reduce((sum, value) => sum + value, 0) / diffs.length) * 10) / 10;
 }
 
 function startOfLocalDay(date: Date): Date {

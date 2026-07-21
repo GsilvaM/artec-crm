@@ -51,6 +51,7 @@ import {
 import { PipelineBoard } from "./components/PipelineBoard";
 import { AdminPanel } from "./components/AdminPanel";
 import { QuotesPanel } from "./components/QuotesPanel";
+import { ReportsPanel } from "./components/ReportsPanel";
 
 type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
 
@@ -205,6 +206,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const hasCommercialFilters = Object.values(commercialFilters).some((value) => Boolean(value));
   const canManageIntegrations = authState.user.permissions.includes("integrations:read");
   const canManageUsers = authState.user.permissions.includes("users:manage");
+  const canViewReports = authState.user.permissions.includes("reports:read");
 
   const metrics = useMemo(
     () => [
@@ -785,6 +787,8 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                 </div>
               </section>
             ) : null}
+
+            {canViewReports ? <ReportsPanel stages={snapshot.stages} /> : null}
 
             {canManageUsers ? (
               <AdminPanel stages={snapshot.stages} onStagesChanged={refresh} currentUserId={authState.user.id} />

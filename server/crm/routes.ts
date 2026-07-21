@@ -10,6 +10,7 @@ import {
   approveOpportunitySchema,
   cancelNextActionSchema,
   commercialCenterQuerySchema,
+  commercialReportQuerySchema,
   completeNextActionSchema,
   customerCreateSchema,
   customerUpdateSchema,
@@ -105,6 +106,19 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
 
   app.post("/api/notifications/reconcile", { preHandler: [guards.authenticate, guards.requirePermission("notifications:reconcile")] }, async (request) => {
     return repository.reconcileNotifications(getActor(request));
+  });
+
+  app.get("/api/reports/commercial", { preHandler: [guards.authenticate, guards.requirePermission("reports:read")] }, async (request) => {
+    const query = parseBody(commercialReportQuerySchema, request.query);
+    return {
+      report: await repository.getCommercialReport(getActor(request), {
+        ...query,
+        from: query.from ?? undefined,
+        to: query.to ?? undefined,
+        origem: query.origem ?? undefined,
+        tipoDemanda: query.tipoDemanda ?? undefined,
+      }),
+    };
   });
 
   app.get("/api/commercial-center", { preHandler: [guards.authenticate, guards.requirePermission("next_actions:read")] }, async (request) => {

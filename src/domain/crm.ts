@@ -110,6 +110,34 @@ export type MembershipCandidate = {
   isActive: boolean | null;
 };
 
+export type CommercialReportFilters = {
+  from?: string;
+  to?: string;
+  responsibleUserId?: string;
+  origem?: string;
+  tipoDemanda?: string;
+  stageId?: string;
+};
+
+export type CommercialReport = {
+  generatedAt: string;
+  newLeads: number;
+  opportunitiesCreated: number;
+  opportunitiesByStage: { stageId: string; stageName: string; count: number }[];
+  budgetValue: number;
+  approvedValue: number;
+  approvedCount: number;
+  averageApprovedTicket: number;
+  conversionRate: number;
+  conversionByOrigin: { origem: string; created: number; approved: number; conversionRate: number }[];
+  lossReasons: { reason: string; count: number }[];
+  averageDaysToQuote: number | null;
+  averageDaysToApproval: number | null;
+  averageDaysToLoss: number | null;
+  overdueFollowUps: number;
+  completedFollowUps: number;
+};
+
 export type CrmSnapshot = {
   customers: Customer[];
   opportunities: Opportunity[];
@@ -433,6 +461,10 @@ export async function loadAdminUsers(): Promise<MembershipCandidate[]> {
 
 export async function upsertMembership(userId: string, payload: { role: CrmRole; isActive: boolean }): Promise<MembershipCandidate> {
   return (await apiSend<{ membership: MembershipCandidate }>(`/api/admin/users/${userId}/membership`, "POST", payload)).membership;
+}
+
+export async function loadCommercialReport(filters: CommercialReportFilters = {}): Promise<CommercialReport> {
+  return (await apiGet<{ report: CommercialReport }>(`/api/reports/commercial${toQueryString(filters)}`)).report;
 }
 
 export async function loadOpportunityQuotes(opportunityId: string): Promise<Quote[]> {

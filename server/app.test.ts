@@ -15,6 +15,8 @@ import type {
   CancelNextActionInput,
   CommercialCenterFilters,
   CommercialCenterRecord,
+  CommercialReportFilters,
+  CommercialReportRecord,
   CompleteNextActionInput,
   CreateActivityInput,
   CreateCustomerInput,
@@ -719,6 +721,26 @@ describe("CRM activities and next actions API", () => {
     expect(response.json().commercialCenter.summary.newOpportunities).toBeGreaterThan(0);
   });
 
+  it("keeps commercial reports restricted to gestor and returns aggregated metrics", async () => {
+    const repository = new FakeCrmRepository();
+    await repository.createOpportunity({ id: actorId, role: "gestor" }, makeCreateOpportunityInput());
+    const sellerApp = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true }, crmRepository: repository });
+    const denied = await sellerApp.inject({ method: "GET", url: "/api/reports/commercial", headers: { authorization: "Bearer valid" } });
+    await sellerApp.close();
+
+    const managerApp = createTestServer({ crmRepository: repository });
+    const response = await managerApp.inject({ method: "GET", url: "/api/reports/commercial", headers: { authorization: "Bearer valid" } });
+    const invalidFilter = await managerApp.inject({ method: "GET", url: "/api/reports/commercial?responsibleUserId=not-a-uuid", headers: { authorization: "Bearer valid" } });
+    await managerApp.close();
+
+    expect(denied.statusCode).toBe(403);
+    expect(response.statusCode).toBe(200);
+    expect(response.json().report.opportunitiesCreated).toBeGreaterThan(0);
+    expect(response.json().report).toHaveProperty("conversionRate");
+    expect(response.json().report).toHaveProperty("averageDaysToApproval");
+    expect(invalidFilter.statusCode).toBe(400);
+  });
+
   it("keeps seller scope in commercial center", async () => {
     const repository = new FakeCrmRepository();
     await repository.createNextAction({ id: actorId, role: "gestor" }, { customerId, responsibleUserId: actorId, title: "Acao propria", dueAt: "2026-07-19T13:00:00.000Z" });
@@ -1322,6 +1344,38 @@ class FakeCrmRepository implements CrmDataRepository {
         simpleConversionRate: 0,
         averageApprovedTicket: 0,
       },
+    };
+  }
+
+  async getCommercialReport(actor: Actor, filters: CommercialReportFilters): Promise<CommercialReportRecord> {
+    const scoped = this.opportunities.filter((opportunity) => actor.role !== "vendedor" || opportunity.responsavelId === actor.id);
+    const approved = scoped.filter((opportunity) => opportunity.status === "ganha");
+    const lost = scoped.filter((opportunity) => opportunity.status === "perdida");
+    const approvedValue = approved.reduce((sum, opportunity) => sum + (opportunity.valorAprovado ?? 0), 0);
+    const closedCount = approved.length + lost.length;
+
+    return {
+      generatedAt: now,
+      filters,
+      newLeads: this.customers.length,
+      opportunitiesCreated: scoped.length,
+      opportunitiesByStage: [...new Set(scoped.map((opportunity) => opportunity.etapaId))].map((etapaId) => ({
+        stageId: etapaId,
+        stageName: scoped.find((opportunity) => opportunity.etapaId === etapaId)?.etapaNome ?? "",
+        count: scoped.filter((opportunity) => opportunity.etapaId === etapaId).length,
+      })),
+      budgetValue: scoped.reduce((sum, opportunity) => sum + (opportunity.valorOrcamento ?? 0), 0),
+      approvedValue,
+      approvedCount: approved.length,
+      averageApprovedTicket: approved.length ? Math.round(approvedValue / approved.length) : 0,
+      conversionRate: closedCount ? approved.length / closedCount : 0,
+      conversionByOrigin: [],
+      lossReasons: [],
+      averageDaysToQuote: null,
+      averageDaysToApproval: null,
+      averageDaysToLoss: null,
+      overdueFollowUps: this.nextActions.filter((action) => action.status === "pending" && action.category === "commercial" && action.dueAt < now).length,
+      completedFollowUps: this.nextActions.filter((action) => action.status === "completed" && action.category === "commercial").length,
     };
   }
 
