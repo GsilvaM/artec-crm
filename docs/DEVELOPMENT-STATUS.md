@@ -497,3 +497,77 @@ Fecha os 5 itens registrados como pendentes no "Hardening final e E2E minimo" ac
 ### Validacoes
 
 `npm run typecheck`, `npm test` (68 testes), `npm run build` e `npx playwright test` (11 specs, incluindo os 3 novos de acessibilidade) passaram apos todas as mudancas acima.
+
+## Refatoracao de frontend — Fase 0: Auditoria (2026-07-21)
+
+Executada em branch dedicada `refactor/frontend-design-system` (local, sem push), conforme `PROMPT-REFATORACAO-FRONTEND-ARTEC-CRM.md` secao 2 e 19. Nenhum codigo foi alterado nesta fase — apenas leitura e diagnostico.
+
+Confirmado antes de assumir qualquer coisa (secao 2 do prompt): repositorio, remote (`github.com/GsilvaM/artec-crm.git`) e branch base (`main`) batem com o esperado; `git status` na base estava limpo (apenas os 3 `.md` de instrucao do usuario, nunca versionados por convencao desta sessao).
+
+### Implementado e reutilizavel
+
+- **Tokens ja centralizados em CSS custom properties** (`src/styles.css:1-18`): `--background`, `--surface`, `--surface-muted`, `--foreground`, `--foreground-muted`, `--border`, `--primary`, `--success`, `--warning`, `--danger`, `--info`, `--focus-ring`. Zero hex hardcoded ou `style={{}}` inline em `.tsx` (confirmado por busca no codigo) — a disciplina de "nao espalhar hex/medidas soltas" que o prompt pede na secao 7 ja existe na pratica, so falta formalizar espacamento/radius/sombra/motion/breakpoints como tokens tambem (hoje sao valores soltos repetidos).
+- **RBAC e regras de negocio no frontend refletem o backend**: `src/domain/auth.ts` espelha o `Permission` do backend; nenhuma tela esconde acao sem o backend tambem bloquear (confirmado nos testes de API RBAC).
+- **8 componentes ja extraidos de `App.tsx`**: `PipelineBoard`, `AdminPanel`, `QuotesPanel`, `ReportsPanel`, `AuvoInboxPanel` em `src/components/`, mais `format.ts` em `src/domain/` para evitar import circular. Sao um ponto de partida real para a extracao continuar.
+- **Camada de API ja separada de UI**: `src/domain/crm.ts` concentra todas as chamadas HTTP tipadas; nenhum componente faz `fetch` direto.
+- **Unica biblioteca de icones** (`lucide-react`), usada de forma consistente (`aria-hidden` nos icones decorativos, `aria-label` nos botoes so-com-icone) — ja em conformidade com a secao 12/25.5 do prompt.
+- **2 breakpoints responsivos ja existem** (`max-width: 900px` e `max-width: 560px`, `src/styles.css:1391-1477`) cobrindo grid, sidebar, formularios e popover de notificacao — nao e responsividade zero, e uma base parcial.
+- **Suite de testes real**: 68 testes Vitest (unit/integration) + 11 specs Playwright E2E contra ambiente real de homologacao, incluindo a auditoria de acessibilidade automatizada recem-adicionada (`e2e/accessibility.spec.ts`). Isso da uma rede de seguranca de regressao para a refatoracao.
+
+### Problemas de arquitetura
+
+- **`src/App.tsx` tem 1410 linhas** e concentra: todo o estado da aplicacao (~20 `useState`), toda a logica de fetch/refresh, todos os handlers de formulario (cliente, oportunidade, atividade, proxima acao, aprovacao, perda), e a renderizacao de praticamente todas as secoes (Central Comercial, Clientes, Oportunidades, Pipeline, Auvo admin, notificacoes, busca). E exatamente o monolito que a secao 3 e 11 do prompt preveem auditar.
+- **Nao ha roteamento** (`react-router` nao esta instalado; `src/main.tsx` so renderiza `<App />` sem `BrowserRouter`). Toda a aplicacao vive em uma unica URL (`/`), com secoes empilhadas verticalmente e reveladas por scroll/permissao, nao por navegacao. A sidebar (`src/App.tsx:596`) tem um unico item de menu ("Clientes e oportunidades"), sempre marcado como `active`, sem funcao de navegacao real — e decorativa, nao um `Sidebar` funcional. Isso contradiz diretamente a secao 11 (rotas esperadas: `/inicio`, `/clientes`, `/oportunidades`, `/funil`, `/proximas-acoes`, `/notificacoes`, `/configuracoes/integracoes/auvo`) e o padrao de navegacao da secao 12.
+- **`docs/DESIGN-SYSTEM.md` atual e aspiracional, nao real**: propoe shadcn/ui, Tailwind, Radix UI, TanStack Table, dnd-kit e Sonner — nenhuma dessas bibliotecas esta instalada (`package.json` confirmado: so `react`, `react-dom`, `lucide-react`, `zod`, `vite`, `vitest`). A stack real e CSS puro com custom properties, sem router, sem state manager, sem biblioteca de componentes. A secao 2 do prompt e explicita sobre isso: "confirme... nao assuma". `docs/DESIGN-SYSTEM.md` precisa ser reescrito para descrever o que existe de fato, nao o que foi planejado antes da implementacao real.
+- **Sem gerenciador de estado nem cliente de dados** (sem Context global, sem React Query/SWR): cada refresh e um `Promise.all` manual disparado por handlers espalhados por `App.tsx`. Funciona hoje pelo volume de dados baixo, mas gera bastante codigo repetido de loading/erro.
+- **Nenhuma estrutura de pastas por feature**: tudo em `src/App.tsx` + `src/components/` plano + `src/domain/` plano. Nao ha `src/features/*`, `src/hooks/`, `src/lib/` como a secao 11 sugere (adaptavel, nao obrigatorio ao pe da letra, mas a ausencia total de subdivisao e o problema real).
+
+### Problemas visuais
+
+- **Paleta funcional mas nao "colorida" no sentido da secao 7**: hoje e majoritariamente neutra (`--background: #f5f7fa`, `--surface: #ffffff`) com cor semantica so em badges/alertas. Nao ha cor de marca proprio-Artec definida (navy premium de sidebar, azul royal de acao primaria etc. da secao 7) alem do `--primary: #0f5f75` atual (um azul petroleo neutro). Nenhum logo/asset de marca real foi encontrado no repositorio para derivar paleta — vai precisar ser definida do zero, documentada como decisao de design (a propria secao 7 preve esse caminho quando nao ha marca disponivel).
+- **Sidebar sem a largura/tratamento premium pedido na secao 7** (260-280px, item ativo com fundo solido arredondado): a sidebar atual e simples, sem essa identidade visual, e como notado acima, tem apenas 1 item.
+- **Tabelas cruas (`<table>`) sem tratamento de `DataTable`**: listas de clientes e oportunidades (`src/App.tsx:982-1039`) sao tabelas HTML simples sem header sticky, sem estado de ordenacao visual, sem densidade configurada — funcionais, mas exatamente o "planilha disfarcada" que `AGENTS.md` pede para evitar.
+- **Sem tokens de espacamento/radius/sombra/motion/z-index/breakpoint** — cada componente define seus proprios valores de `padding`/`gap`/`border-radius` diretamente (nao violam a regra de "nao usar hex solto", mas violam a de tokens de espacamento consistentes da secao 7).
+
+### Problemas de UX
+
+- **Sem pagina/URL propria por contexto**: como nao ha roteamento, nao e possivel copiar/compartilhar um link direto para um cliente, oportunidade ou filtro especifico — todo estado de navegacao se perde ao recarregar a pagina. Isso contradiz a secao 11 ("nao quebrar deep links") pela ausencia total deles hoje.
+- **Central Comercial nao e a tela inicial isolada**: hoje ela e uma secao entre outras na mesma pagina longa, nao a primeira coisa que o usuario ve isolada ao entrar, como a secao 10.1 exige ("deve ser a tela inicial de operacao").
+- **Fluxo de follow-up funcional mas dependente de scroll manual** ate a secao de proximas acoes dentro da pagina unica, sem atalho direto por notificacao/link.
+- **Nao ha indicador de "oportunidade parada" (deal rotting)** mencionado na secao 6 (Close/Attio) — o backend ja calcula `stalledOpportunities` no centro comercial, mas o cartao do Pipeline (`PipelineBoard.tsx`) nao exibe esse sinal visualmente no kanban em si, so na lista do centro comercial.
+- **Visita tecnica nao tem fluxo proprio** (secao 10.3.1): hoje e so mais um tipo de proxima acao/atividade, sem tela de agenda dedicada, confirmacao rapida ou geracao de orcamento no mesmo fluxo.
+
+### Problemas de acessibilidade
+
+Cobertos com profundidade em `docs/ACCESSIBILITY-AUDIT.md` (auditoria automatizada ja executada e corrigida nesta sessao, antes da refatoracao comecar). Resumo relevante para a Fase 3 desta refatoracao:
+- Zero violacoes automatizadas atuais (axe-core, WCAG 2.0/2.1 A/AA) apos as correcoes de contraste e `aria-label` ja aplicadas.
+- Pendencias que so revisao manual cobre: navegacao por teclado ponta a ponta, teste com leitor de tela real, gerenciamento de foco ao abrir/fechar paineis, zoom 200%, `prefers-reduced-motion` (hoje irrelevante porque nao ha animacao nao-trivial, mas passa a importar assim que a Fase 1/4 desta refatoracao introduzir motion).
+
+### Problemas de responsividade
+
+- **Tabelas sem alternativa mobile**: `<table>` de clientes/oportunidades nao tem breakpoint que troque para cards/rows empilhados (secao 10.5/13 exigem isso). Em viewport estreito (360x800), essas tabelas devem causar overflow horizontal ou compressao ilegivel — nao testado visualmente ainda nesta auditoria (Fase 3 fara a validacao formal nos 7 breakpoints da secao 13), mas o CSS atual nao tem nenhuma regra que resolva isso.
+- **Pipeline/kanban sem visao mobile dedicada**: a secao 10.6 pede lista/etapa selecionavel em mobile em vez de kanban horizontal; hoje `PipelineBoard` nao tem esse modo alternativo.
+- **Sidebar em mobile vira apenas `position: static`** (empilha no topo), nao um drawer como a secao 13 pede.
+- **Sem breakpoints documentados como tokens**: os 2 breakpoints existentes sao valores soltos (`900px`, `560px`) dentro de `@media`, nao constantes nomeadas nem alinhadas aos 7 breakpoints de validacao da secao 13 (360x800 ate 1920x1080).
+
+### Dependencias e riscos
+
+- **Nenhuma biblioteca de UI/roteamento esta instalada** — qualquer decisao de adicionar `react-router` (necessario para atender a secao 11 de forma real) e uma mudanca de stack relevante. Pela secao 27 do proprio prompt, isso e um dos gatilhos explicitos para "parar e informar antes de agir": *"mudanca relevante de stack"*. Portanto, antes de instalar `react-router` (ou qualquer outra dependencia nova) na Fase 1/2, isso sera reportado especificamente como uma decisao a validar, e nao apenas assumido.
+- **Nenhum manifest PWA, service worker, icone de app ou `<link rel="apple-touch-icon">` existe hoje** (`index.html` confirmado minimo, sem tema, sem manifest; sem diretorio `public/`). A secao 25 exige isso — sera construido do zero na Fase 1/4, incluindo gerar o conjunto de icones a partir de uma fonte SVG (nao existe logo/asset de marca no repositorio hoje; sera necessario um simbolo proprio simples, documentado como decisao de design, ja que a secao 7 preve esse caminho quando nao ha marca disponivel).
+- **Suite E2E real usa o mesmo banco Supabase de homologacao/producao** (nao ha banco de teste isolado, decisao ja registrada em sessao anterior) — qualquer regressao introduzida pela refatoracao que quebre um fluxo critico sera pega pelos 11 specs existentes, mas a suite continua gravando dados reais prefixados a cada execucao (divida tecnica ja conhecida, nao desta fase).
+- **`AGENTS.md`/backend nao preveem paginas separadas** — nenhuma rota do backend depende de URL de frontend, entao introduzir roteamento no cliente e seguro do ponto de vista de contrato de API; o risco e puramente de frontend (estado perdido durante a migracao se feita de forma abrupta).
+
+### Plano de migracao
+
+Migracao incremental, sem big-bang, preservando `App.tsx` funcional a cada passo (renderizacao condicional continua existindo até a extracao de cada secao estar validada):
+
+1. **Fase 1 (proxima)**: fundacao do design system — tokens completos (espacamento, radius, sombra, motion, z-index, breakpoints, altura de controles, largura de sidebar) formalizados em `src/styles.css` (ou `src/styles/tokens.css` se a extracao de arquivo se justificar), tipografia, botoes, campos, badges, cards, feedback (empty/loading/error), shell e navegacao. Nesta fase, decidir e reportar explicitamente (nao assumir) se `react-router` entra ja aqui ou so quando a extracao por rota comecar de fato na Fase 2.
+2. **Fase 2**: extrair e refazer visualmente, na ordem obrigatoria da secao 19: Central Comercial, Proximas Acoes, Ficha de Oportunidade, Ficha de Cliente, Listas, Notificacoes, Pipeline, Auvo admin — cada uma virando seu proprio modulo/rota, saindo de dentro de `App.tsx` progressivamente.
+3. **Fase 3**: responsividade formal nos 7 breakpoints + acessibilidade manual (teclado, foco, ARIA, leitor de tela, `prefers-reduced-motion`).
+4. **Fase 4**: PWA completo (manifest, service worker, icones, `beforeinstallprompt`), qualidade e E2E (specs novos cobrindo os fluxos da secao 20, Lighthouse/instalabilidade).
+
+Ao final de cada fase: rodar validacoes (`typecheck`, `test`, `build`, `e2e` quando aplicavel), commit local na branch (sem push), resumo curto, e pausa para validacao humana antes da proxima fase — conforme exigido explicitamente pela secao 19 do prompt, inclusive apos esta propria Fase 0.
+
+### Estado ao final da Fase 0
+
+Auditoria concluida. Nenhum arquivo de codigo foi alterado. Aguardando validacao humana antes de iniciar a Fase 1 (fundacao do design system), incluindo uma decisao explicita sobre introduzir ou nao `react-router` nesta refatoracao, ja que é uma mudança de stack e o prompt pede para reportar isso antes de agir.
