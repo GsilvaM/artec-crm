@@ -1972,7 +1972,7 @@ function mapAuvoWebhookEvent(row: AuvoWebhookEventEntity): AuvoWebhookEventRecor
   };
 }
 
-const OUT_OF_SCOPE_AUVO_EVENT_TYPE_PREFIXES = ["MESSAGE_", "SESSION_", "PAYMENT_", "CARD_", "PANEL_", "TEMPLATE_"];
+const OUT_OF_SCOPE_AUVO_EVENT_TYPE_PREFIXES = ["MESSAGE_", "PAYMENT_", "CARD_", "PANEL_", "TEMPLATE_"];
 const OUT_OF_SCOPE_AUVO_EVENT_TYPES_EXACT = new Set(["CONTACT_TAG_UPDATE"]);
 
 export function isOutOfScopeAuvoEventType(eventType: string | null): boolean {

@@ -13,12 +13,16 @@ describe("isOutOfScopeAuvoEventType", () => {
     expect(isOutOfScopeAuvoEventType("attendance.created")).toBe(false);
   });
 
-  it("blocks message, session, payment, card, panel and template events observed for real in production", () => {
+  it("allows SESSION_* events: real capture on 2026-07-21 showed these are the only events firing for atendimento criado/alterado/concluido when just the 5 MVP events are enabled in Auvo, so they are not out of scope", () => {
+    expect(isOutOfScopeAuvoEventType("SESSION_NEW")).toBe(false);
+    expect(isOutOfScopeAuvoEventType("SESSION_UPDATE")).toBe(false);
+    expect(isOutOfScopeAuvoEventType("SESSION_COMPLETE")).toBe(false);
+  });
+
+  it("blocks message, payment, card, panel and template events observed for real in production", () => {
     expect(isOutOfScopeAuvoEventType("MESSAGE_SENT")).toBe(true);
     expect(isOutOfScopeAuvoEventType("MESSAGE_RECEIVED")).toBe(true);
     expect(isOutOfScopeAuvoEventType("MESSAGE_UPDATED")).toBe(true);
-    expect(isOutOfScopeAuvoEventType("SESSION_NEW")).toBe(true);
-    expect(isOutOfScopeAuvoEventType("SESSION_UPDATE")).toBe(true);
     expect(isOutOfScopeAuvoEventType("PAYMENT_CREATED")).toBe(true);
     expect(isOutOfScopeAuvoEventType("payment_updated")).toBe(true);
     expect(isOutOfScopeAuvoEventType("CARD_MOVED")).toBe(true);

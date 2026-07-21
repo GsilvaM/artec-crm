@@ -352,6 +352,14 @@ Fluxos do `CLAUDE-ARTEC-CRM.md` secao 14 que **nao** foram cobertos por E2E real
 - Runbook de incidentes e politica de backup documentados.
 - Analise de planos de consulta (`EXPLAIN`) nas queries mais pesadas dos relatorios.
 
+## Correcao: SESSION_* nao e fora de escopo (2026-07-21)
+
+Durante o incidente do primeiro registro (18 eventos habilitados por engano), `SESSION_NEW`/`SESSION_UPDATE` apareceram misturados com eventos de mensagem, e foram classificados como fora de escopo por associacao (nao havia evidencia isolada do que representavam). Apagados junto com o resto do lote na limpeza daquele incidente.
+
+Com apenas os 5 eventos do MVP habilitados, o usuario criou um contato de teste e um atendimento (criar/alterar/concluir). Os unicos eventos reais recebidos foram `CONTACT_NEW`, `CONTACT_UPDATE`, `SESSION_NEW`, `SESSION_UPDATE` e `SESSION_COMPLETE` — nenhum evento de mensagem, pagamento ou painel. Isso e evidencia forte de que `SESSION_*` e o nome real que o Auvo usa internamente para o conceito de "Atendimento" exibido na UI (`SESSION_NEW` = Atendimento criado, `SESSION_UPDATE` = Atendimento alterado, `SESSION_COMPLETE` = Atendimento concluido).
+
+`SESSION_` removido de `OUT_OF_SCOPE_AUVO_EVENT_TYPE_PREFIXES` em `server/crm/prisma-repository.ts`. Os eventos `SESSION_*` desta captura ja tinham sido ignorados com payload descartado antes dessa correcao (por design: eventos fora de escopo nao tem o payload persistido) — pedido ao usuario para gerar mais uma acao de atendimento apos o deploy da correcao, para capturar o payload completo e documentar o schema real, em vez de presumir a estrutura.
+
 ## Incidente: eventos fora de escopo capturados na primeira ativacao do webhook (2026-07-21)
 
 O usuario cadastrou o webhook no Auvo com **18 eventos marcados**, incluindo todos os proibidos pelo escopo do MVP (`CLAUDE.md`, secoes 5 e 10.4): pagamento criado/alterado, mensagens (enviada/recebida/atualizada), eventos de painel/card, anotacoes de painel e modelo de mensagem. O webhook ficou `ATIVO` por alguns minutos nessa configuracao.
