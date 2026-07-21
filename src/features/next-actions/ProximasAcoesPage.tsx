@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
 import { TimelineDrawer, type TimelineTarget } from "../../components/ui/TimelineDrawer";
@@ -56,6 +57,7 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timelineTarget, setTimelineTarget] = useState<TimelineTarget | null>(null);
+  const navigate = useNavigate();
 
   async function refresh() {
     setIsLoading(true);
@@ -124,7 +126,7 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
                     </td>
                     <td>
                       {action.opportunityId ? (
-                        <button className="search-dropdown-item" type="button" onClick={() => setTimelineTarget({ type: "opportunity", id: action.opportunityId as string, name: action.opportunityTitle ?? "Oportunidade" })}>
+                        <button className="search-dropdown-item" type="button" onClick={() => navigate(`/oportunidades/${action.opportunityId}`)}>
                           {action.opportunityTitle}
                         </button>
                       ) : "Atendimento"}

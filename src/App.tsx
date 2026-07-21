@@ -1,6 +1,6 @@
 import { AlertCircle, Archive, CheckCircle2, Clock, Copy, Edit3, LogIn, LogOut, Plus, RefreshCw, Search, XCircle } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
 import { formatActivityType, formatDateTime, formatMoney } from "./domain/format";
 import {
@@ -58,6 +58,7 @@ import { LoadingPanels } from "./components/ui/Skeleton";
 import { NotificationList, formatNotificationStatus } from "./components/ui/NotificationList";
 import { CentralComercialPage } from "./features/commercial-center/CentralComercialPage";
 import { ProximasAcoesPage } from "./features/next-actions/ProximasAcoesPage";
+import { OportunidadePage } from "./features/opportunities/OportunidadePage";
 
 const SECTION_ID_BY_PATH: Record<string, string> = {
   "/pipeline": "pipeline-section",
@@ -157,6 +158,7 @@ export function App() {
       <Route element={<AppLayout userEmail={authState.user.email} onLogout={handleLogout} canManageIntegrations={canManageIntegrations} />}>
         <Route path="central-comercial" element={<CentralComercialPage currentUserId={authState.user.id} />} />
         <Route path="proximas-acoes" element={<ProximasAcoesPage currentUserId={authState.user.id} />} />
+        <Route path="oportunidades/:id" element={<OportunidadePage currentUserId={authState.user.id} canManageUsers={authState.user.permissions.includes("users:manage")} />} />
         <Route index element={<Navigate to="/central-comercial" replace />} />
         <Route path="*" element={<AuthenticatedApp authState={authState} onLogout={handleLogout} />} />
       </Route>
@@ -393,15 +395,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     const telefone = window.prompt("Telefone do cliente", customer.telefone ?? "");
     if (telefone === null) return;
     await updateCustomer(customer.id, { telefone });
-    await refresh();
-  }
-
-  async function handleEditOpportunity(opportunity: Opportunity) {
-    const proximaAcao = window.prompt("Proxima acao", opportunity.proximaAcao ?? "");
-    if (!proximaAcao) return;
-    const proximaAcaoEm = window.prompt("Data da proxima acao em ISO ou AAAA-MM-DDTHH:mm", opportunity.proximaAcaoEm ?? "");
-    if (!proximaAcaoEm) return;
-    await updateOpportunity(opportunity.id, { proximaAcao, proximaAcaoEm });
     await refresh();
   }
 
@@ -722,11 +715,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                         <td>{opportunity.proximaAcao ? `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}` : <span className="badge danger-badge">sem proxima acao</span>}</td>
                         <td><span className="badge">{opportunity.status}</span></td>
                         <td className="actions-cell">
-                          <button className="button secondary" type="button" onClick={() => void openOpportunityTimeline(opportunity.id)}>Historico</button>
-                          <button className="icon-button" type="button" aria-label={`Aprovar ${opportunity.titulo}`} onClick={() => void handleApproveOpportunity(opportunity)}><CheckCircle2 aria-hidden="true" /></button>
-                          <button className="icon-button" type="button" aria-label={`Marcar ${opportunity.titulo} como perdida`} onClick={() => void handleLoseOpportunity(opportunity)}><XCircle aria-hidden="true" /></button>
-                          <button className="icon-button" type="button" aria-label={`Editar proxima acao de ${opportunity.titulo}`} onClick={() => void handleEditOpportunity(opportunity)}><Edit3 aria-hidden="true" /></button>
-                          <button className="icon-button" type="button" aria-label={`Arquivar ${opportunity.titulo}`} onClick={() => void handleArchiveOpportunity(opportunity)}><Archive aria-hidden="true" /></button>
+                          <Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir</Link>
                         </td>
                       </tr>
                     ))}</tbody>

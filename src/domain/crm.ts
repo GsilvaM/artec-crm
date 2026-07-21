@@ -20,6 +20,7 @@ export type Opportunity = {
   clienteId: string;
   clienteNome: string;
   titulo: string;
+  descricao: string | null;
   tipoDemanda: string;
   origem: string | null;
   responsavelId: string;
@@ -27,14 +28,21 @@ export type Opportunity = {
   etapaNome: string;
   situacao: string;
   valorEstimado: number | null;
+  valorOrcamento: number | null;
   valorAprovado: number | null;
   formaPagamento: string | null;
   quantidadeParcelas: number | null;
   previsaoExecucao: string | null;
   proximaAcao: string | null;
   proximaAcaoEm: string | null;
+  dataEntrada: string;
+  dataAprovacao: string | null;
+  dataPerda: string | null;
+  motivoPerdaId: string | null;
+  motivoPerdaNome: string | null;
   status: "rascunho" | "ativa" | "ganha" | "perdida" | "arquivada";
   currentNextActionId: string | null;
+  archivedAt: string | null;
 };
 
 export type Activity = {
@@ -436,6 +444,10 @@ export type NextActionFilters = {
   future?: boolean;
 };
 
+export async function loadNextAction(id: string): Promise<NextAction> {
+  return (await apiGet<{ nextAction: NextAction }>(`/api/next-actions/${id}`)).nextAction;
+}
+
 export async function loadNextActions(filters: NextActionFilters = {}): Promise<NextAction[]> {
   const query = toQueryString({
     responsibleUserId: filters.responsibleUserId,
@@ -521,6 +533,10 @@ export async function ignoreAuvoWebhookEvent(id: string): Promise<AuvoWebhookEve
 
 export async function loadPipelineStages(): Promise<PipelineStage[]> {
   return (await apiGet<{ stages: PipelineStage[] }>("/api/pipeline-stages")).stages;
+}
+
+export async function loadLossReasons(): Promise<LossReason[]> {
+  return (await apiGet<{ lossReasons: LossReason[] }>("/api/loss-reasons")).lossReasons;
 }
 
 export async function createPipelineStage(payload: { nome: string; ordem: number }): Promise<PipelineStage> {

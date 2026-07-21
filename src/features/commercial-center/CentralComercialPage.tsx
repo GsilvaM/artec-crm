@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { LoadingPanels } from "../../components/ui/Skeleton";
 import { NotificationList } from "../../components/ui/NotificationList";
 import { formatMoney } from "../../domain/format";
@@ -15,7 +16,6 @@ import { useActionOperation, type ActionOperationTarget } from "../next-actions/
 import { ActionOperationForm } from "../next-actions/ActionOperationForm";
 import { CommercialActionBlock } from "./CommercialActionBlock";
 import { CommercialOpportunityBlock } from "./CommercialOpportunityBlock";
-import { TimelineDrawer, type TimelineTarget } from "../../components/ui/TimelineDrawer";
 
 export function CentralComercialPage({ currentUserId }: { currentUserId: string }) {
   const [filters, setFilters] = useState<CommercialCenterFilters>({});
@@ -23,7 +23,7 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timelineTarget, setTimelineTarget] = useState<TimelineTarget | null>(null);
+  const navigate = useNavigate();
   const notifications = useNotifications({ status: "active", limit: "5" });
 
   async function refresh() {
@@ -49,8 +49,8 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
   const actionOperation = useActionOperation(currentUserId, refresh);
   const hasFilters = Object.values(filters).some((value) => Boolean(value));
 
-  function openTimeline(target: TimelineTarget) {
-    setTimelineTarget(target);
+  function openOpportunity(id: string) {
+    navigate(`/oportunidades/${id}`);
   }
 
   function toActionTarget(item: { id: string; customerId: string; customerName: string; opportunityId: string | null; category: ActionOperationTarget["category"]; dueAt: string }): ActionOperationTarget {
@@ -150,19 +150,19 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
             title="Orcamentos aguardando retorno"
             emptyText="Nenhum orcamento aguardando retorno."
             items={center.quotesAwaitingReturn}
-            onOpen={(id, name) => openTimeline({ type: "opportunity", id, name })}
+            onOpen={openOpportunity}
           />
           <CommercialOpportunityBlock
             title="Oportunidades sem proxima acao"
             emptyText="Todas as oportunidades ativas possuem acompanhamento."
             items={center.opportunitiesWithoutNextAction}
-            onOpen={(id, name) => openTimeline({ type: "opportunity", id, name })}
+            onOpen={openOpportunity}
           />
           <CommercialOpportunityBlock
             title="Oportunidades paradas"
             emptyText="Nenhuma oportunidade parada."
             items={center.stalledOpportunities}
-            onOpen={(id, name) => openTimeline({ type: "opportunity", id, name })}
+            onOpen={openOpportunity}
           />
           <article className="panel commercial-card">
             <header>
@@ -188,7 +188,6 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
         </section>
       )}
 
-      {timelineTarget ? <TimelineDrawer target={timelineTarget} onClose={() => setTimelineTarget(null)} /> : null}
     </>
   );
 }

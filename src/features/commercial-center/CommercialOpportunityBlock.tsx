@@ -6,7 +6,7 @@ export function CommercialOpportunityBlock({ title, emptyText, items, onOpen }: 
   title: string;
   emptyText: string;
   items: CommercialCenterOpportunityItem[];
-  onOpen: (id: string, name: string) => void;
+  onOpen: (id: string) => void;
 }) {
   return (
     <article className="panel commercial-card">
@@ -23,7 +23,7 @@ export function CommercialOpportunityBlock({ title, emptyText, items, onOpen }: 
                 <span>{item.customerName} - {item.stageName}</span>
                 <small>{item.situation} - {item.daysOpen} dias em aberto{item.nextActionDueAt ? ` - ${formatDateTime(item.nextActionDueAt)}` : ""}</small>
               </div>
-              <button className="button secondary" type="button" onClick={() => onOpen(item.id, item.title)}>Abrir</button>
+              <button className="button secondary" type="button" onClick={() => onOpen(item.id)}>Abrir</button>
             </li>
           ))}
         </ul>
