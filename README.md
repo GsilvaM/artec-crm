@@ -10,7 +10,9 @@ CRM comercial independente da Artec Ambientes Climatizados. Este projeto nao dev
 - `npm run build`: build do frontend e backend.
 - `npm run start:server`: executa o backend compilado.
 - `npm run typecheck`: valida TypeScript.
-- `npm run test`: executa testes automatizados.
+- `npm run test`: executa testes automatizados (unitarios/integracao, Vitest).
+- `npm run e2e`: executa a suite E2E (Playwright) contra o app rodando em `http://127.0.0.1:3100`. Sobe `dev:server`/`dev:frontend` automaticamente se ainda nao estiverem no ar. Exige `EMAIL_LOGIN`/`SENHA` (usuario real de homologacao) no `.env`/`.env.local`. Cria dados reais prefixados com `E2E` no banco de homologacao a cada execucao; nao ha ambiente de teste isolado ainda.
+- `npm run e2e:ui`: mesma suite, com a interface interativa do Playwright.
 - `npm run prisma:generate`: gera o Prisma Client usado pelo backend.
 - `npm run prisma:validate`: valida `prisma/schema.prisma`.
 - `npm run prisma:format`: formata `prisma/schema.prisma`.

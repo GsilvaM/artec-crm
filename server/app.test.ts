@@ -112,6 +112,17 @@ describe("CRM API auth and RBAC", () => {
     expect(response.json()).toMatchObject({ status: "ok", service: "artec-crm-api", database: "connected" });
   });
 
+  it("sets baseline security headers on every response", async () => {
+    const app = createTestServer({});
+    const response = await app.inject({ method: "GET", url: "/api/health" });
+    await app.close();
+
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-frame-options"]).toBe("DENY");
+    expect(response.headers["referrer-policy"]).toBe("no-referrer");
+    expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
   it("rejects /api/me without bearer token", async () => {
     const app = createTestServer({});
     const response = await app.inject({ method: "GET", url: "/api/me" });

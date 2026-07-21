@@ -327,6 +327,31 @@ Frontend: a caixa de busca da topbar (ja existente) ganhou um dropdown com debou
 
 Validacao: `npm run typecheck`, `npm run test` (59 testes, 1 novo cobrindo busca combinada e query vazia) e `npm run build` passaram. Verificado com Playwright: digitar "Homologacao" retornou clientes reais agrupados, clicar no primeiro resultado abriu a linha do tempo correta e fechou o dropdown, sem erros de console.
 
+## Hardening final e E2E minimo (2026-07-21)
+
+### Playwright E2E
+
+Infraestrutura adicionada do zero: `playwright.config.ts` (chromium, `webServer` sobe `dev:server`+`dev:frontend` automaticamente se nao estiverem no ar, `baseURL` configuravel via `CRM_E2E_BASE_URL` para apontar a outro ambiente), `e2e/support/auth.ts` (login real via UI, credenciais lidas de `EMAIL_LOGIN`/`SENHA`, nunca hardcoded — falha com mensagem clara se as env vars nao existirem), e 7 specs cobrindo os fluxos criticos que o unico usuario real de homologacao disponivel permite exercitar: login (sucesso e falha), criar cliente, criar oportunidade e ve-la no funil, Central Comercial, Relatorios, Administracao, Busca global.
+
+Todos os 7 testes passaram contra o ambiente real (`https://artec-crm.vercel.app` ou local, mesmo banco Supabase). Limitacao honesta: **nao ha banco de teste isolado** — os testes rodam contra o mesmo Supabase de producao (decisao ja tomada e documentada no Marco Deploy), e o teste de criacao de cliente/oportunidade grava dados reais prefixados com `E2E <timestamp>` a cada execucao, sem limpeza automatica. Isso segue o mesmo padrao ja presente no ambiente (dezenas de registros `Cliente Homologacao...` de sessoes anteriores), mas fica registrado como divida tecnica: rodar a suite repetidamente (ex: em CI) acumula dados indefinidamente.
+
+Fluxos do `CLAUDE-ARTEC-CRM.md` secao 14 que **nao** foram cobertos por E2E real, por exigirem um segundo usuario com papel diferente (`vendedor`/`atendimento`) que nao existe neste ambiente: aprovacao, perda, garantia, suporte, RBAC entre papeis. RBAC entre papeis ja esta coberto exaustivamente nos 60 testes de API/unitarios (Vitest), que simulam os tres papeis livremente sem depender de contas reais.
+
+### Seguranca
+
+- Headers de seguranca adicionados via hook `onSend` global em `server/app.ts`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`. `Strict-Transport-Security` ja e adicionado automaticamente pela Vercel em producao (confirmado por curl direto na sessao do Marco Deploy).
+- `npm audit`: 3 vulnerabilidades moderadas, todas em `@hono/node-server`, dependencia transitiva de `@prisma/dev` (ferramental de desenvolvimento do Prisma — Prisma Studio/dev server), nao usada em runtime de producao. `npm audit fix --dry-run` nao resolve (upstream ainda nao publicou a correcao na faixa de versao usada pelo Prisma 7.8.0 fixado no projeto). Risco baixo, registrado, nao corrigido nesta sessao para nao arriscar quebrar a versao do Prisma fixada.
+- Confirmado: nenhum `.env`/`.env.local` versionado (`git ls-files` so retorna `.env.example`); nenhum segredo hardcoded encontrado em busca por padroes (`sk_live`, chaves AWS, JWT, connection strings com credenciais) em codigo e documentacao rastreados.
+- `bodyLimit` global do Fastify (256 KiB) ja cobre todas as rotas, nao so o webhook Auvo.
+
+### Nao feito nesta sessao (registrado, nao esquecido)
+
+- Paginacao por cursor em `GET /api/customers` e `GET /api/opportunities` (hoje limitam a 100 registros via `take`, sem cursor); `GET /api/integrations/auvo/events` ja tem cursor.
+- Rate limit global em rotas autenticadas (hoje so a rota publica do webhook Auvo tem rate limit; rotas autenticadas dependem so do Bearer token do Supabase como barreira).
+- Auditoria formal de acessibilidade (WCAG).
+- Runbook de incidentes e politica de backup documentados.
+- Analise de planos de consulta (`EXPLAIN`) nas queries mais pesadas dos relatorios.
+
 ## Incidente: eventos fora de escopo capturados na primeira ativacao do webhook (2026-07-21)
 
 O usuario cadastrou o webhook no Auvo com **18 eventos marcados**, incluindo todos os proibidos pelo escopo do MVP (`CLAUDE.md`, secoes 5 e 10.4): pagamento criado/alterado, mensagens (enviada/recebida/atualizada), eventos de painel/card, anotacoes de painel e modelo de mensagem. O webhook ficou `ATIVO` por alguns minutos nessa configuracao.

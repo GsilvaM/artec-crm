@@ -52,6 +52,14 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
     errorResponseBuilder: () => new ApiError(429, "rate_limited", "Muitas requisicoes. Tente novamente em instantes."),
   });
 
+  app.addHook("onSend", async (_request, reply, payload) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("Referrer-Policy", "no-referrer");
+    reply.header("Cache-Control", "no-store");
+    return payload;
+  });
+
   app.setErrorHandler((error, request, reply) => {
     const publicError = toPublicError(error);
 
