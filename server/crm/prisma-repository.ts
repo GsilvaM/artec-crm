@@ -1,5 +1,5 @@
 import { ApiError } from "../errors.js";
-import type { Prisma } from "../generated/prisma/client.js";
+import { Prisma } from "../generated/prisma/client.js";
 import type { CrmPrismaClient } from "../database/prisma.js";
 import type {
   Actor,
@@ -15,11 +15,15 @@ import type {
   CompleteNextActionInput,
   CreateActivityInput,
   CreateCustomerInput,
+  CreateLossReasonInput,
   CreateNextActionInput,
   CreateOpportunityInput,
+  CreatePipelineStageInput,
   CrmDataRepository,
   CustomerRecord,
+  LossReasonAdminRecord,
   LossReasonRecord,
+  MembershipCandidateRecord,
   NotificationFilters,
   NotificationListRecord,
   NotificationRecord,
@@ -36,7 +40,10 @@ import type {
   UpdateCustomerInput,
   UpdateNextActionInput,
   UpdateOpportunityInput,
+  UpdatePipelineStageInput,
+  UpsertMembershipInput,
 } from "./types.js";
+import type { CrmRole } from "../auth/rbac.js";
 import { createWebhookPayloadHash, normalizeAuvoWebhookStatus, sanitizeWebhookPayload } from "./auvo-webhook.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./validation.js";
 
@@ -95,6 +102,14 @@ const nextActionInclude = {
 
 const STALLED_DAYS_THRESHOLD = 3;
 const DUE_SOON_HOURS = 24;
+const RESERVED_TERMINAL_STAGE_NAMES = new Set(["Aprovado", "Perdido"]);
+
+function translatePipelineStageWriteError(error: unknown): unknown {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    return new ApiError(409, "bad_request", "Ja existe uma etapa com esse nome ou ordem.");
+  }
+  return error;
+}
 
 export class PrismaCrmDataRepository implements CrmDataRepository {
   constructor(private readonly prisma: CrmPrismaClient) {}
@@ -1204,6 +1219,119 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       select: { id: true, nome: true },
       orderBy: { nome: "asc" },
     });
+  }
+
+  async createPipelineStage(_actor: Actor, input: CreatePipelineStageInput): Promise<PipelineStageRecord> {
+    const nome = input.nome.trim();
+    if (RESERVED_TERMINAL_STAGE_NAMES.has(nome)) {
+      throw new ApiError(409, "bad_request", "Esse nome de etapa e reservado pelo fluxo de aprovar/perder.");
+    }
+    try {
+      const stage = await this.prisma.pipelineStage.create({
+        data: { nome, ordem: input.ordem, isTerminal: false },
+      });
+      return { id: stage.id, nome: stage.nome, ordem: stage.ordem, isTerminal: stage.isTerminal };
+    } catch (error) {
+      throw translatePipelineStageWriteError(error);
+    }
+  }
+
+  async updatePipelineStage(_actor: Actor, id: string, input: UpdatePipelineStageInput): Promise<PipelineStageRecord | null> {
+    const current = await this.prisma.pipelineStage.findUnique({ where: { id } });
+    if (!current) return null;
+
+    if (input.nome !== undefined) {
+      const nextName = input.nome.trim();
+      if (current.isTerminal && nextName !== current.nome) {
+        throw new ApiError(409, "bad_request", "Etapas terminais nao podem ser renomeadas: o fluxo de aprovar/perder depende do nome exato das etapas terminais.");
+      }
+      if (!current.isTerminal && RESERVED_TERMINAL_STAGE_NAMES.has(nextName)) {
+        throw new ApiError(409, "bad_request", "Esse nome de etapa e reservado pelo fluxo de aprovar/perder.");
+      }
+    }
+
+    try {
+      const stage = await this.prisma.pipelineStage.update({
+        where: { id },
+        data: {
+          nome: input.nome !== undefined ? input.nome.trim() : undefined,
+          ordem: input.ordem,
+        },
+      });
+      return { id: stage.id, nome: stage.nome, ordem: stage.ordem, isTerminal: stage.isTerminal };
+    } catch (error) {
+      throw translatePipelineStageWriteError(error);
+    }
+  }
+
+  async listLossReasonsAdmin(): Promise<LossReasonAdminRecord[]> {
+    return this.prisma.lossReason.findMany({
+      select: { id: true, nome: true, isActive: true },
+      orderBy: { nome: "asc" },
+    });
+  }
+
+  async createLossReason(_actor: Actor, input: CreateLossReasonInput): Promise<LossReasonAdminRecord> {
+    const nome = input.nome.trim();
+    const existing = await this.prisma.lossReason.findUnique({ where: { nome } });
+    if (existing) {
+      throw new ApiError(409, "bad_request", "Ja existe um motivo de perda com esse nome.");
+    }
+    const reason = await this.prisma.lossReason.create({ data: { nome, isActive: true } });
+    return { id: reason.id, nome: reason.nome, isActive: reason.isActive };
+  }
+
+  async setLossReasonActive(_actor: Actor, id: string, isActive: boolean): Promise<LossReasonAdminRecord | null> {
+    const current = await this.prisma.lossReason.findUnique({ where: { id } });
+    if (!current) return null;
+    const reason = await this.prisma.lossReason.update({ where: { id }, data: { isActive } });
+    return { id: reason.id, nome: reason.nome, isActive: reason.isActive };
+  }
+
+  async listMembershipCandidates(): Promise<MembershipCandidateRecord[]> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{ user_id: string; email: string | null; role: string | null; is_active: boolean | null }>
+    >`
+      SELECT u.id AS user_id, u.email AS email, m.role AS role, m.is_active AS is_active
+      FROM auth.users u
+      LEFT JOIN crm.user_memberships m ON m.user_id = u.id
+      ORDER BY u.email ASC NULLS LAST
+    `;
+
+    return rows.map((row) => ({
+      userId: row.user_id,
+      email: row.email,
+      hasMembership: row.role !== null,
+      role: row.role as CrmRole | null,
+      isActive: row.is_active,
+    }));
+  }
+
+  async upsertMembership(actor: Actor, userId: string, input: UpsertMembershipInput): Promise<MembershipCandidateRecord> {
+    if (actor.id === userId && !input.isActive) {
+      throw new ApiError(409, "bad_request", "Voce nao pode desativar sua propria membership.");
+    }
+
+    const emailRows = await this.prisma.$queryRaw<Array<{ email: string | null }>>`
+      SELECT email FROM auth.users WHERE id = ${userId}::uuid
+    `;
+    if (!emailRows.length) {
+      throw new ApiError(422, "bad_request", "Usuario nao encontrado no Supabase Auth.");
+    }
+
+    await this.prisma.userMembership.upsert({
+      where: { userId },
+      create: { userId, role: input.role, isActive: input.isActive, createdBy: actor.id, updatedBy: actor.id },
+      update: { role: input.role, isActive: input.isActive, updatedBy: actor.id },
+    });
+
+    return {
+      userId,
+      email: emailRows[0]?.email ?? null,
+      hasMembership: true,
+      role: input.role,
+      isActive: input.isActive,
+    };
   }
 
   async close(): Promise<void> {

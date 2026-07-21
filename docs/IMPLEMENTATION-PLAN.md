@@ -149,6 +149,16 @@ Critério de aceite: atendimento do Auvo chega, é triado e gera o destino corre
 
 Critério de aceite: valores comerciais são mensuráveis sem qualquer lançamento financeiro.
 
+## 7b. Administração
+
+- [x] CRUD de etapas do funil (criar, renomear, reordenar; etapas terminais protegidas contra renomeacao).
+- [x] CRUD de motivos de perda (criar, ativar/desativar).
+- [x] Gestao de usuarios/memberships (listar usuarios do Supabase Auth, conceder/revogar acesso ao CRM, trocar papel), substituindo o fluxo manual via SQL do runbook.
+- [ ] Origens e tipos de demanda configuraveis (permanecem como texto livre na oportunidade; decisao deliberada de escopo, nao um gap esquecido).
+- [ ] Visualizador de auditoria (`crm.audit_log` existe e e populado, mas sem tela de consulta ainda).
+
+Status em 2026-07-21: rotas `/api/admin/*` restritas a `gestor` (permissoes `settings:read`, `settings:write`, `users:manage`, ja existentes no RBAC mas sem uso ate agora). Testado com dados reais de homologacao (leitura e escrita ponta a ponta via Playwright).
+
 ## 8. Relatórios e hardening
 
 - [ ] Dashboard por período.

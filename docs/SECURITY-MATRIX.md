@@ -1,6 +1,6 @@
 # Artec CRM - Matriz de acesso
 
-Atualizado em: 2026-07-20
+Atualizado em: 2026-07-21
 
 ## Principios
 
@@ -42,6 +42,13 @@ Atualizado em: 2026-07-20
 | `crm_internal.auvo_inbox_items` | Nao | Futuro processamento Auvo | Nao usar antes de payloads reais e Caixa de Entrada definitiva. |
 | `crm_internal.auvo_sync_jobs` | Nao | Futuro worker | Nao usar antes da fase Auvo. |
 | `crm_internal.integration_logs` | Nao | Backend/admin | Nao expor payload sensivel. |
+
+## Administracao (rotas `/api/admin/*`, exclusivas de gestor)
+
+- Backend le `auth.users` (id, email) via `CRM_DATABASE_URL` para listar candidatos a membership. Confirmado por teste direto: o role usado pela conexao Postgres do backend tem `SELECT` em `auth.users` (mesmo projeto Supabase). Nenhum service role foi adicionado; a leitura usa a mesma credencial de banco ja existente.
+- `crm.etapas_funil`: `nome` e `ordem` sao `UNIQUE` no schema. Etapas terminais (`is_terminal = true`: hoje `Aprovado`, `Concluido` e `Perdido`) nao podem ser renomeadas via API, porque `approveOpportunity`/`loseOpportunity` localizam a etapa por nome exato (`getStageIdByName`). Reordenar etapas terminais e permitido.
+- `crm.motivos_perda`: sem exclusao definitiva pela API; apenas `is_active` (soft-disable), preservando historico de oportunidades ja perdidas com aquele motivo.
+- `crm.user_memberships`: upsert via `/api/admin/users/:userId/membership`. Um gestor nao pode desativar a propria membership (bloqueio de auto-exclusao). Nao existe fluxo de convite/criacao de conta Supabase pela API — usuarios novos continuam sendo criados manualmente no painel do Supabase Auth (fora do escopo, exigiria service role).
 
 ## Funcoes Security Definer
 

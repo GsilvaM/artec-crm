@@ -44,6 +44,7 @@ import {
   type Opportunity,
 } from "./domain/crm";
 import { PipelineBoard } from "./components/PipelineBoard";
+import { AdminPanel } from "./components/AdminPanel";
 
 type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
 
@@ -195,6 +196,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   );
   const hasCommercialFilters = Object.values(commercialFilters).some((value) => Boolean(value));
   const canManageIntegrations = authState.user.permissions.includes("integrations:read");
+  const canManageUsers = authState.user.permissions.includes("users:manage");
 
   const metrics = useMemo(
     () => [
@@ -748,6 +750,10 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                   <AuvoEventDetail event={selectedAuvoEvent} onReprocess={handleReprocessAuvoEvent} onIgnore={handleIgnoreAuvoEvent} />
                 </div>
               </section>
+            ) : null}
+
+            {canManageUsers ? (
+              <AdminPanel stages={snapshot.stages} onStagesChanged={refresh} currentUserId={authState.user.id} />
             ) : null}
 
             <section className="split-layout">

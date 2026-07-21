@@ -18,11 +18,15 @@ import type {
   CompleteNextActionInput,
   CreateActivityInput,
   CreateCustomerInput,
+  CreateLossReasonInput,
   CreateNextActionInput,
   CreateOpportunityInput,
+  CreatePipelineStageInput,
   CrmDataRepository,
   CustomerRecord,
+  LossReasonAdminRecord,
   LossReasonRecord,
+  MembershipCandidateRecord,
   NotificationFilters,
   NotificationListRecord,
   NotificationRecord,
@@ -38,6 +42,8 @@ import type {
   UpdateCustomerInput,
   UpdateNextActionInput,
   UpdateOpportunityInput,
+  UpdatePipelineStageInput,
+  UpsertMembershipInput,
 } from "./crm/types.js";
 import { createWebhookPayloadHash, sanitizeWebhookPayload } from "./crm/auvo-webhook.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./crm/validation.js";
@@ -914,6 +920,80 @@ describe("CRM activities and next actions API", () => {
     expect(reprocess.json().event.attemptCount).toBe(1);
     expect(ignore.json().event.status).toBe("ignored");
   });
+
+  it("keeps pipeline stage administration restricted to gestor and protects reserved terminal stage names", async () => {
+    const repository = new FakeCrmRepository();
+    const sellerApp = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true }, crmRepository: repository });
+    const denied = await sellerApp.inject({ method: "POST", url: "/api/admin/pipeline-stages", headers: { authorization: "Bearer valid" }, payload: { nome: "Nova etapa", ordem: 2 } });
+    await sellerApp.close();
+
+    const managerApp = createTestServer({ crmRepository: repository });
+    const created = await managerApp.inject({ method: "POST", url: "/api/admin/pipeline-stages", headers: { authorization: "Bearer valid" }, payload: { nome: "Nova etapa", ordem: 2 } });
+    const reservedName = await managerApp.inject({ method: "POST", url: "/api/admin/pipeline-stages", headers: { authorization: "Bearer valid" }, payload: { nome: "Aprovado", ordem: 3 } });
+    const renamedOk = await managerApp.inject({ method: "PATCH", url: `/api/admin/pipeline-stages/${created.json().stage.id}`, headers: { authorization: "Bearer valid" }, payload: { nome: "Etapa renomeada" } });
+    const renameTerminalBlocked = await managerApp.inject({ method: "PATCH", url: `/api/admin/pipeline-stages/${lostStageId}`, headers: { authorization: "Bearer valid" }, payload: { nome: "Ganho" } });
+    const duplicateOrdem = await managerApp.inject({ method: "POST", url: "/api/admin/pipeline-stages", headers: { authorization: "Bearer valid" }, payload: { nome: "Outra etapa", ordem: 1 } });
+    await managerApp.close();
+
+    expect(denied.statusCode).toBe(403);
+    expect(created.statusCode).toBe(201);
+    expect(reservedName.statusCode).toBe(409);
+    expect(renamedOk.statusCode).toBe(200);
+    expect(renamedOk.json().stage.nome).toBe("Etapa renomeada");
+    expect(renameTerminalBlocked.statusCode).toBe(409);
+    expect(duplicateOrdem.statusCode).toBe(409);
+  });
+
+  it("keeps loss reason administration restricted to gestor and supports create/list/toggle", async () => {
+    const repository = new FakeCrmRepository();
+    const sellerApp = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true }, crmRepository: repository });
+    const denied = await sellerApp.inject({ method: "GET", url: "/api/admin/loss-reasons", headers: { authorization: "Bearer valid" } });
+    await sellerApp.close();
+
+    const managerApp = createTestServer({ crmRepository: repository });
+    const created = await managerApp.inject({ method: "POST", url: "/api/admin/loss-reasons", headers: { authorization: "Bearer valid" }, payload: { nome: "novo motivo" } });
+    const duplicate = await managerApp.inject({ method: "POST", url: "/api/admin/loss-reasons", headers: { authorization: "Bearer valid" }, payload: { nome: "novo motivo" } });
+    const listed = await managerApp.inject({ method: "GET", url: "/api/admin/loss-reasons", headers: { authorization: "Bearer valid" } });
+    const deactivated = await managerApp.inject({ method: "PATCH", url: `/api/admin/loss-reasons/${created.json().lossReason.id}`, headers: { authorization: "Bearer valid" }, payload: { isActive: false } });
+    const publicListAfterDeactivation = await managerApp.inject({ method: "GET", url: "/api/loss-reasons", headers: { authorization: "Bearer valid" } });
+    await managerApp.close();
+
+    expect(denied.statusCode).toBe(403);
+    expect(created.statusCode).toBe(201);
+    expect(duplicate.statusCode).toBe(409);
+    expect(listed.json().lossReasons).toHaveLength(2);
+    expect(deactivated.json().lossReason.isActive).toBe(false);
+    expect(publicListAfterDeactivation.json().lossReasons.map((reason: { nome: string }) => reason.nome)).not.toContain("novo motivo");
+  });
+
+  it("keeps user/membership administration restricted to gestor and blocks self-deactivation", async () => {
+    const repository = new FakeCrmRepository();
+    const sellerApp = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true }, crmRepository: repository });
+    const denied = await sellerApp.inject({ method: "GET", url: "/api/admin/users", headers: { authorization: "Bearer valid" } });
+    await sellerApp.close();
+
+    const managerApp = createTestServer({ crmRepository: repository });
+    const listed = await managerApp.inject({ method: "GET", url: "/api/admin/users", headers: { authorization: "Bearer valid" } });
+    const grantedAccess = await managerApp.inject({
+      method: "POST",
+      url: "/api/admin/users/77777777-7777-4777-8777-777777777777/membership",
+      headers: { authorization: "Bearer valid" },
+      payload: { role: "vendedor", isActive: true },
+    });
+    const selfLockout = await managerApp.inject({
+      method: "POST",
+      url: `/api/admin/users/${actorId}/membership`,
+      headers: { authorization: "Bearer valid" },
+      payload: { role: "gestor", isActive: false },
+    });
+    await managerApp.close();
+
+    expect(denied.statusCode).toBe(403);
+    expect(listed.json().users).toHaveLength(2);
+    expect(grantedAccess.statusCode).toBe(200);
+    expect(grantedAccess.json().membership).toMatchObject({ role: "vendedor", isActive: true, hasMembership: true });
+    expect(selfLockout.statusCode).toBe(409);
+  });
 });
 
 class FakeCrmRepository implements CrmDataRepository {
@@ -931,7 +1011,11 @@ class FakeCrmRepository implements CrmDataRepository {
     { id: "30000000-0000-0000-0000-000000000007", nome: "Aprovado", ordem: 7, isTerminal: true },
     { id: lostStageId, nome: "Perdido", ordem: 9, isTerminal: true },
   ];
-  private lossReasons: LossReasonRecord[] = [{ id: lossReasonId, nome: "sem retorno" }];
+  private lossReasons: LossReasonAdminRecord[] = [{ id: lossReasonId, nome: "sem retorno", isActive: true }];
+  private membershipCandidates: MembershipCandidateRecord[] = [
+    { userId: actorId, email: "gestor@artec.local", hasMembership: true, role: "gestor", isActive: true },
+    { userId: "77777777-7777-4777-8777-777777777777", email: "vendedor@artec.local", hasMembership: false, role: null, isActive: null },
+  ];
 
   seedNotification(overrides: Partial<NotificationRecord>): NotificationRecord {
     const notification = makeNotification(overrides);
@@ -1412,7 +1496,72 @@ class FakeCrmRepository implements CrmDataRepository {
   }
 
   async listLossReasons(): Promise<LossReasonRecord[]> {
+    return this.lossReasons.filter((reason) => reason.isActive).map(({ id, nome }) => ({ id, nome }));
+  }
+
+  async createPipelineStage(_actor: Actor, input: CreatePipelineStageInput): Promise<PipelineStageRecord> {
+    if (input.nome === "Aprovado" || input.nome === "Perdido") {
+      throw new ApiError(409, "bad_request", "Esse nome de etapa e reservado pelo fluxo de aprovar/perder.");
+    }
+    if (this.stages.some((item) => item.nome === input.nome || item.ordem === input.ordem)) {
+      throw new ApiError(409, "bad_request", "Ja existe uma etapa com esse nome ou ordem.");
+    }
+    const stage: PipelineStageRecord = { id: randomUUID(), nome: input.nome, ordem: input.ordem, isTerminal: false };
+    this.stages.push(stage);
+    return stage;
+  }
+
+  async updatePipelineStage(_actor: Actor, id: string, input: UpdatePipelineStageInput): Promise<PipelineStageRecord | null> {
+    const stage = this.stages.find((item) => item.id === id);
+    if (!stage) return null;
+    if (input.nome !== undefined && stage.isTerminal && input.nome !== stage.nome) {
+      throw new ApiError(409, "bad_request", "Etapas terminais nao podem ser renomeadas: o fluxo de aprovar/perder depende do nome exato das etapas terminais.");
+    }
+    if (input.nome !== undefined && this.stages.some((item) => item.id !== id && item.nome === input.nome)) {
+      throw new ApiError(409, "bad_request", "Ja existe uma etapa com esse nome ou ordem.");
+    }
+    if (input.ordem !== undefined && this.stages.some((item) => item.id !== id && item.ordem === input.ordem)) {
+      throw new ApiError(409, "bad_request", "Ja existe uma etapa com esse nome ou ordem.");
+    }
+    if (input.nome !== undefined) stage.nome = input.nome;
+    if (input.ordem !== undefined) stage.ordem = input.ordem;
+    return stage;
+  }
+
+  async listLossReasonsAdmin(): Promise<LossReasonAdminRecord[]> {
     return this.lossReasons;
+  }
+
+  async createLossReason(_actor: Actor, input: CreateLossReasonInput): Promise<LossReasonAdminRecord> {
+    if (this.lossReasons.some((reason) => reason.nome === input.nome)) {
+      throw new ApiError(409, "bad_request", "Ja existe um motivo de perda com esse nome.");
+    }
+    const reason: LossReasonAdminRecord = { id: randomUUID(), nome: input.nome, isActive: true };
+    this.lossReasons.push(reason);
+    return reason;
+  }
+
+  async setLossReasonActive(_actor: Actor, id: string, isActive: boolean): Promise<LossReasonAdminRecord | null> {
+    const reason = this.lossReasons.find((item) => item.id === id);
+    if (!reason) return null;
+    reason.isActive = isActive;
+    return reason;
+  }
+
+  async listMembershipCandidates(): Promise<MembershipCandidateRecord[]> {
+    return this.membershipCandidates;
+  }
+
+  async upsertMembership(actor: Actor, userId: string, input: UpsertMembershipInput): Promise<MembershipCandidateRecord> {
+    if (actor.id === userId && !input.isActive) {
+      throw new ApiError(409, "bad_request", "Voce nao pode desativar sua propria membership.");
+    }
+    const candidate = this.membershipCandidates.find((item) => item.userId === userId);
+    if (!candidate) throw new ApiError(422, "bad_request", "Usuario nao encontrado no Supabase Auth.");
+    candidate.hasMembership = true;
+    candidate.role = input.role;
+    candidate.isActive = input.isActive;
+    return candidate;
   }
 
   async close(): Promise<void> {

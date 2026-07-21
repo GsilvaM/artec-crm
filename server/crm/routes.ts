@@ -13,7 +13,10 @@ import {
   completeNextActionSchema,
   customerCreateSchema,
   customerUpdateSchema,
+  lossReasonActiveSchema,
+  lossReasonCreateSchema,
   loseOpportunitySchema,
+  membershipUpsertSchema,
   nextActionCreateSchema,
   nextActionUpdateSchema,
   notificationQuerySchema,
@@ -21,6 +24,8 @@ import {
   opportunityCreateSchema,
   opportunityUpdateSchema,
   parseBody,
+  pipelineStageCreateSchema,
+  pipelineStageUpdateSchema,
   postponeNextActionSchema,
 } from "./validation.js";
 
@@ -208,6 +213,42 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
     lossReasons: await repository.listLossReasons(getActor(request)),
   }));
 
+  app.post("/api/admin/pipeline-stages", { preHandler: [guards.authenticate, guards.requirePermission("settings:write")] }, async (request, reply) => {
+    const stage = await repository.createPipelineStage(getActor(request), parseBody(pipelineStageCreateSchema, request.body));
+    return reply.status(201).send({ stage });
+  });
+
+  app.patch("/api/admin/pipeline-stages/:id", { preHandler: [guards.authenticate, guards.requirePermission("settings:write")] }, async (request) => {
+    const stage = await repository.updatePipelineStage(getActor(request), readIdParam(request), parseBody(pipelineStageUpdateSchema, request.body));
+    if (!stage) throw new ApiError(404, "not_found", "Etapa nao encontrada.");
+    return { stage };
+  });
+
+  app.get("/api/admin/loss-reasons", { preHandler: [guards.authenticate, guards.requirePermission("settings:read")] }, async (request) => ({
+    lossReasons: await repository.listLossReasonsAdmin(getActor(request)),
+  }));
+
+  app.post("/api/admin/loss-reasons", { preHandler: [guards.authenticate, guards.requirePermission("settings:write")] }, async (request, reply) => {
+    const lossReason = await repository.createLossReason(getActor(request), parseBody(lossReasonCreateSchema, request.body));
+    return reply.status(201).send({ lossReason });
+  });
+
+  app.patch("/api/admin/loss-reasons/:id", { preHandler: [guards.authenticate, guards.requirePermission("settings:write")] }, async (request) => {
+    const { isActive } = parseBody(lossReasonActiveSchema, request.body);
+    const lossReason = await repository.setLossReasonActive(getActor(request), readIdParam(request), isActive);
+    if (!lossReason) throw new ApiError(404, "not_found", "Motivo de perda nao encontrado.");
+    return { lossReason };
+  });
+
+  app.get("/api/admin/users", { preHandler: [guards.authenticate, guards.requirePermission("users:manage")] }, async (request) => ({
+    users: await repository.listMembershipCandidates(getActor(request)),
+  }));
+
+  app.post("/api/admin/users/:userId/membership", { preHandler: [guards.authenticate, guards.requirePermission("users:manage")] }, async (request) => {
+    const membership = await repository.upsertMembership(getActor(request), readUserIdParam(request), parseBody(membershipUpsertSchema, request.body));
+    return { membership };
+  });
+
   app.get("/api/customers/:id/activities", { preHandler: [guards.authenticate, guards.requirePermission("activities:read")] }, async (request) => ({
     activities: await repository.listActivities(getActor(request), { customerId: readIdParam(request) }),
   }));
@@ -306,11 +347,22 @@ function getActor(request: FastifyRequest): Actor {
   return { id: user.id, role: user.role };
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function readIdParam(request: FastifyRequest): string {
   const params = request.params as { id?: string };
   if (!params.id) throw new ApiError(400, "bad_request", "ID obrigatorio.");
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(params.id)) {
+  if (!UUID_PATTERN.test(params.id)) {
     throw new ApiError(400, "bad_request", "ID invalido.");
   }
   return params.id;
+}
+
+function readUserIdParam(request: FastifyRequest): string {
+  const params = request.params as { userId?: string };
+  if (!params.userId) throw new ApiError(400, "bad_request", "ID de usuario obrigatorio.");
+  if (!UUID_PATTERN.test(params.userId)) {
+    throw new ApiError(400, "bad_request", "ID de usuario invalido.");
+  }
+  return params.userId;
 }

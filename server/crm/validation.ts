@@ -191,6 +191,33 @@ export const auvoWebhookEventQuerySchema = z.object({
   cursor: uuid.optional(),
 });
 
+export const pipelineStageCreateSchema = z.object({
+  nome: z.string().trim().min(2, "Informe o nome da etapa."),
+  ordem: z.coerce.number().int().positive("Informe a ordem da etapa."),
+});
+
+export const pipelineStageUpdateSchema = z
+  .object({
+    nome: z.string().trim().min(2, "Informe o nome da etapa.").optional(),
+    ordem: z.coerce.number().int().positive("Informe a ordem da etapa.").optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Informe ao menos um campo para atualizar.",
+  });
+
+export const lossReasonCreateSchema = z.object({
+  nome: z.string().trim().min(2, "Informe o nome do motivo de perda."),
+});
+
+export const lossReasonActiveSchema = z.object({
+  isActive: z.boolean(),
+});
+
+export const membershipUpsertSchema = z.object({
+  role: z.enum(["gestor", "vendedor", "atendimento"]),
+  isActive: z.boolean().default(true),
+});
+
 export function normalizePhone(phone: string | null | undefined): string | null {
   const digits = phone?.replace(/\D/g, "") ?? "";
   if (!digits) return null;

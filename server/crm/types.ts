@@ -328,6 +328,37 @@ export type LossReasonRecord = {
   nome: string;
 };
 
+export type LossReasonAdminRecord = LossReasonRecord & {
+  isActive: boolean;
+};
+
+export type MembershipCandidateRecord = {
+  userId: string;
+  email: string | null;
+  hasMembership: boolean;
+  role: CrmRole | null;
+  isActive: boolean | null;
+};
+
+export type UpsertMembershipInput = {
+  role: CrmRole;
+  isActive: boolean;
+};
+
+export type CreatePipelineStageInput = {
+  nome: string;
+  ordem: number;
+};
+
+export type UpdatePipelineStageInput = {
+  nome?: string;
+  ordem?: number;
+};
+
+export type CreateLossReasonInput = {
+  nome: string;
+};
+
 export type CreateCustomerInput = {
   tipoPessoa: CustomerRecord["tipoPessoa"];
   nome: string;
@@ -477,5 +508,12 @@ export type CrmDataRepository = {
   cancelNextAction(actor: Actor, id: string, input: CancelNextActionInput): Promise<NextActionRecord | null>;
   listPipelineStages(actor: Actor): Promise<PipelineStageRecord[]>;
   listLossReasons(actor: Actor): Promise<LossReasonRecord[]>;
+  createPipelineStage(actor: Actor, input: CreatePipelineStageInput): Promise<PipelineStageRecord>;
+  updatePipelineStage(actor: Actor, id: string, input: UpdatePipelineStageInput): Promise<PipelineStageRecord | null>;
+  listLossReasonsAdmin(actor: Actor): Promise<LossReasonAdminRecord[]>;
+  createLossReason(actor: Actor, input: CreateLossReasonInput): Promise<LossReasonAdminRecord>;
+  setLossReasonActive(actor: Actor, id: string, isActive: boolean): Promise<LossReasonAdminRecord | null>;
+  listMembershipCandidates(actor: Actor): Promise<MembershipCandidateRecord[]>;
+  upsertMembership(actor: Actor, userId: string, input: UpsertMembershipInput): Promise<MembershipCandidateRecord>;
   close(): Promise<void>;
 };

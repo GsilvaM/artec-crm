@@ -81,6 +81,20 @@ export type LossReason = {
   nome: string;
 };
 
+export type LossReasonAdmin = LossReason & {
+  isActive: boolean;
+};
+
+export type CrmRole = "gestor" | "vendedor" | "atendimento";
+
+export type MembershipCandidate = {
+  userId: string;
+  email: string | null;
+  hasMembership: boolean;
+  role: CrmRole | null;
+  isActive: boolean | null;
+};
+
 export type CrmSnapshot = {
   customers: Customer[];
   opportunities: Opportunity[];
@@ -376,6 +390,34 @@ export async function reprocessAuvoWebhookEvent(id: string): Promise<AuvoWebhook
 
 export async function ignoreAuvoWebhookEvent(id: string): Promise<AuvoWebhookEvent> {
   return (await apiSend<{ event: AuvoWebhookEvent }>(`/api/integrations/auvo/events/${id}/ignore`, "POST")).event;
+}
+
+export async function createPipelineStage(payload: { nome: string; ordem: number }): Promise<PipelineStage> {
+  return (await apiSend<{ stage: PipelineStage }>("/api/admin/pipeline-stages", "POST", payload)).stage;
+}
+
+export async function updatePipelineStage(id: string, payload: { nome?: string; ordem?: number }): Promise<PipelineStage> {
+  return (await apiSend<{ stage: PipelineStage }>(`/api/admin/pipeline-stages/${id}`, "PATCH", payload)).stage;
+}
+
+export async function loadAdminLossReasons(): Promise<LossReasonAdmin[]> {
+  return (await apiGet<{ lossReasons: LossReasonAdmin[] }>("/api/admin/loss-reasons")).lossReasons;
+}
+
+export async function createLossReason(payload: { nome: string }): Promise<LossReasonAdmin> {
+  return (await apiSend<{ lossReason: LossReasonAdmin }>("/api/admin/loss-reasons", "POST", payload)).lossReason;
+}
+
+export async function setLossReasonActive(id: string, isActive: boolean): Promise<LossReasonAdmin> {
+  return (await apiSend<{ lossReason: LossReasonAdmin }>(`/api/admin/loss-reasons/${id}`, "PATCH", { isActive })).lossReason;
+}
+
+export async function loadAdminUsers(): Promise<MembershipCandidate[]> {
+  return (await apiGet<{ users: MembershipCandidate[] }>("/api/admin/users")).users;
+}
+
+export async function upsertMembership(userId: string, payload: { role: CrmRole; isActive: boolean }): Promise<MembershipCandidate> {
+  return (await apiSend<{ membership: MembershipCandidate }>(`/api/admin/users/${userId}/membership`, "POST", payload)).membership;
 }
 
 async function apiGet<T>(path: string): Promise<T> {

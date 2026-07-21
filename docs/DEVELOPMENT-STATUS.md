@@ -283,6 +283,18 @@ Validacao:
 - `npm run typecheck`, `npm run test` (53 testes) e `npm run build` passaram.
 - Verificado visualmente com Playwright (instalado nesta sessao como dependencia de desenvolvimento, tambem preparando a infraestrutura de E2E do item 14): login real de homologacao, screenshot do quadro renderizado, movimentacao real de uma oportunidade entre etapas confirmada na UI (com refresh assincrono da tela) e devolvida ao estado original ao final do teste. Nenhum erro de console ou de rede durante a verificacao.
 
+## Administracao (2026-07-21)
+
+Implementado `src/components/AdminPanel.tsx` e rotas `/api/admin/*` (todas exigem permissao `settings:read`/`settings:write`/`users:manage`, ja definidas no RBAC desde a fundacao mas sem rota nenhuma ate agora):
+
+- Etapas do funil: criar (`POST /api/admin/pipeline-stages`) e atualizar nome/ordem (`PATCH /api/admin/pipeline-stages/:id`). Novas etapas sempre nascem nao-terminais. Nome/ordem sao unicos no banco; violacao vira `409` tratado (`Prisma.PrismaClientKnownRequestError` codigo `P2002` traduzido para mensagem em portugues, em vez de vazar erro 500 generico).
+- Descoberta durante a implementacao: a migration `0007` marca **tres** etapas como terminais (`Aprovado`, `Concluido`, `Perdido`), nao so duas. So `Aprovado` e `Perdido` sao referenciadas por nome no codigo (`getStageIdByName`), mas a protecao contra renomear se aplica as tres por seguranca (renomear qualquer etapa terminal e bloqueado com `409`). `Concluido` nao tem nenhum fluxo que a atinja hoje (nem aprovar, nem perder, nem a nova API de admin, que recusa mover/criar oportunidade diretamente em etapa terminal) — fica registrado como lacuna pre-existente, fora do escopo desta fatia.
+- Motivos de perda: listar todos incluindo inativos (`GET /api/admin/loss-reasons`), criar (`POST`) e ativar/desativar (`PATCH`, soft-disable, sem exclusao definitiva).
+- Usuarios/memberships: `GET /api/admin/users` faz LEFT JOIN entre `auth.users` e `crm.user_memberships` (via `$queryRaw`, primeira leitura do schema `auth` pelo backend — confirmado que a credencial de `CRM_DATABASE_URL` tem `SELECT` nesse schema antes de construir a feature). `POST /api/admin/users/:userId/membership` cria ou atualiza a membership. Gestor nao pode desativar a propria conta (bloqueio de auto-exclusao testado).
+- Decisao de escopo: sem convite/criacao de conta Supabase pela API (exigiria service role, fora do que `CLAUDE.md` autoriza sem necessidade comprovada); sem tornar origem/tipo de demanda campos configuraveis (permanecem texto livre); sem tela de auditoria (`crm.audit_log` ja e populado, so falta o visualizador).
+
+Validacao: `npm run typecheck`, `npm run test` (56 testes, 4 novos cobrindo RBAC e as regras de etapa terminal/duplicidade/auto-exclusao) e `npm run build` passaram. Verificado com Playwright contra o ambiente real de homologacao (mesmo Supabase usado em producao): leitura mostrou os 9 motivos de perda seedados e o unico usuario real (`gestor`, marcado "voce", checkbox de ativo desabilitado); escrita testada ponta a ponta criando e desativando um motivo de perda de teste, e criando uma etapa de teste — ambos limpos do banco ao final da verificacao. Um bug de layout (tabelas cortadas em grid de 2 colunas) foi encontrado e corrigido nessa verificacao antes de finalizar o marco.
+
 ## Incidente: eventos fora de escopo capturados na primeira ativacao do webhook (2026-07-21)
 
 O usuario cadastrou o webhook no Auvo com **18 eventos marcados**, incluindo todos os proibidos pelo escopo do MVP (`CLAUDE.md`, secoes 5 e 10.4): pagamento criado/alterado, mensagens (enviada/recebida/atualizada), eventos de painel/card, anotacoes de painel e modelo de mensagem. O webhook ficou `ATIVO` por alguns minutos nessa configuracao.

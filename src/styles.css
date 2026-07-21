@@ -972,6 +972,44 @@ tr:last-child td {
   gap: 6px;
 }
 
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.admin-block h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.admin-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.admin-inline-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--foreground-muted);
+}
+
+.admin-inline-form input {
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--surface);
+  color: var(--foreground);
+}
+
 .pipeline-card-move select {
   min-height: 32px;
   border: 1px solid var(--border);
@@ -1187,6 +1225,10 @@ tr:last-child td {
   .pipeline-column {
     flex-basis: 240px;
     min-width: 240px;
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
   }
 }
 
