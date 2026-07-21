@@ -1,18 +1,18 @@
 # Artec CRM — Design system e UX
 
-## 1. Direção visual
+Atualizado em: 2026-07-21 (reescrito na Fase 1 da refatoracao de frontend, `refactor/frontend-design-system`)
 
-O CRM deve parecer um produto operacional moderno, confiável e leve. A referência de implementação preferencial, quando a stack for React, é:
+> Este documento descreve o sistema **real**, implementado e em uso. A versao anterior descrevia uma stack aspiracional (shadcn/ui, Tailwind, Radix UI, TanStack Table, dnd-kit, Sonner) que nunca foi adotada — mantida aqui como nota historica para nao repetir o erro: **confirme a stack real antes de assumir bibliotecas**.
 
-- shadcn/ui para componentes sob controle do projeto;
-- primitives acessíveis Radix UI ou Base UI;
-- Tailwind CSS com tokens semânticos;
-- Lucide Icons;
-- Sonner para toasts;
-- TanStack Table para listas densas;
-- dnd-kit para drag-and-drop acessível, se necessário.
+## 1. Stack real (confirmada em codigo, nao assumida)
 
-Não copiar demos literalmente. Aplicar identidade da Artec e padrões consistentes.
+- **Estilo**: CSS puro com custom properties (`src/styles.css`, arquivo unico e global). Sem Tailwind, sem CSS Modules, sem styled-components, sem vanilla-extract.
+- **Componentes**: React 19 com componentes de funcao simples. Sem biblioteca de componentes de terceiros (nao ha shadcn/ui, Radix, Base UI). Onde faz sentido, componentes primitivos proprios vivem em `src/components/ui/` (`EmptyState`, `Skeleton`/`LoadingPanels`) e `src/components/layout/` (`Sidebar`).
+- **Icones**: `lucide-react`, unica biblioteca usada em todo o produto (nunca misturar com outra).
+- **Roteamento**: `react-router-dom` (adicionado na Fase 1 desta refatoracao — unica dependencia nova, decisao registrada e validada com o usuario antes de instalar, por ser mudanca de stack). `BrowserRouter` no topo (`src/main.tsx`), rotas declaradas em `src/App.tsx`.
+- **Estado/dados**: sem Redux/Zustand/React Query/SWR. Estado local via `useState`/`useMemo`/`useEffect`; chamadas de API centralizadas e tipadas em `src/domain/crm.ts`.
+- **TypeScript**: modo `strict` (`tsconfig.app.json`).
+- **Toasts/dialogs**: nao ha biblioteca de toast (Sonner ou equivalente); feedback hoje e via `<div className="alert">` inline e `window.confirm` para confirmacao destrutiva simples. Avaliar se um `Toast`/`ConfirmAction` dedicado se justifica na Fase 2, sem adicionar dependencia nova sem necessidade comprovada.
 
 ## 2. Princípios
 
@@ -21,156 +21,147 @@ Não copiar demos literalmente. Aplicar identidade da Artec e padrões consisten
 - Informação urgente deve se destacar sem deixar a tela alarmista.
 - Mesma ação deve parecer e funcionar igual em todas as telas.
 - Formulários devem pedir apenas o necessário naquele momento.
-- Preferir painel lateral (sheet) para consulta/edição rápida; página completa para contextos extensos.
 - Evitar modais empilhados.
 - Evitar tabelas gigantes sem filtros, hierarquia ou ações contextuais.
 - Não usar cor como única forma de comunicar estado.
 
-## 3. Tokens
+## 3. Tokens (`src/styles.css`, bloco `:root`)
 
-Criar tokens semânticos, não cores hardcoded por componente:
+Todo valor de cor, espaçamento, radius, sombra, motion, z-index e dimensão de layout vive em uma variável CSS — nenhum componente deve usar hex ou medida solta.
 
-- background
-- surface
-- surface-muted
-- foreground
-- foreground-muted
-- border
-- primary
-- primary-foreground
-- success
-- warning
-- danger
-- info
-- focus-ring
-- stage-* apenas quando necessário
+### Cores de marca
 
-Extrair a cor principal e tipografia da identidade visual já disponível no repositório. Se não houver definição confiável, usar base neutra e registrar uma decisão de design antes de inventar a paleta.
+| Token | Valor | Uso |
+| --- | --- | --- |
+| `--color-navy-900` | `#0b1f3a` | Fundo da sidebar, estrutura |
+| `--color-navy-700` | `#16345c` | Variação de estrutura escura |
+| `--color-primary` (= `--primary`) | `#2454c7` | Ação primária (botões, links, foco de navegação) |
+| `--color-primary-hover` | `#1b3f9e` | Hover de ação primária |
+| `--color-cyan` | `#0c6f90` | Informação / climatização |
+| `--color-teal` | `#0f7a6b` | Atendimento / relacionamento (reservado, uso pontual) |
+| `--color-violet` | `#6a4aa8` | Insight / integração secundária (reservado, uso pontual) |
 
-Suportar modo claro no MVP. Modo escuro só entra se puder ser entregue completo, sem contrastes quebrados.
+Paleta derivada dos princípios da Seção 7 do prompt de refatoração (não havia logo/assets de marca no repositório para extrair cor real da Artec — decisão de design registrada aqui, sujeita a revisão se a Artec fornecer identidade visual própria). Todas as cores foram calculadas para contraste WCAG AA (≥4.5:1) contra `--surface`/`--surface-muted` antes de entrar no token (ver `docs/ACCESSIBILITY-AUDIT.md` para o histórico de correções de contraste já aplicadas).
 
-## 4. Tipografia e espaçamento
+### Cores semânticas
 
-- Fonte de interface legível, com números claros.
-- Títulos curtos e funcionais.
-- Escala consistente de 4/8 px.
-- Altura mínima confortável para controles.
-- Conteúdo principal com largura que aproveite desktop sem criar linhas longas demais.
-- Valores, datas e contagens alinhados para leitura rápida.
+`--success` (`#177245`), `--warning` (`#8a5306`), `--danger` (`#b0303f`), `--info` (= `--color-cyan`). Usadas em badges, alertas e indicadores — nunca como decoração sem significado.
 
-## 5. Navegação
+### Superfícies, texto e borda
 
-Menu sugerido:
+`--background`, `--surface`, `--surface-muted`, `--surface-sunken`, `--foreground`, `--foreground-muted`, `--foreground-on-dark`, `--foreground-on-dark-muted` (para texto sobre a sidebar navy), `--border`, `--focus-ring`.
 
-- Visão geral
-- Caixa de Entrada
-- Oportunidades
-- Funil
-- Follow-ups
-- Agenda
-- Clientes
-- Orçamentos
-- Relatórios
-- Configurações
+### Tipografia
 
-Incluir:
+`--font-sans` (Inter com fallback de sistema), escala `--text-xs` (12px) a `--text-2xl` (28px), `--leading-tight`/`--leading-normal`, pesos `--weight-normal` (400) a `--weight-black` (800).
 
-- busca global;
-- atalho para novo lead/oportunidade;
-- sino de notificações;
-- perfil do usuário;
-- indicador discreto da integração Auvo.
+### Espaçamento — escala 4/8
 
-## 6. Padrões de tela
+`--space-1` (4px) a `--space-12` (48px).
+
+### Radius
+
+`--radius-sm` (6px), `--radius-md` (8px, o mais usado), `--radius-lg` (12px), `--radius-full` (999px, badges/avatares).
+
+### Sombra
+
+`--shadow-sm` (cards em repouso), `--shadow-md` (dropdowns/popovers), `--shadow-lg` (elementos flutuantes de maior destaque).
+
+### Z-index
+
+`--z-dropdown` (20), `--z-sticky` (30), `--z-overlay` (40), `--z-modal` (50), `--z-toast` (60).
+
+### Motion
+
+`--duration-fast` (140ms, feedback imediato), `--duration-base` (200ms, expansão/painel), `--easing-standard`. Toda animação respeita `prefers-reduced-motion: reduce` via regra global no topo de `src/styles.css` (zera duração de animação/transição para quem pediu menos movimento no sistema operacional).
+
+### Layout
+
+`--sidebar-width` (272px, dentro da faixa 260–280px pedida), `--control-height-sm/md/lg` (32/40/48px).
+
+### Breakpoints (documentados, não como CSS var — media query não aceita `var()` na condição)
+
+- até 767px: celular (referência de validação: 360×800, 390×844)
+- 768px–1023px: tablet (referência: 768×1024)
+- 1024px em diante: desktop (referência: 1024×768, 1366×768, 1440×900, 1920×1080)
+
+## 4. Navegação
+
+A aplicação passou a ter roteamento real na Fase 1 (antes: SPA de URL única, sidebar com um item decorativo — ver `docs/DEVELOPMENT-STATUS.md`, seção "Fase 0"). Rotas atuais:
+
+- `/central-comercial` (padrão/`/`)
+- `/pipeline`
+- `/clientes`
+- `/oportunidades`
+- `/proximas-acoes`
+- `/notificacoes`
+- `/configuracoes/integracoes/auvo` (somente `gestor`/`integrations:read`)
+
+**Estado transicional, registrado explicitamente**: todas as rotas acima hoje renderizam o mesmo conteúdo (o antigo componente monolítico `AuthenticatedApp`), com a navegação da Sidebar rolando até a seção correspondente (`scrollIntoView`) em vez de montar uma página isolada por rota. Isso dá URLs reais, navegáveis e com estado de "ativo" correto na Sidebar, sem exigir ainda a separação de estado/dados por rota — que é o trabalho da Fase 2 (extrair cada superfície com sua própria carga de dados). Ao final da Fase 2, cada rota deve montar apenas o componente da sua superfície, não a página inteira.
+
+`vercel.json` recebeu um rewrite catch-all (`/(.*) -> /index.html`, exceto `/api/*`) para que essas rotas funcionem em produção com reload direto — sem isso, o roteamento client-side quebra em qualquer acesso direto a uma URL que não seja `/`.
+
+Itens de navegação incluem: busca global central, badge de notificação, avatar/e-mail do usuário, indicador de integração Auvo restrito a gestor.
+
+## 5. Padrões de tela
 
 ### Central Comercial
 
-Resumo acionável, sem mural de gráficos. Priorizar listas curtas com botões diretos.
+Resumo acionável, sem mural de gráficos. Prioriza listas curtas com botões diretos (ações vencidas, ações de hoje, orçamentos aguardando retorno, oportunidades sem próxima ação, oportunidades paradas, resumo comercial).
 
-### Caixa de Entrada
+### Listas (Clientes, Oportunidades)
 
-Layout master-detail:
+Hoje são tabelas HTML densas com ações por linha e paginação por cursor ("Carregar mais"). Ainda sem alternativa em cards para mobile — pendência registrada para a Fase 2/3.
 
-- lista à esquerda;
-- detalhes e ações à direita;
-- filtros no topo;
-- atalhos de teclado para avançar entre itens;
-- confirmação clara antes de descartar ou vincular.
+### Pipeline/Funil
 
-### Oportunidades
-
-Oferecer lista e kanban. A lista é melhor para filtros e trabalho em massa; o kanban é melhor para visão de fluxo.
-
-### Ficha do cliente/oportunidade
-
-Cabeçalho com estado atual e próxima ação. Corpo com tabs ou seções:
-
-- resumo;
-- linha do tempo;
-- orçamentos;
-- tarefas/follow-ups;
-- dados do cliente;
-- vínculos Auvo.
+Kanban por etapa (`PipelineBoard`), com seletor de etapa acessível (`<select>` com rótulo `sr-only`) como alternativa ao drag-and-drop.
 
 ### Formulários rápidos
 
-Abrir em sheet/modal curto. Salvar com `Ctrl/Cmd + Enter` quando seguro. Preservar rascunho local em formulários longos.
+Campos agrupados por significado, labels sempre visíveis (nunca só placeholder), validação com mensagem específica do domínio (ex.: "Defina a próxima ação e a data antes de manter esta oportunidade ativa.").
 
-## 7. Componentes obrigatórios
+## 6. Componentes
 
-- App shell
-- Sidebar responsiva
-- Command palette/busca global
-- Cards de tarefa com urgência
-- Data table com filtros
-- Kanban card
-- Timeline
-- Activity composer
-- Date picker e seleção de horário
-- Empty state
-- Skeleton
-- Error state com recuperação
-- Badge semântico
-- Sheet de detalhes
-- Confirm dialog para ações destrutivas
-- Notification center
-- Toasts
+### Componentes React reais (`src/components/`)
 
-## 8. Acessibilidade
+- `layout/Sidebar.tsx` — navegação principal, itens reais por rota, permissão-consciente (item de Auvo só para quem tem `integrations:read`).
+- `ui/EmptyState.tsx`, `ui/Skeleton.tsx` (`LoadingPanels`) — feedback de vazio/carregamento, extraídos e reutilizáveis.
+- `PipelineBoard.tsx`, `AdminPanel.tsx`, `QuotesPanel.tsx`, `ReportsPanel.tsx`, `AuvoInboxPanel.tsx` — superfícies já componentizadas antes desta refatoração.
 
-- Navegação completa por teclado.
-- Foco visível.
-- Labels e descrições para inputs.
-- Semântica correta de headings, tabelas e dialogs.
-- Contraste conforme WCAG AA.
-- Alvos clicáveis adequados.
-- `aria-live` para feedback importante, sem excesso.
-- Respeitar `prefers-reduced-motion`.
-- Drag-and-drop deve ter alternativa por botões e teclado.
+### Padrões CSS reutilizáveis (classe, não componente React ainda)
 
-## 9. Microinterações
+`.button` (`primary`/`secondary`/`ghost`/`destructive`, com estado `.loading` — spinner via `::after`, sem alterar largura), `.icon-button` (com badge de contagem), `.badge` (+ `.warning`/`.danger-badge`), `.panel`/`.state-panel` (card base, com `--shadow-sm`), `.empty-state`, `.skeleton`/`.skeleton-title`/`.skeleton-line`, `.alert`/`.danger-alert`, campos de formulário (`.compact-form input/select`, `.filter-grid input/select`), `.segmented-control` (filtros tipo abas).
 
-Usar movimento curto e funcional:
+Extrair esses padrões CSS para componentes React com props de variante (`<Button variant="destructive" />` etc.) é trabalho natural da Fase 2, conforme cada superfície for reconstruída — não foi feito em bloco na Fase 1 para não introduzir uma camada de abstração nova sem que as telas que a usariam já tenham sido revisadas.
 
-- confirmação de item concluído;
-- atualização otimista com rollback em erro;
-- highlight breve em item atualizado;
-- skeleton no carregamento inicial;
-- transições discretas em sheets e menus.
+## 7. Acessibilidade
 
-Não usar animações longas, confete ou efeitos que atrasem a operação.
+Auditoria automatizada completa em `docs/ACCESSIBILITY-AUDIT.md` (axe-core, 0 violações WCAG 2.0/2.1 A/AA nas telas cobertas). Resumo do que já está garantido:
 
-## 10. Linguagem
+- Contraste ≥4.5:1 em todos os tokens de texto sobre as superfícies usadas.
+- Todo campo `<select>`/`<input>` tem label associada (visível ou `sr-only`) ou `aria-label`.
+- Foco visível global (`:focus-visible` com anel de 3px, cor `--focus-ring`).
+- `prefers-reduced-motion: reduce` respeitado globalmente.
 
-Português do Brasil, direto e humano.
+Pendente de revisão manual (Fase 3): navegação por teclado ponta a ponta, leitor de tela real, gerenciamento de foco em painéis/drawers, zoom 200%.
 
-Preferir:
+## 8. Microinterações
 
-- “Próxima ação”
-- “Atrasado há 2 dias”
-- “Criar oportunidade”
-- “Vincular ao cliente”
-- “Registrar garantia”
-- “Marcar como perdido”
+- Botões: transição de cor/fundo em `--duration-fast` (140ms).
+- Scroll de navegação (Sidebar → seção): `scrollIntoView({ behavior: "smooth" })`, desativado automaticamente por `prefers-reduced-motion`.
+- Skeleton com gradiente animado para carregamento inicial.
 
-Evitar jargões técnicos, mensagens vagas e textos longos em botões.
+Não usar: confete, parallax, pulso contínuo, sino piscando, bounce.
+
+## 9. Linguagem
+
+Português do Brasil, direto e humano. Preferir "Próxima ação", "Nova oportunidade", "Registrar follow-up", "Concluir ação", "Marcar como perdido", "Arquivar". Evitar jargão técnico, "workflow", "ticket", "deal". Nunca chamar valor aprovado de "receita" ou "faturamento".
+
+## 10. Pendências conhecidas ao final da Fase 1
+
+- Rotas ainda renderizam o componente monolítico inteiro (ver seção 4) — separação real por superfície é Fase 2.
+- Sem alternativa mobile para tabelas densas (Clientes/Oportunidades) — Fase 2/3.
+- Sidebar em mobile empilha no topo (`position: static`), não é um drawer — Fase 3.
+- Sem componente `Toast`/`Dialog`/`ConfirmAction` dedicado — feedback ainda via `alert`/`window.confirm`.
+- Sem PWA (manifest, service worker, ícones) — Fase 4.

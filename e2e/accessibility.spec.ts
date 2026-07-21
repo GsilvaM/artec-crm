@@ -21,10 +21,10 @@ test.describe("WCAG automated audit", () => {
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });
 
-  test("clientes e oportunidades list has no automatically detectable violations", async ({ page }) => {
+  test("clientes list has no automatically detectable violations", async ({ page }) => {
     await loginAsHomologationGestor(page);
-    await page.getByRole("button", { name: "Clientes e oportunidades" }).click();
-    await page.waitForSelector("text=Oportunidades");
+    await page.getByRole("link", { name: "Clientes" }).click();
+    await page.waitForURL(/\/clientes$/);
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });

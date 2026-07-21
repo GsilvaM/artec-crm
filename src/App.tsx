@@ -1,5 +1,6 @@
 import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Copy, Edit3, LogIn, LogOut, Plus, RefreshCw, Search, UserRound, XCircle } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
 import { formatDateTime, formatMoney } from "./domain/format";
 import {
@@ -57,6 +58,19 @@ import { AdminPanel } from "./components/AdminPanel";
 import { QuotesPanel } from "./components/QuotesPanel";
 import { ReportsPanel } from "./components/ReportsPanel";
 import { AuvoInboxPanel } from "./components/AuvoInboxPanel";
+import { Sidebar } from "./components/layout/Sidebar";
+import { EmptyState } from "./components/ui/EmptyState";
+import { LoadingPanels } from "./components/ui/Skeleton";
+
+const SECTION_ID_BY_PATH: Record<string, string> = {
+  "/central-comercial": "central-comercial",
+  "/pipeline": "pipeline-section",
+  "/clientes": "clientes-section",
+  "/oportunidades": "oportunidades-section",
+  "/proximas-acoes": "proximas-acoes-section",
+  "/notificacoes": "notificacoes-section",
+  "/configuracoes/integracoes/auvo": "auvo-admin-section",
+};
 
 type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
 
@@ -155,7 +169,11 @@ export function App() {
     );
   }
 
-  return <AuthenticatedApp authState={authState} onLogout={handleLogout} />;
+  return (
+    <Routes>
+      <Route path="*" element={<AuthenticatedApp authState={authState} onLogout={handleLogout} />} />
+    </Routes>
+  );
 }
 
 function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthState, { status: "authenticated" }>; onLogout: () => Promise<void> }) {
@@ -226,9 +244,17 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     [activeCustomers.length, activeOpportunities.length, opportunitiesWithoutNextAction.length],
   );
 
+  const location = useLocation();
+
   useEffect(() => {
     void refresh();
   }, []);
+
+  useEffect(() => {
+    const sectionId = SECTION_ID_BY_PATH[location.pathname];
+    if (!sectionId) return;
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [location.pathname]);
 
   useEffect(() => {
     if (search.trim().length < 2) {
@@ -593,18 +619,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
 
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Navegacao principal">
-        <div className="brand-row">
-          <div className="brand-mark">A</div>
-          <div>
-            <strong>Artec CRM</strong>
-            <span>Comercial</span>
-          </div>
-        </div>
-        <nav>
-          <button className="nav-item active" type="button">Clientes e oportunidades</button>
-        </nav>
-      </aside>
+      <Sidebar canManageIntegrations={canManageIntegrations} />
 
       <main className="workspace">
         <header className="topbar">
@@ -668,7 +683,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
           </button>
         </header>
 
-        <section className="page-heading">
+        <section id="central-comercial" className="page-heading">
           <div>
             <p className="eyebrow">Marco 4</p>
             <h1>Central Comercial</h1>
@@ -770,7 +785,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
               </article>
             </section>
 
-            <section className="data-section pipeline-section" aria-label="Funil comercial">
+            <section id="pipeline-section" className="data-section pipeline-section" aria-label="Funil comercial">
               <header className="pipeline-section-header">
                 <div>
                   <p className="eyebrow">Funil comercial</p>
@@ -791,7 +806,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
               )}
             </section>
 
-            <section className="panel notifications-page" aria-label="Notificacoes internas">
+            <section id="notificacoes-section" className="panel notifications-page" aria-label="Notificacoes internas">
               <header>
                 <div>
                   <p className="eyebrow">Marco 5</p>
@@ -810,7 +825,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
             </section>
 
             {canManageIntegrations ? (
-              <section className="panel auvo-admin" aria-label="Integracao Auvo">
+              <section id="auvo-admin-section" className="panel auvo-admin" aria-label="Integracao Auvo">
                 <header>
                   <div>
                     <p className="eyebrow">Marco 6</p>
@@ -944,7 +959,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
               </form>
             </section>
 
-            <section className="data-section">
+            <section id="proximas-acoes-section" className="data-section">
               <h2>Proximas acoes</h2>
               <div className="segmented-control" aria-label="Filtros de proximas acoes">
                 {(["overdue", "today", "upcoming", "completed", "cancelled"] as ActionFilter[]).map((filter) => (
@@ -1012,7 +1027,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
               ) : <EmptyState title="Nenhuma proxima acao" text="Crie uma acao pendente para acompanhar cliente, garantia, suporte ou oportunidade." />}
             </section>
 
-            <section className="data-section">
+            <section id="clientes-section" className="data-section">
               <h2>Clientes</h2>
               {activeCustomers.length ? (
                 <div className="table-wrap">
@@ -1041,7 +1056,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
               ) : null}
             </section>
 
-            <section className="data-section">
+            <section id="oportunidades-section" className="data-section">
               <h2>Oportunidades</h2>
               {snapshot.opportunities.length ? (
                 <div className="table-wrap">
@@ -1122,24 +1137,6 @@ function LoginForm({ email, password, isSubmitting, onEmailChange, onPasswordCha
         {isSubmitting ? "Entrando" : "Entrar no CRM"}
       </button>
     </form>
-  );
-}
-
-function LoadingPanels() {
-  return (
-    <section className="split-layout" aria-busy="true">
-      <div className="panel"><div className="skeleton skeleton-title" /><div className="skeleton skeleton-line" /></div>
-      <div className="panel"><div className="skeleton skeleton-title" /><div className="skeleton skeleton-line" /></div>
-    </section>
-  );
-}
-
-function EmptyState({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="empty-state">
-      <h3>{title}</h3>
-      <p>{text}</p>
-    </div>
   );
 }
 
