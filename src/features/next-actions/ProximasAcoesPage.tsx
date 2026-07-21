@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
-import { TimelineDrawer, type TimelineTarget } from "../../components/ui/TimelineDrawer";
 import { formatDateTime } from "../../domain/format";
 import { loadNextActions, type NextAction } from "../../domain/crm";
 import { useActionOperation } from "./useActionOperation";
@@ -56,7 +55,6 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
   const [filter, setFilter] = useState<ActionFilter>("overdue");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timelineTarget, setTimelineTarget] = useState<TimelineTarget | null>(null);
   const navigate = useNavigate();
 
   async function refresh() {
@@ -120,7 +118,7 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
                   <tr key={action.id}>
                     <td>{action.title}{isOverdue(action) ? <span className="badge danger-badge">vencida</span> : null}</td>
                     <td>
-                      <button className="search-dropdown-item" type="button" onClick={() => setTimelineTarget({ type: "customer", id: action.customerId, name: action.customerName })}>
+                      <button className="search-dropdown-item" type="button" onClick={() => navigate(`/clientes/${action.customerId}`)}>
                         {action.customerName}
                       </button>
                     </td>
@@ -150,7 +148,6 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
         )}
       </section>
 
-      {timelineTarget ? <TimelineDrawer target={timelineTarget} onClose={() => setTimelineTarget(null)} /> : null}
     </>
   );
 }

@@ -331,6 +331,25 @@ describe("CRM customers and opportunities API", () => {
     expect(response.json().error.message).toBe("Restaure o cliente antes de criar ou mover uma oportunidade.");
   });
 
+  it("filters opportunities by clienteId for a customer's detail page", async () => {
+    const repository = new FakeCrmRepository();
+    const otherCustomer = await repository.createCustomer({ id: actorId, role: "gestor" }, { tipoPessoa: "fisica", nome: "Outro Cliente" });
+    await repository.createOpportunity({ id: actorId, role: "gestor" }, makeCreateOpportunityInput());
+    await repository.createOpportunity({ id: actorId, role: "gestor" }, { ...makeCreateOpportunityInput(), clienteId: otherCustomer.id, titulo: "Oportunidade do outro cliente" });
+    const app = createTestServer({ crmRepository: repository });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/opportunities?clienteId=${otherCustomer.id}`,
+      headers: { authorization: "Bearer valid" },
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().opportunities).toHaveLength(1);
+    expect(response.json().opportunities[0].titulo).toBe("Oportunidade do outro cliente");
+  });
+
   it("rejects opportunities with invalid stage or loss reason", async () => {
     const app = createTestServer({});
     const invalidStage = await app.inject({
@@ -1312,7 +1331,7 @@ class FakeCrmRepository implements CrmDataRepository {
 
   async listOpportunities(
     actor: Actor,
-    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; situation?: string; demandType?: string; from?: string; to?: string; cursor?: string; limit?: number },
+    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; situation?: string; demandType?: string; from?: string; to?: string; cursor?: string; limit?: number },
   ): Promise<{ opportunities: OpportunityRecord[]; nextCursor: string | null }> {
     const all = this.filterOpportunities(actor, filters);
     const limit = filters.limit ?? 100;
@@ -1321,12 +1340,13 @@ class FakeCrmRepository implements CrmDataRepository {
     return { opportunities: page, nextCursor: startIndex + limit < all.length ? page.at(-1)?.id ?? null : null };
   }
 
-  filterOpportunities(actor: Actor, filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; situation?: string; demandType?: string; from?: string; to?: string }): OpportunityRecord[] {
+  filterOpportunities(actor: Actor, filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; situation?: string; demandType?: string; from?: string; to?: string }): OpportunityRecord[] {
     return this.opportunities.filter((opportunity) => {
       if (actor.role === "vendedor" && opportunity.responsavelId !== actor.id) return false;
       if (filters.status && opportunity.status !== filters.status) return false;
       if (filters.etapaId && opportunity.etapaId !== filters.etapaId) return false;
       if (filters.responsavelId && opportunity.responsavelId !== filters.responsavelId) return false;
+      if (filters.clienteId && opportunity.clienteId !== filters.clienteId) return false;
       if (filters.situation && opportunity.situacao !== filters.situation) return false;
       if (filters.demandType && opportunity.tipoDemanda !== filters.demandType) return false;
       if (filters.from && opportunity.createdAt.slice(0, 10) < filters.from) return false;

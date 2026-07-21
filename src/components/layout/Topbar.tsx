@@ -1,7 +1,7 @@
 import { Bell, LogOut, Search, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { NotificationList } from "../ui/NotificationList";
-import { TimelineDrawer, type TimelineTarget } from "../ui/TimelineDrawer";
 import { globalSearch, type GlobalSearchResult } from "../../domain/crm";
 import { useNotifications } from "../../features/notifications/useNotifications";
 
@@ -9,8 +9,8 @@ export function Topbar({ userEmail, onLogout }: { userEmail: string | null; onLo
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<GlobalSearchResult | null>(null);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
-  const [timelineTarget, setTimelineTarget] = useState<TimelineTarget | null>(null);
   const notifications = useNotifications({ status: "active", limit: "5" });
+  const navigate = useNavigate();
 
   useEffect(() => {
     void notifications.refresh();
@@ -28,8 +28,8 @@ export function Topbar({ userEmail, onLogout }: { userEmail: string | null; onLo
     return () => clearTimeout(timeout);
   }, [search]);
 
-  function openResult(target: TimelineTarget) {
-    setTimelineTarget(target);
+  function openResult(path: string) {
+    navigate(path);
     setSearchResults(null);
   }
 
@@ -56,7 +56,7 @@ export function Topbar({ userEmail, onLogout }: { userEmail: string | null; onLo
                 <div className="search-dropdown-group">
                   <span className="search-dropdown-label">Clientes</span>
                   {searchResults.customers.map((customer) => (
-                    <button key={customer.id} type="button" className="search-dropdown-item" onClick={() => openResult({ type: "customer", id: customer.id, name: customer.nome })}>
+                    <button key={customer.id} type="button" className="search-dropdown-item" onClick={() => openResult(`/clientes/${customer.id}`)}>
                       <strong>{customer.nome}</strong>
                       <span>{customer.telefone ?? customer.empresa ?? ""}</span>
                     </button>
@@ -67,7 +67,7 @@ export function Topbar({ userEmail, onLogout }: { userEmail: string | null; onLo
                 <div className="search-dropdown-group">
                   <span className="search-dropdown-label">Oportunidades</span>
                   {searchResults.opportunities.map((opportunity) => (
-                    <button key={opportunity.id} type="button" className="search-dropdown-item" onClick={() => openResult({ type: "opportunity", id: opportunity.id, name: opportunity.titulo })}>
+                    <button key={opportunity.id} type="button" className="search-dropdown-item" onClick={() => openResult(`/oportunidades/${opportunity.id}`)}>
                       <strong>{opportunity.titulo}</strong>
                       <span>{opportunity.clienteNome} - {opportunity.etapaNome}</span>
                     </button>
@@ -101,7 +101,6 @@ export function Topbar({ userEmail, onLogout }: { userEmail: string | null; onLo
           Sair
         </button>
       </header>
-      {timelineTarget ? <TimelineDrawer target={timelineTarget} onClose={() => setTimelineTarget(null)} /> : null}
     </>
   );
 }

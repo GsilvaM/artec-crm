@@ -47,4 +47,15 @@ test.describe("WCAG automated audit", () => {
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });
+
+  test("customer detail page has no automatically detectable violations", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Clientes" }).click();
+    await page.waitForURL(/\/clientes$/);
+    await page.locator("#clientes-section table tbody tr").first().getByRole("link", { name: "Abrir" }).click();
+    await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
+    await page.waitForSelector("text=Linha do tempo comercial");
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
 });

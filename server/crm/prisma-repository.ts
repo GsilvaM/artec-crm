@@ -275,7 +275,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
 
   async listOpportunities(
     actor: Actor,
-    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; cursor?: string; limit?: number },
+    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; cursor?: string; limit?: number },
   ): Promise<OpportunityListRecord> {
     const limit = clampLimit(filters.limit);
     const opportunities = await this.prisma.opportunity.findMany({
@@ -293,6 +293,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.etapaId ? { etapaId: filters.etapaId } : {}),
         ...(filters.responsavelId ? { responsavelId: filters.responsavelId } : {}),
+        ...(filters.clienteId ? { clienteId: filters.clienteId } : {}),
         ...(filters.cursor ? { id: { lt: filters.cursor } } : {}),
       },
       include: opportunityInclude,

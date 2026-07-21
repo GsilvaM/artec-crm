@@ -195,7 +195,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
           <div>
             <dt>Etapa</dt>
             <dd>
-              <select value={opportunity.etapaId} disabled={!isActive} onChange={(event) => void handleStageChange(event.target.value)}>
+              <select aria-label="Etapa da oportunidade" value={opportunity.etapaId} disabled={!isActive} onChange={(event) => void handleStageChange(event.target.value)}>
                 {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
               </select>
             </dd>
@@ -205,7 +205,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
             <dt>Responsavel</dt>
             <dd>
               {canManageUsers ? (
-                <select value={opportunity.responsavelId} onChange={(event) => void handleReassign(event.target.value)}>
+                <select aria-label="Responsavel pela oportunidade" value={opportunity.responsavelId} onChange={(event) => void handleReassign(event.target.value)}>
                   {members.map((member) => <option key={member.userId} value={member.userId}>{member.email ?? member.userId.slice(0, 8)}</option>)}
                 </select>
               ) : (

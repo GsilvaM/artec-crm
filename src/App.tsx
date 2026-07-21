@@ -59,6 +59,7 @@ import { NotificationList, formatNotificationStatus } from "./components/ui/Noti
 import { CentralComercialPage } from "./features/commercial-center/CentralComercialPage";
 import { ProximasAcoesPage } from "./features/next-actions/ProximasAcoesPage";
 import { OportunidadePage } from "./features/opportunities/OportunidadePage";
+import { ClientePage } from "./features/customers/ClientePage";
 
 const SECTION_ID_BY_PATH: Record<string, string> = {
   "/pipeline": "pipeline-section",
@@ -159,6 +160,7 @@ export function App() {
         <Route path="central-comercial" element={<CentralComercialPage currentUserId={authState.user.id} />} />
         <Route path="proximas-acoes" element={<ProximasAcoesPage currentUserId={authState.user.id} />} />
         <Route path="oportunidades/:id" element={<OportunidadePage currentUserId={authState.user.id} canManageUsers={authState.user.permissions.includes("users:manage")} />} />
+        <Route path="clientes/:id" element={<ClientePage currentUserId={authState.user.id} />} />
         <Route index element={<Navigate to="/central-comercial" replace />} />
         <Route path="*" element={<AuthenticatedApp authState={authState} onLogout={handleLogout} />} />
       </Route>
@@ -684,7 +686,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                         <td>{customer.empresa ?? "-"}</td>
                         <td>{customer.opportunitiesCount}</td>
                         <td className="actions-cell">
-                          <button className="button secondary" type="button" onClick={() => void openCustomerTimeline(customer.id)}>Historico</button>
+                          <Link className="button secondary" to={`/clientes/${customer.id}`}>Abrir</Link>
                           <button className="icon-button" type="button" aria-label={`Editar ${customer.nome}`} onClick={() => void handleEditCustomer(customer)}><Edit3 aria-hidden="true" /></button>
                           <button className="icon-button" type="button" aria-label={`Arquivar ${customer.nome}`} onClick={() => void handleArchiveCustomer(customer)}><Archive aria-hidden="true" /></button>
                         </td>

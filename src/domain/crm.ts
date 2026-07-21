@@ -383,6 +383,14 @@ export async function loadMoreOpportunities(cursor: string, search = ""): Promis
   return apiGet<{ opportunities: Opportunity[]; nextCursor: string | null }>(`/api/opportunities?${params.toString()}`);
 }
 
+export async function loadCustomer(id: string): Promise<Customer> {
+  return (await apiGet<{ customer: Customer }>(`/api/customers/${id}`)).customer;
+}
+
+export async function loadOpportunitiesByCustomer(clienteId: string): Promise<Opportunity[]> {
+  return (await apiGet<{ opportunities: Opportunity[] }>(`/api/opportunities?${new URLSearchParams({ clienteId }).toString()}`)).opportunities;
+}
+
 export async function createCustomer(payload: CreateCustomerPayload): Promise<Customer> {
   const response = await apiSend<{ customer: Customer }>("/api/customers", "POST", payload);
   return response.customer;
@@ -442,6 +450,7 @@ export type NextActionFilters = {
   overdue?: boolean;
   today?: boolean;
   future?: boolean;
+  customerId?: string;
 };
 
 export async function loadNextAction(id: string): Promise<NextAction> {
@@ -457,6 +466,7 @@ export async function loadNextActions(filters: NextActionFilters = {}): Promise<
     overdue: filters.overdue ? "true" : undefined,
     today: filters.today ? "true" : undefined,
     future: filters.future ? "true" : undefined,
+    customerId: filters.customerId,
   });
   return (await apiGet<{ nextActions: NextAction[] }>(`/api/next-actions${query}`)).nextActions;
 }

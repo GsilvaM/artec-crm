@@ -563,7 +563,7 @@ export type CrmDataRepository = {
   setCustomerArchived(actor: Actor, id: string, archived: boolean): Promise<CustomerRecord | null>;
   listOpportunities(
     actor: Actor,
-    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; cursor?: string; limit?: number },
+    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; cursor?: string; limit?: number },
   ): Promise<OpportunityListRecord>;
   getOpportunity(actor: Actor, id: string): Promise<OpportunityRecord | null>;
   createOpportunity(actor: Actor, input: CreateOpportunityInput): Promise<OpportunityRecord>;

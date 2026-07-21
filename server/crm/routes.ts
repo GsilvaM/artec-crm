@@ -197,7 +197,7 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
   });
 
   app.get("/api/opportunities", { preHandler: [guards.authenticate, guards.requirePermission("opportunities:read")] }, async (request) => {
-    const query = request.query as { search?: string; status?: string; etapaId?: string; responsavelId?: string; cursor?: string; limit?: string };
+    const query = request.query as { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; cursor?: string; limit?: string };
     return repository.listOpportunities(getActor(request), {
       ...query,
       limit: query.limit ? Number(query.limit) : undefined,
