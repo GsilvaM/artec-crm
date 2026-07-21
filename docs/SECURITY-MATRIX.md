@@ -29,6 +29,7 @@ Atualizado em: 2026-07-21
 | `crm.motivos_perda` | Leitura | Leitura | Leitura | RLS ativa | Futuro fechamento |
 | `crm.oportunidades` | Todas | Proprias | Triagem/atribuicao futura | RLS ativa | Futuro CRUD |
 | `crm.atividades` | Leitura/escrita | Proprias e das oportunidades sob responsabilidade | Atendimento conforme escopo | RLS ativa | Linha do tempo funcional |
+| `crm.orcamentos` | Leitura/escrita | Proprios e das oportunidades sob responsabilidade | Atendimento conforme escopo | RLS ativa | Versionado; imutavel apos sair de rascunho |
 | `crm.next_actions` | Todas | Proprias | Atendimento conforme escopo | RLS ativa | Acompanhamento e follow-ups |
 | `crm.audit_log` | Leitura | Nao | Nao | RLS gestor | Backend grava futuramente |
 | `crm.notificacoes` | Proprias | Proprias | Proprias | RLS por usuario | Futuras notificacoes |

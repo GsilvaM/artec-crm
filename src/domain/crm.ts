@@ -69,6 +69,21 @@ export type NextAction = {
   archivedAt: string | null;
 };
 
+export type QuoteStatus = "rascunho" | "enviado" | "revisado" | "aprovado" | "recusado" | "expirado";
+
+export type Quote = {
+  id: string;
+  opportunityId: string;
+  versao: number;
+  valor: number;
+  resumo: string | null;
+  status: QuoteStatus;
+  enviadoEm: string | null;
+  respondidoEm: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type PipelineStage = {
   id: string;
   nome: string;
@@ -418,6 +433,18 @@ export async function loadAdminUsers(): Promise<MembershipCandidate[]> {
 
 export async function upsertMembership(userId: string, payload: { role: CrmRole; isActive: boolean }): Promise<MembershipCandidate> {
   return (await apiSend<{ membership: MembershipCandidate }>(`/api/admin/users/${userId}/membership`, "POST", payload)).membership;
+}
+
+export async function loadOpportunityQuotes(opportunityId: string): Promise<Quote[]> {
+  return (await apiGet<{ quotes: Quote[] }>(`/api/opportunities/${opportunityId}/quotes`)).quotes;
+}
+
+export async function createQuote(opportunityId: string, payload: { valor: number; resumo?: string }): Promise<Quote> {
+  return (await apiSend<{ quote: Quote }>(`/api/opportunities/${opportunityId}/quotes`, "POST", payload)).quote;
+}
+
+export async function updateQuote(id: string, payload: { valor?: number; resumo?: string; status?: QuoteStatus }): Promise<Quote> {
+  return (await apiSend<{ quote: Quote }>(`/api/quotes/${id}`, "PATCH", payload)).quote;
 }
 
 async function apiGet<T>(path: string): Promise<T> {

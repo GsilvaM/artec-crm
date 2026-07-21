@@ -345,6 +345,33 @@ export type UpsertMembershipInput = {
   isActive: boolean;
 };
 
+export type QuoteStatus = "rascunho" | "enviado" | "revisado" | "aprovado" | "recusado" | "expirado";
+
+export type QuoteRecord = {
+  id: string;
+  opportunityId: string;
+  versao: number;
+  valor: number;
+  resumo: string | null;
+  status: QuoteStatus;
+  enviadoEm: string | null;
+  respondidoEm: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateQuoteInput = {
+  opportunityId: string;
+  valor: number;
+  resumo?: string | null;
+};
+
+export type UpdateQuoteInput = {
+  valor?: number;
+  resumo?: string | null;
+  status?: QuoteStatus;
+};
+
 export type CreatePipelineStageInput = {
   nome: string;
   ordem: number;
@@ -515,5 +542,8 @@ export type CrmDataRepository = {
   setLossReasonActive(actor: Actor, id: string, isActive: boolean): Promise<LossReasonAdminRecord | null>;
   listMembershipCandidates(actor: Actor): Promise<MembershipCandidateRecord[]>;
   upsertMembership(actor: Actor, userId: string, input: UpsertMembershipInput): Promise<MembershipCandidateRecord>;
+  listQuotes(actor: Actor, opportunityId: string): Promise<QuoteRecord[]>;
+  createQuote(actor: Actor, input: CreateQuoteInput): Promise<QuoteRecord>;
+  updateQuote(actor: Actor, id: string, input: UpdateQuoteInput): Promise<QuoteRecord | null>;
   close(): Promise<void>;
 };

@@ -33,6 +33,10 @@ import type {
   OpportunityRecord,
   PipelineStageRecord,
   PostponeNextActionInput,
+  QuoteRecord,
+  QuoteStatus,
+  CreateQuoteInput,
+  UpdateQuoteInput,
   ReceiveAuvoWebhookEventInput,
   ReceiveAuvoWebhookEventResult,
   SnoozeNotificationInput,
@@ -103,6 +107,41 @@ const nextActionInclude = {
 const STALLED_DAYS_THRESHOLD = 3;
 const DUE_SOON_HOURS = 24;
 const RESERVED_TERMINAL_STAGE_NAMES = new Set(["Aprovado", "Perdido"]);
+
+const QUOTE_STATUS_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
+  rascunho: ["enviado"],
+  enviado: ["revisado", "aprovado", "recusado", "expirado"],
+  revisado: ["aprovado", "recusado", "expirado"],
+  aprovado: [],
+  recusado: [],
+  expirado: [],
+};
+
+function mapQuote(row: {
+  id: string;
+  oportunidadeId: string;
+  versao: number;
+  valor: number;
+  resumo: string | null;
+  status: string;
+  enviadoEm: Date | null;
+  respondidoEm: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): QuoteRecord {
+  return {
+    id: row.id,
+    opportunityId: row.oportunidadeId,
+    versao: row.versao,
+    valor: row.valor,
+    resumo: row.resumo,
+    status: row.status as QuoteStatus,
+    enviadoEm: row.enviadoEm?.toISOString() ?? null,
+    respondidoEm: row.respondidoEm?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
 
 function translatePipelineStageWriteError(error: unknown): unknown {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -1332,6 +1371,89 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       role: input.role,
       isActive: input.isActive,
     };
+  }
+
+  async listQuotes(actor: Actor, opportunityId: string): Promise<QuoteRecord[]> {
+    const opportunity = await this.getOpportunity(actor, opportunityId);
+    if (!opportunity) return [];
+
+    const quotes = await this.prisma.quote.findMany({
+      where: { oportunidadeId: opportunityId },
+      orderBy: { versao: "desc" },
+    });
+    return quotes.map(mapQuote);
+  }
+
+  async createQuote(actor: Actor, input: CreateQuoteInput): Promise<QuoteRecord> {
+    const opportunity = await this.getOpportunity(actor, input.opportunityId);
+    if (!opportunity) throw new ApiError(404, "not_found", "Oportunidade nao encontrada.");
+    assertCanEditOpportunity(opportunity);
+
+    const quote = await this.prisma.$transaction(async (tx) => {
+      const latest = await tx.quote.findFirst({
+        where: { oportunidadeId: input.opportunityId },
+        orderBy: { versao: "desc" },
+        select: { versao: true },
+      });
+      return tx.quote.create({
+        data: {
+          oportunidadeId: input.opportunityId,
+          versao: (latest?.versao ?? 0) + 1,
+          valor: input.valor,
+          resumo: input.resumo ?? null,
+          status: "rascunho",
+          createdBy: actor.id,
+        },
+      });
+    });
+
+    return mapQuote(quote);
+  }
+
+  async updateQuote(actor: Actor, id: string, input: UpdateQuoteInput): Promise<QuoteRecord | null> {
+    const current = await this.prisma.quote.findUnique({ where: { id } });
+    if (!current) return null;
+
+    const nextStatus = input.status ?? (current.status as QuoteStatus);
+    if (input.status && input.status !== current.status) {
+      const allowed = QUOTE_STATUS_TRANSITIONS[current.status as QuoteStatus] ?? [];
+      if (!allowed.includes(input.status)) {
+        throw new ApiError(409, "bad_request", `Nao e possivel mover o orcamento de "${current.status}" para "${input.status}".`);
+      }
+    }
+    if ((input.valor !== undefined || input.resumo !== undefined) && current.status !== "rascunho") {
+      throw new ApiError(409, "bad_request", "Somente orcamentos em rascunho podem ter valor ou resumo alterados.");
+    }
+
+    const now = new Date();
+    const enviadoEm = nextStatus === "enviado" && current.status === "rascunho" ? now : current.enviadoEm;
+    const respondidoEm =
+      ["aprovado", "recusado", "expirado"].includes(nextStatus) && current.respondidoEm === null ? now : current.respondidoEm;
+
+    const quote = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.quote.update({
+        where: { id },
+        data: {
+          valor: input.valor,
+          resumo: input.resumo,
+          status: nextStatus,
+          enviadoEm,
+          respondidoEm,
+          updatedBy: actor.id,
+        },
+      });
+
+      if (nextStatus === "enviado" && current.status === "rascunho") {
+        await tx.opportunity.update({
+          where: { id: current.oportunidadeId },
+          data: { valorOrcamento: updated.valor, dataOrcamento: now, updatedBy: actor.id },
+        });
+      }
+
+      return updated;
+    });
+
+    return mapQuote(quote);
   }
 
   async close(): Promise<void> {

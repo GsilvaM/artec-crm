@@ -56,6 +56,7 @@ export const ModelName = {
   PipelineStage: 'PipelineStage',
   LossReason: 'LossReason',
   Opportunity: 'Opportunity',
+  Quote: 'Quote',
   Activity: 'Activity',
   NextAction: 'NextAction',
   AuditLog: 'AuditLog',
@@ -172,6 +173,24 @@ export const OpportunityScalarFieldEnum = {
 } as const
 
 export type OpportunityScalarFieldEnum = (typeof OpportunityScalarFieldEnum)[keyof typeof OpportunityScalarFieldEnum]
+
+
+export const QuoteScalarFieldEnum = {
+  id: 'id',
+  oportunidadeId: 'oportunidadeId',
+  versao: 'versao',
+  valor: 'valor',
+  resumo: 'resumo',
+  status: 'status',
+  enviadoEm: 'enviadoEm',
+  respondidoEm: 'respondidoEm',
+  createdBy: 'createdBy',
+  updatedBy: 'updatedBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type QuoteScalarFieldEnum = (typeof QuoteScalarFieldEnum)[keyof typeof QuoteScalarFieldEnum]
 
 
 export const ActivityScalarFieldEnum = {

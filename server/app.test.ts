@@ -35,6 +35,10 @@ import type {
   OpportunityRecord,
   PipelineStageRecord,
   PostponeNextActionInput,
+  QuoteRecord,
+  QuoteStatus,
+  CreateQuoteInput,
+  UpdateQuoteInput,
   ReceiveAuvoWebhookEventInput,
   ReceiveAuvoWebhookEventResult,
   SnoozeNotificationInput,
@@ -334,6 +338,38 @@ describe("CRM customers and opportunities API", () => {
     expect(movedToTerminal.statusCode).toBe(409);
     expect(movedToTerminal.json().error.message).toBe("Etapas terminais so podem ser atingidas pelo fluxo de aprovar ou perder a oportunidade.");
     expect(createdInTerminal.statusCode).toBe(409);
+  });
+
+  it("creates versioned quotes, enforces valid status transitions and locks fields once sent", async () => {
+    const app = createTestServer({});
+    const created = await app.inject({ method: "POST", url: "/api/opportunities", headers: { authorization: "Bearer valid" }, payload: makeCreateOpportunityInput() });
+    const opportunityId = created.json().opportunity.id;
+
+    const firstQuote = await app.inject({ method: "POST", url: `/api/opportunities/${opportunityId}/quotes`, headers: { authorization: "Bearer valid" }, payload: { valor: 150000, resumo: "Instalacao completa" } });
+    const secondQuote = await app.inject({ method: "POST", url: `/api/opportunities/${opportunityId}/quotes`, headers: { authorization: "Bearer valid" }, payload: { valor: 180000 } });
+    const invalidJump = await app.inject({ method: "PATCH", url: `/api/quotes/${firstQuote.json().quote.id}`, headers: { authorization: "Bearer valid" }, payload: { status: "aprovado" } });
+    const sent = await app.inject({ method: "PATCH", url: `/api/quotes/${firstQuote.json().quote.id}`, headers: { authorization: "Bearer valid" }, payload: { status: "enviado" } });
+    const editAfterSent = await app.inject({ method: "PATCH", url: `/api/quotes/${firstQuote.json().quote.id}`, headers: { authorization: "Bearer valid" }, payload: { valor: 200000 } });
+    const approved = await app.inject({ method: "PATCH", url: `/api/quotes/${firstQuote.json().quote.id}`, headers: { authorization: "Bearer valid" }, payload: { status: "aprovado" } });
+    const approvedAgain = await app.inject({ method: "PATCH", url: `/api/quotes/${firstQuote.json().quote.id}`, headers: { authorization: "Bearer valid" }, payload: { status: "enviado" } });
+    const list = await app.inject({ method: "GET", url: `/api/opportunities/${opportunityId}/quotes`, headers: { authorization: "Bearer valid" } });
+    const opportunityAfter = await app.inject({ method: "GET", url: `/api/opportunities/${opportunityId}`, headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(firstQuote.statusCode).toBe(201);
+    expect(firstQuote.json().quote.versao).toBe(1);
+    expect(secondQuote.json().quote.versao).toBe(2);
+    expect(invalidJump.statusCode).toBe(409);
+    expect(sent.statusCode).toBe(200);
+    expect(sent.json().quote.enviadoEm).not.toBeNull();
+    expect(editAfterSent.statusCode).toBe(409);
+    expect(approved.statusCode).toBe(200);
+    expect(approved.json().quote.respondidoEm).not.toBeNull();
+    expect(approvedAgain.statusCode).toBe(409);
+    expect(list.json().quotes).toHaveLength(2);
+    expect(list.json().quotes[0].versao).toBe(2);
+    expect(opportunityAfter.json().opportunity.valorOrcamento).toBe(150000);
+    expect(opportunityAfter.json().opportunity.dataOrcamento).not.toBeNull();
   });
 
   it("prevents sellers from assigning opportunities to another responsible user", async () => {
@@ -1012,6 +1048,7 @@ class FakeCrmRepository implements CrmDataRepository {
     { id: lostStageId, nome: "Perdido", ordem: 9, isTerminal: true },
   ];
   private lossReasons: LossReasonAdminRecord[] = [{ id: lossReasonId, nome: "sem retorno", isActive: true }];
+  quotes: QuoteRecord[] = [];
   private membershipCandidates: MembershipCandidateRecord[] = [
     { userId: actorId, email: "gestor@artec.local", hasMembership: true, role: "gestor", isActive: true },
     { userId: "77777777-7777-4777-8777-777777777777", email: "vendedor@artec.local", hasMembership: false, role: null, isActive: null },
@@ -1562,6 +1599,71 @@ class FakeCrmRepository implements CrmDataRepository {
     candidate.role = input.role;
     candidate.isActive = input.isActive;
     return candidate;
+  }
+
+  async listQuotes(actor: Actor, opportunityId: string): Promise<QuoteRecord[]> {
+    const opportunity = await this.getOpportunity(actor, opportunityId);
+    if (!opportunity) return [];
+    return this.quotes.filter((quote) => quote.opportunityId === opportunityId).sort((a, b) => b.versao - a.versao);
+  }
+
+  async createQuote(actor: Actor, input: CreateQuoteInput): Promise<QuoteRecord> {
+    const opportunity = await this.getOpportunity(actor, input.opportunityId);
+    if (!opportunity) throw new ApiError(404, "not_found", "Oportunidade nao encontrada.");
+    this.assertEditableOpportunity(opportunity);
+
+    const latestVersao = Math.max(0, ...this.quotes.filter((quote) => quote.opportunityId === input.opportunityId).map((quote) => quote.versao));
+    const quote: QuoteRecord = {
+      id: randomUUID(),
+      opportunityId: input.opportunityId,
+      versao: latestVersao + 1,
+      valor: input.valor,
+      resumo: input.resumo ?? null,
+      status: "rascunho",
+      enviadoEm: null,
+      respondidoEm: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.quotes.push(quote);
+    return quote;
+  }
+
+  async updateQuote(_actor: Actor, id: string, input: UpdateQuoteInput): Promise<QuoteRecord | null> {
+    const quote = this.quotes.find((item) => item.id === id);
+    if (!quote) return null;
+
+    const transitions: Record<QuoteStatus, QuoteStatus[]> = {
+      rascunho: ["enviado"],
+      enviado: ["revisado", "aprovado", "recusado", "expirado"],
+      revisado: ["aprovado", "recusado", "expirado"],
+      aprovado: [],
+      recusado: [],
+      expirado: [],
+    };
+    if (input.status && input.status !== quote.status && !transitions[quote.status].includes(input.status)) {
+      throw new ApiError(409, "bad_request", `Nao e possivel mover o orcamento de "${quote.status}" para "${input.status}".`);
+    }
+    if ((input.valor !== undefined || input.resumo !== undefined) && quote.status !== "rascunho") {
+      throw new ApiError(409, "bad_request", "Somente orcamentos em rascunho podem ter valor ou resumo alterados.");
+    }
+
+    if (input.valor !== undefined) quote.valor = input.valor;
+    if (input.resumo !== undefined) quote.resumo = input.resumo;
+    if (input.status && input.status !== quote.status) {
+      if (input.status === "enviado") {
+        quote.enviadoEm = now;
+        const opportunity = this.opportunities.find((item) => item.id === quote.opportunityId);
+        if (opportunity) {
+          opportunity.valorOrcamento = quote.valor;
+          opportunity.dataOrcamento = now;
+        }
+      }
+      if (["aprovado", "recusado", "expirado"].includes(input.status)) quote.respondidoEm = now;
+      quote.status = input.status;
+    }
+    quote.updatedAt = now;
+    return quote;
   }
 
   async close(): Promise<void> {

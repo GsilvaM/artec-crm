@@ -109,10 +109,32 @@ model Opportunity {
   etapa               PipelineStage @relation(fields: [etapaId], references: [id])
   motivoPerda         LossReason?   @relation(fields: [motivoPerdaId], references: [id])
   nextActions         NextAction[]
+  quotes              Quote[]
 
   @@index([clienteId], map: "oportunidades_cliente_idx")
   @@index([responsavelId, status], map: "oportunidades_responsavel_status_idx")
   @@map("oportunidades")
+  @@schema("crm")
+}
+
+model Quote {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  oportunidadeId String      @map("oportunidade_id") @db.Uuid
+  versao         Int
+  valor          Int
+  resumo         String?     @db.Text
+  status         String      @db.Text
+  enviadoEm      DateTime?   @map("enviado_em") @db.Timestamptz(6)
+  respondidoEm   DateTime?   @map("respondido_em") @db.Timestamptz(6)
+  createdBy      String      @map("created_by") @db.Uuid
+  updatedBy      String?     @map("updated_by") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  oportunidade   Opportunity @relation(fields: [oportunidadeId], references: [id])
+
+  @@unique([oportunidadeId, versao], map: "orcamentos_oportunidade_versao_unique")
+  @@index([oportunidadeId, versao(sort: Desc)], map: "orcamentos_oportunidade_idx")
+  @@map("orcamentos")
   @@schema("crm")
 }
 

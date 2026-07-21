@@ -425,6 +425,7 @@ export type OpportunityWhereInput = {
   etapa?: Prisma.XOR<Prisma.PipelineStageScalarRelationFilter, Prisma.PipelineStageWhereInput>
   motivoPerda?: Prisma.XOR<Prisma.LossReasonNullableScalarRelationFilter, Prisma.LossReasonWhereInput> | null
   nextActions?: Prisma.NextActionListRelationFilter
+  quotes?: Prisma.QuoteListRelationFilter
 }
 
 export type OpportunityOrderByWithRelationInput = {
@@ -462,6 +463,7 @@ export type OpportunityOrderByWithRelationInput = {
   etapa?: Prisma.PipelineStageOrderByWithRelationInput
   motivoPerda?: Prisma.LossReasonOrderByWithRelationInput
   nextActions?: Prisma.NextActionOrderByRelationAggregateInput
+  quotes?: Prisma.QuoteOrderByRelationAggregateInput
 }
 
 export type OpportunityWhereUniqueInput = Prisma.AtLeast<{
@@ -502,6 +504,7 @@ export type OpportunityWhereUniqueInput = Prisma.AtLeast<{
   etapa?: Prisma.XOR<Prisma.PipelineStageScalarRelationFilter, Prisma.PipelineStageWhereInput>
   motivoPerda?: Prisma.XOR<Prisma.LossReasonNullableScalarRelationFilter, Prisma.LossReasonWhereInput> | null
   nextActions?: Prisma.NextActionListRelationFilter
+  quotes?: Prisma.QuoteListRelationFilter
 }, "id">
 
 export type OpportunityOrderByWithAggregationInput = {
@@ -608,6 +611,7 @@ export type OpportunityCreateInput = {
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityUncheckedCreateInput = {
@@ -642,6 +646,7 @@ export type OpportunityUncheckedCreateInput = {
   currentNextActionId?: string | null
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityUpdateInput = {
@@ -676,6 +681,7 @@ export type OpportunityUpdateInput = {
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityUncheckedUpdateInput = {
@@ -710,6 +716,7 @@ export type OpportunityUncheckedUpdateInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityCreateManyInput = {
@@ -925,6 +932,11 @@ export type OpportunitySumOrderByAggregateInput = {
   quantidadeParcelas?: Prisma.SortOrder
 }
 
+export type OpportunityScalarRelationFilter = {
+  is?: Prisma.OpportunityWhereInput
+  isNot?: Prisma.OpportunityWhereInput
+}
+
 export type OpportunityNullableScalarRelationFilter = {
   is?: Prisma.OpportunityWhereInput | null
   isNot?: Prisma.OpportunityWhereInput | null
@@ -1064,6 +1076,20 @@ export type NullableIntFieldUpdateOperationsInput = {
   divide?: number
 }
 
+export type OpportunityCreateNestedOneWithoutQuotesInput = {
+  create?: Prisma.XOR<Prisma.OpportunityCreateWithoutQuotesInput, Prisma.OpportunityUncheckedCreateWithoutQuotesInput>
+  connectOrCreate?: Prisma.OpportunityCreateOrConnectWithoutQuotesInput
+  connect?: Prisma.OpportunityWhereUniqueInput
+}
+
+export type OpportunityUpdateOneRequiredWithoutQuotesNestedInput = {
+  create?: Prisma.XOR<Prisma.OpportunityCreateWithoutQuotesInput, Prisma.OpportunityUncheckedCreateWithoutQuotesInput>
+  connectOrCreate?: Prisma.OpportunityCreateOrConnectWithoutQuotesInput
+  upsert?: Prisma.OpportunityUpsertWithoutQuotesInput
+  connect?: Prisma.OpportunityWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OpportunityUpdateToOneWithWhereWithoutQuotesInput, Prisma.OpportunityUpdateWithoutQuotesInput>, Prisma.OpportunityUncheckedUpdateWithoutQuotesInput>
+}
+
 export type OpportunityCreateNestedOneWithoutActivitiesInput = {
   create?: Prisma.XOR<Prisma.OpportunityCreateWithoutActivitiesInput, Prisma.OpportunityUncheckedCreateWithoutActivitiesInput>
   connectOrCreate?: Prisma.OpportunityCreateOrConnectWithoutActivitiesInput
@@ -1127,6 +1153,7 @@ export type OpportunityCreateWithoutClienteInput = {
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityUncheckedCreateWithoutClienteInput = {
@@ -1160,6 +1187,7 @@ export type OpportunityUncheckedCreateWithoutClienteInput = {
   currentNextActionId?: string | null
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityCreateOrConnectWithoutClienteInput = {
@@ -1254,6 +1282,7 @@ export type OpportunityCreateWithoutEtapaInput = {
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityUncheckedCreateWithoutEtapaInput = {
@@ -1287,6 +1316,7 @@ export type OpportunityUncheckedCreateWithoutEtapaInput = {
   currentNextActionId?: string | null
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityCreateOrConnectWithoutEtapaInput = {
@@ -1346,6 +1376,7 @@ export type OpportunityCreateWithoutMotivoPerdaInput = {
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityUncheckedCreateWithoutMotivoPerdaInput = {
@@ -1379,6 +1410,7 @@ export type OpportunityUncheckedCreateWithoutMotivoPerdaInput = {
   currentNextActionId?: string | null
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityCreateOrConnectWithoutMotivoPerdaInput = {
@@ -1405,6 +1437,158 @@ export type OpportunityUpdateWithWhereUniqueWithoutMotivoPerdaInput = {
 export type OpportunityUpdateManyWithWhereWithoutMotivoPerdaInput = {
   where: Prisma.OpportunityScalarWhereInput
   data: Prisma.XOR<Prisma.OpportunityUpdateManyMutationInput, Prisma.OpportunityUncheckedUpdateManyWithoutMotivoPerdaInput>
+}
+
+export type OpportunityCreateWithoutQuotesInput = {
+  id?: string
+  titulo: string
+  descricao?: string | null
+  tipoDemanda: string
+  origem?: string | null
+  responsavelId: string
+  situacao: string
+  valorEstimado?: number | null
+  valorOrcamento?: number | null
+  valorAprovado?: number | null
+  formaPagamento?: string | null
+  quantidadeParcelas?: number | null
+  previsaoExecucao?: Date | string | null
+  proximaAcao?: string | null
+  proximaAcaoEm?: Date | string | null
+  dataEntrada?: Date | string
+  dataOrcamento?: Date | string | null
+  dataAprovacao?: Date | string | null
+  dataPerda?: Date | string | null
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdBy: string
+  updatedBy?: string | null
+  archivedAt?: Date | string | null
+  currentNextActionId?: string | null
+  activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
+  cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
+  etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
+  motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
+  nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
+}
+
+export type OpportunityUncheckedCreateWithoutQuotesInput = {
+  id?: string
+  clienteId: string
+  titulo: string
+  descricao?: string | null
+  tipoDemanda: string
+  origem?: string | null
+  responsavelId: string
+  etapaId: string
+  situacao: string
+  valorEstimado?: number | null
+  valorOrcamento?: number | null
+  valorAprovado?: number | null
+  formaPagamento?: string | null
+  quantidadeParcelas?: number | null
+  previsaoExecucao?: Date | string | null
+  proximaAcao?: string | null
+  proximaAcaoEm?: Date | string | null
+  dataEntrada?: Date | string
+  dataOrcamento?: Date | string | null
+  dataAprovacao?: Date | string | null
+  dataPerda?: Date | string | null
+  motivoPerdaId?: string | null
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdBy: string
+  updatedBy?: string | null
+  archivedAt?: Date | string | null
+  currentNextActionId?: string | null
+  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
+}
+
+export type OpportunityCreateOrConnectWithoutQuotesInput = {
+  where: Prisma.OpportunityWhereUniqueInput
+  create: Prisma.XOR<Prisma.OpportunityCreateWithoutQuotesInput, Prisma.OpportunityUncheckedCreateWithoutQuotesInput>
+}
+
+export type OpportunityUpsertWithoutQuotesInput = {
+  update: Prisma.XOR<Prisma.OpportunityUpdateWithoutQuotesInput, Prisma.OpportunityUncheckedUpdateWithoutQuotesInput>
+  create: Prisma.XOR<Prisma.OpportunityCreateWithoutQuotesInput, Prisma.OpportunityUncheckedCreateWithoutQuotesInput>
+  where?: Prisma.OpportunityWhereInput
+}
+
+export type OpportunityUpdateToOneWithWhereWithoutQuotesInput = {
+  where?: Prisma.OpportunityWhereInput
+  data: Prisma.XOR<Prisma.OpportunityUpdateWithoutQuotesInput, Prisma.OpportunityUncheckedUpdateWithoutQuotesInput>
+}
+
+export type OpportunityUpdateWithoutQuotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  titulo?: Prisma.StringFieldUpdateOperationsInput | string
+  descricao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tipoDemanda?: Prisma.StringFieldUpdateOperationsInput | string
+  origem?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  responsavelId?: Prisma.StringFieldUpdateOperationsInput | string
+  situacao?: Prisma.StringFieldUpdateOperationsInput | string
+  valorEstimado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorOrcamento?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorAprovado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  formaPagamento?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantidadeParcelas?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  previsaoExecucao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  proximaAcao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  proximaAcaoEm?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataEntrada?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataOrcamento?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataAprovacao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataPerda?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdBy?: Prisma.StringFieldUpdateOperationsInput | string
+  updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
+  cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
+  etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
+  motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
+  nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
+}
+
+export type OpportunityUncheckedUpdateWithoutQuotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  clienteId?: Prisma.StringFieldUpdateOperationsInput | string
+  titulo?: Prisma.StringFieldUpdateOperationsInput | string
+  descricao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tipoDemanda?: Prisma.StringFieldUpdateOperationsInput | string
+  origem?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  responsavelId?: Prisma.StringFieldUpdateOperationsInput | string
+  etapaId?: Prisma.StringFieldUpdateOperationsInput | string
+  situacao?: Prisma.StringFieldUpdateOperationsInput | string
+  valorEstimado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorOrcamento?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorAprovado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  formaPagamento?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantidadeParcelas?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  previsaoExecucao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  proximaAcao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  proximaAcaoEm?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataEntrada?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataOrcamento?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataAprovacao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataPerda?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  motivoPerdaId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdBy?: Prisma.StringFieldUpdateOperationsInput | string
+  updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityCreateWithoutActivitiesInput = {
@@ -1438,6 +1622,7 @@ export type OpportunityCreateWithoutActivitiesInput = {
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityUncheckedCreateWithoutActivitiesInput = {
@@ -1471,6 +1656,7 @@ export type OpportunityUncheckedCreateWithoutActivitiesInput = {
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityCreateOrConnectWithoutActivitiesInput = {
@@ -1520,6 +1706,7 @@ export type OpportunityUpdateWithoutActivitiesInput = {
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutActivitiesInput = {
@@ -1553,6 +1740,7 @@ export type OpportunityUncheckedUpdateWithoutActivitiesInput = {
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityCreateWithoutNextActionsInput = {
@@ -1586,6 +1774,7 @@ export type OpportunityCreateWithoutNextActionsInput = {
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityUncheckedCreateWithoutNextActionsInput = {
@@ -1619,6 +1808,7 @@ export type OpportunityUncheckedCreateWithoutNextActionsInput = {
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
 }
 
 export type OpportunityCreateOrConnectWithoutNextActionsInput = {
@@ -1668,6 +1858,7 @@ export type OpportunityUpdateWithoutNextActionsInput = {
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutNextActionsInput = {
@@ -1701,6 +1892,7 @@ export type OpportunityUncheckedUpdateWithoutNextActionsInput = {
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityCreateManyClienteInput = {
@@ -1765,6 +1957,7 @@ export type OpportunityUpdateWithoutClienteInput = {
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutClienteInput = {
@@ -1798,6 +1991,7 @@ export type OpportunityUncheckedUpdateWithoutClienteInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityUncheckedUpdateManyWithoutClienteInput = {
@@ -1893,6 +2087,7 @@ export type OpportunityUpdateWithoutEtapaInput = {
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutEtapaInput = {
@@ -1926,6 +2121,7 @@ export type OpportunityUncheckedUpdateWithoutEtapaInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityUncheckedUpdateManyWithoutEtapaInput = {
@@ -2021,6 +2217,7 @@ export type OpportunityUpdateWithoutMotivoPerdaInput = {
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutMotivoPerdaInput = {
@@ -2054,6 +2251,7 @@ export type OpportunityUncheckedUpdateWithoutMotivoPerdaInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
 }
 
 export type OpportunityUncheckedUpdateManyWithoutMotivoPerdaInput = {
@@ -2095,11 +2293,13 @@ export type OpportunityUncheckedUpdateManyWithoutMotivoPerdaInput = {
 export type OpportunityCountOutputType = {
   activities: number
   nextActions: number
+  quotes: number
 }
 
 export type OpportunityCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   activities?: boolean | OpportunityCountOutputTypeCountActivitiesArgs
   nextActions?: boolean | OpportunityCountOutputTypeCountNextActionsArgs
+  quotes?: boolean | OpportunityCountOutputTypeCountQuotesArgs
 }
 
 /**
@@ -2124,6 +2324,13 @@ export type OpportunityCountOutputTypeCountActivitiesArgs<ExtArgs extends runtim
  */
 export type OpportunityCountOutputTypeCountNextActionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.NextActionWhereInput
+}
+
+/**
+ * OpportunityCountOutputType without action
+ */
+export type OpportunityCountOutputTypeCountQuotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.QuoteWhereInput
 }
 
 
@@ -2162,6 +2369,7 @@ export type OpportunitySelect<ExtArgs extends runtime.Types.Extensions.InternalA
   etapa?: boolean | Prisma.PipelineStageDefaultArgs<ExtArgs>
   motivoPerda?: boolean | Prisma.Opportunity$motivoPerdaArgs<ExtArgs>
   nextActions?: boolean | Prisma.Opportunity$nextActionsArgs<ExtArgs>
+  quotes?: boolean | Prisma.Opportunity$quotesArgs<ExtArgs>
   _count?: boolean | Prisma.OpportunityCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["opportunity"]>
 
@@ -2274,6 +2482,7 @@ export type OpportunityInclude<ExtArgs extends runtime.Types.Extensions.Internal
   etapa?: boolean | Prisma.PipelineStageDefaultArgs<ExtArgs>
   motivoPerda?: boolean | Prisma.Opportunity$motivoPerdaArgs<ExtArgs>
   nextActions?: boolean | Prisma.Opportunity$nextActionsArgs<ExtArgs>
+  quotes?: boolean | Prisma.Opportunity$quotesArgs<ExtArgs>
   _count?: boolean | Prisma.OpportunityCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type OpportunityIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2295,6 +2504,7 @@ export type $OpportunityPayload<ExtArgs extends runtime.Types.Extensions.Interna
     etapa: Prisma.$PipelineStagePayload<ExtArgs>
     motivoPerda: Prisma.$LossReasonPayload<ExtArgs> | null
     nextActions: Prisma.$NextActionPayload<ExtArgs>[]
+    quotes: Prisma.$QuotePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2725,6 +2935,7 @@ export interface Prisma__OpportunityClient<T, Null = never, ExtArgs extends runt
   etapa<T extends Prisma.PipelineStageDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PipelineStageDefaultArgs<ExtArgs>>): Prisma.Prisma__PipelineStageClient<runtime.Types.Result.GetResult<Prisma.$PipelineStagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   motivoPerda<T extends Prisma.Opportunity$motivoPerdaArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Opportunity$motivoPerdaArgs<ExtArgs>>): Prisma.Prisma__LossReasonClient<runtime.Types.Result.GetResult<Prisma.$LossReasonPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   nextActions<T extends Prisma.Opportunity$nextActionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Opportunity$nextActionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NextActionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  quotes<T extends Prisma.Opportunity$quotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Opportunity$quotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3248,6 +3459,30 @@ export type Opportunity$nextActionsArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.NextActionScalarFieldEnum | Prisma.NextActionScalarFieldEnum[]
+}
+
+/**
+ * Opportunity.quotes
+ */
+export type Opportunity$quotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Quote
+   */
+  select?: Prisma.QuoteSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Quote
+   */
+  omit?: Prisma.QuoteOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.QuoteInclude<ExtArgs> | null
+  where?: Prisma.QuoteWhereInput
+  orderBy?: Prisma.QuoteOrderByWithRelationInput | Prisma.QuoteOrderByWithRelationInput[]
+  cursor?: Prisma.QuoteWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.QuoteScalarFieldEnum | Prisma.QuoteScalarFieldEnum[]
 }
 
 /**

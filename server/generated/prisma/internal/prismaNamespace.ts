@@ -389,6 +389,7 @@ export const ModelName = {
   PipelineStage: 'PipelineStage',
   LossReason: 'LossReason',
   Opportunity: 'Opportunity',
+  Quote: 'Quote',
   Activity: 'Activity',
   NextAction: 'NextAction',
   AuditLog: 'AuditLog',
@@ -410,7 +411,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "userMembership" | "customer" | "pipelineStage" | "lossReason" | "opportunity" | "activity" | "nextAction" | "auditLog" | "notification" | "auvoWebhookEvent" | "migrationHistory"
+    modelProps: "userMembership" | "customer" | "pipelineStage" | "lossReason" | "opportunity" | "quote" | "activity" | "nextAction" | "auditLog" | "notification" | "auvoWebhookEvent" | "migrationHistory"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -781,6 +782,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.OpportunityCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.OpportunityCountAggregateOutputType> | number
+        }
+      }
+    }
+    Quote: {
+      payload: Prisma.$QuotePayload<ExtArgs>
+      fields: Prisma.QuoteFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.QuoteFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.QuoteFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload>
+        }
+        findFirst: {
+          args: Prisma.QuoteFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.QuoteFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload>
+        }
+        findMany: {
+          args: Prisma.QuoteFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload>[]
+        }
+        create: {
+          args: Prisma.QuoteCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload>
+        }
+        createMany: {
+          args: Prisma.QuoteCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.QuoteCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload>[]
+        }
+        delete: {
+          args: Prisma.QuoteDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload>
+        }
+        update: {
+          args: Prisma.QuoteUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload>
+        }
+        deleteMany: {
+          args: Prisma.QuoteDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.QuoteUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.QuoteUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload>[]
+        }
+        upsert: {
+          args: Prisma.QuoteUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QuotePayload>
+        }
+        aggregate: {
+          args: Prisma.QuoteAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateQuote>
+        }
+        groupBy: {
+          args: Prisma.QuoteGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.QuoteGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.QuoteCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.QuoteCountAggregateOutputType> | number
         }
       }
     }
@@ -1361,6 +1436,24 @@ export const OpportunityScalarFieldEnum = {
 export type OpportunityScalarFieldEnum = (typeof OpportunityScalarFieldEnum)[keyof typeof OpportunityScalarFieldEnum]
 
 
+export const QuoteScalarFieldEnum = {
+  id: 'id',
+  oportunidadeId: 'oportunidadeId',
+  versao: 'versao',
+  valor: 'valor',
+  resumo: 'resumo',
+  status: 'status',
+  enviadoEm: 'enviadoEm',
+  respondidoEm: 'respondidoEm',
+  createdBy: 'createdBy',
+  updatedBy: 'updatedBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type QuoteScalarFieldEnum = (typeof QuoteScalarFieldEnum)[keyof typeof QuoteScalarFieldEnum]
+
+
 export const ActivityScalarFieldEnum = {
   id: 'id',
   clienteId: 'clienteId',
@@ -1734,6 +1827,7 @@ export type GlobalOmitConfig = {
   pipelineStage?: Prisma.PipelineStageOmit
   lossReason?: Prisma.LossReasonOmit
   opportunity?: Prisma.OpportunityOmit
+  quote?: Prisma.QuoteOmit
   activity?: Prisma.ActivityOmit
   nextAction?: Prisma.NextActionOmit
   auditLog?: Prisma.AuditLogOmit

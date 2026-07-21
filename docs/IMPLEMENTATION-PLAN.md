@@ -141,11 +141,13 @@ Critério de aceite: atendimento do Auvo chega, é triado e gera o destino corre
 
 ## 7. Orçamentos e fechamento comercial
 
-- [ ] Versões de orçamento.
-- [ ] Envio, revisão, aprovação e recusa.
-- [ ] Campos obrigatórios de aprovação.
-- [ ] Motivos de perda.
-- [ ] Reabertura auditada.
+- [x] Versões de orçamento (`crm.orcamentos`, uma linha por versao, numeracao automatica por oportunidade).
+- [x] Envio, revisão, aprovação e recusa (maquina de estados no backend: rascunho -> enviado -> {revisado, aprovado, recusado, expirado}).
+- [x] Campos obrigatórios de aprovação (aprovação da oportunidade em si — valor aprovado, forma de pagamento, parcelas, previsão — ja existia desde o Marco 2; nao duplicado no orçamento).
+- [x] Motivos de perda (ja existiam desde o Marco 2; agora com CRUD administrativo tambem).
+- [ ] Reabertura auditada (reabrir um orcamento respondido para nova negociacao nao foi implementado; hoje a saida e criar uma nova versao).
+
+Nota: valor/resumo só podem ser editados enquanto o orçamento está em `rascunho`; depois de enviado, vira um registro histórico imutável (nova negociação = nova versão). Ao marcar um orçamento como `enviado`, `crm.oportunidades.valor_orcamento` e `data_orcamento` são atualizados automaticamente — esses dois campos existiam desde o Marco 2 mas nunca eram preenchidos por nenhum fluxo, o que mantinha os blocos "Orçamentos aguardando envio/retorno" da Central Comercial sempre vazios; ficam corrigidos como efeito colateral direto desta fatia.
 
 Critério de aceite: valores comerciais são mensuráveis sem qualquer lançamento financeiro.
 

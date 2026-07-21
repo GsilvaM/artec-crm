@@ -213,6 +213,23 @@ export const lossReasonActiveSchema = z.object({
   isActive: z.boolean(),
 });
 
+const quoteStatusSchema = z.enum(["rascunho", "enviado", "revisado", "aprovado", "recusado", "expirado"]);
+
+export const quoteCreateSchema = z.object({
+  valor: z.coerce.number().int().positive("Informe o valor do orcamento."),
+  resumo: optionalText,
+});
+
+export const quoteUpdateSchema = z
+  .object({
+    valor: z.coerce.number().int().positive("Informe o valor do orcamento.").optional(),
+    resumo: optionalText,
+    status: quoteStatusSchema.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Informe ao menos um campo para atualizar.",
+  });
+
 export const membershipUpsertSchema = z.object({
   role: z.enum(["gestor", "vendedor", "atendimento"]),
   isActive: z.boolean().default(true),

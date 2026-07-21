@@ -972,6 +972,65 @@ tr:last-child td {
   gap: 6px;
 }
 
+.quotes-panel {
+  margin-top: 22px;
+}
+
+.quotes-empty {
+  margin: 12px 0 0;
+  color: var(--foreground-muted);
+}
+
+.quotes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quote-item {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-muted) 35%, var(--surface));
+}
+
+.quote-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quote-value {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.quote-summary {
+  margin: 0;
+  color: var(--foreground-muted);
+  font-size: 13px;
+}
+
+.quote-dates {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.quote-dates div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--foreground-muted);
+}
+
 .admin-grid {
   display: grid;
   grid-template-columns: 1fr;

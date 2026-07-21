@@ -10,12 +10,14 @@ import {
   createActivity,
   createNextAction,
   createOpportunity,
+  createQuote,
   completeNextAction,
   cancelNextAction,
   archiveNotification,
   loadCrmSnapshot,
   ignoreAuvoWebhookEvent,
   loadCustomerActivities,
+  loadOpportunityQuotes,
   loadAuvoIntegrationStatus,
   loadAuvoWebhookEvent,
   loadAuvoWebhookEvents,
@@ -42,9 +44,13 @@ import {
   type NextAction,
   type Notification,
   type Opportunity,
+  type Quote,
+  type QuoteStatus,
+  updateQuote,
 } from "./domain/crm";
 import { PipelineBoard } from "./components/PipelineBoard";
 import { AdminPanel } from "./components/AdminPanel";
+import { QuotesPanel } from "./components/QuotesPanel";
 
 type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
 
@@ -168,6 +174,8 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [auvoEvents, setAuvoEvents] = useState<AuvoWebhookEvent[]>([]);
   const [selectedAuvoEvent, setSelectedAuvoEvent] = useState<AuvoWebhookEvent | null>(null);
   const [auvoFilter, setAuvoFilter] = useState<AuvoWebhookStatus | "">("");
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [quotesOpportunity, setQuotesOpportunity] = useState<Opportunity | null>(null);
 
   const activeCustomers = snapshot?.customers.filter((customer) => !customer.archivedAt) ?? [];
   const activeOpportunities = snapshot?.opportunities.filter((opportunity) => opportunity.status === "ativa") ?? [];
@@ -484,6 +492,32 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     const opportunity = snapshot?.opportunities.find((item) => item.id === id);
     setTimeline(await loadOpportunityActivities(id));
     setTimelineTitle(opportunity ? `Linha do tempo de ${opportunity.titulo}` : "Linha do tempo da oportunidade");
+    if (opportunity) await openOpportunityQuotes(opportunity);
+  }
+
+  async function openOpportunityQuotes(opportunity: Opportunity) {
+    setQuotesOpportunity(opportunity);
+    setQuotes(await loadOpportunityQuotes(opportunity.id));
+  }
+
+  async function handleCreateQuote(valorReais: string, resumo: string) {
+    if (!quotesOpportunity) return;
+    const valor = Math.round(Number(valorReais.replace(",", ".")) * 100);
+    if (!Number.isFinite(valor) || valor <= 0) throw new Error("Informe um valor valido para o orcamento.");
+    await createQuote(quotesOpportunity.id, { valor, resumo: resumo.trim() || undefined });
+    setQuotes(await loadOpportunityQuotes(quotesOpportunity.id));
+    await refresh();
+  }
+
+  async function handleUpdateQuoteStatus(quote: Quote, status: QuoteStatus) {
+    setError(null);
+    try {
+      await updateQuote(quote.id, { status });
+      if (quotesOpportunity) setQuotes(await loadOpportunityQuotes(quotesOpportunity.id));
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel atualizar o orcamento.");
+    }
   }
 
   function openCenterAction(id: string, mode: ActionOperation["mode"]) {
@@ -959,6 +993,8 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                 </ol>
               ) : <EmptyState title="Historico vazio" text="Abra um cliente ou oportunidade, ou registre uma atividade para preencher a linha do tempo." />}
             </section>
+
+            <QuotesPanel opportunity={quotesOpportunity} quotes={quotes} onCreate={handleCreateQuote} onUpdateStatus={handleUpdateQuoteStatus} />
           </>
         ) : null}
       </main>

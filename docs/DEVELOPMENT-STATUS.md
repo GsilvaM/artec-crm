@@ -295,6 +295,20 @@ Implementado `src/components/AdminPanel.tsx` e rotas `/api/admin/*` (todas exige
 
 Validacao: `npm run typecheck`, `npm run test` (56 testes, 4 novos cobrindo RBAC e as regras de etapa terminal/duplicidade/auto-exclusao) e `npm run build` passaram. Verificado com Playwright contra o ambiente real de homologacao (mesmo Supabase usado em producao): leitura mostrou os 9 motivos de perda seedados e o unico usuario real (`gestor`, marcado "voce", checkbox de ativo desabilitado); escrita testada ponta a ponta criando e desativando um motivo de perda de teste, e criando uma etapa de teste — ambos limpos do banco ao final da verificacao. Um bug de layout (tabelas cortadas em grid de 2 colunas) foi encontrado e corrigido nessa verificacao antes de finalizar o marco.
 
+## Orcamentos versionados (2026-07-21)
+
+Nova tabela `crm.orcamentos` (migration `0014_criar_orcamentos`), com RLS/grants no mesmo padrao de `crm.atividades` (gestor/atendimento veem tudo; vendedor ve o que criou ou o que pertence a oportunidade sob sua responsabilidade). Uma oportunidade pode ter varias versoes de orcamento; a versao e calculada automaticamente (`max(versao) + 1` por oportunidade, dentro de uma transacao).
+
+Maquina de estados no backend (`server/crm/prisma-repository.ts`, tabela `QUOTE_STATUS_TRANSITIONS`): `rascunho -> enviado -> {revisado, aprovado, recusado, expirado}`, com `revisado` tambem podendo seguir para `aprovado/recusado/expirado`. Estados finais (`aprovado`, `recusado`, `expirado`) nao tem saida. `valor`/`resumo` so podem ser alterados enquanto o orcamento esta em `rascunho` — depois de enviado, e um registro historico; nova negociacao = nova versao, nao edicao da mesma linha.
+
+Efeito colateral corrigido: `crm.oportunidades.valor_orcamento` e `data_orcamento` existiam desde o Marco 2 (schema e leitura ja prontos, inclusive usados pelos blocos "Orçamentos aguardando envio/retorno" da Central Comercial), mas **nenhum fluxo os preenchia** — `data_orcamento` nunca tinha sido escrito por nenhum caminho de codigo, entao esses blocos da Central Comercial estavam silenciosamente sempre vazios. Agora, marcar um orcamento como `enviado` atualiza os dois campos na oportunidade automaticamente.
+
+API: `GET /api/opportunities/:id/quotes`, `POST /api/opportunities/:id/quotes` (cria rascunho), `PATCH /api/quotes/:id` (edita rascunho ou transiciona status). Frontend: `src/components/QuotesPanel.tsx`, aberto junto com a linha do tempo ao clicar "Historico" numa oportunidade.
+
+Bug de ferramenta encontrado e corrigido no caminho: `database/create-migration.ts` gerava nomes de arquivo com timestamp de 14 digitos, mas `database/migration-utils.ts` so reconhece o padrao `NNNN_nome.sql` (4 digitos) — usado em todas as 13 migrations anteriores. O script `db:migrate:create` estava, portanto, gerando migrations que o runner nunca enxergaria (silenciosamente ignoradas, sem erro). Corrigido para calcular o proximo numero sequencial de 4 digitos a partir dos arquivos existentes.
+
+Validacao: `npm run typecheck`, `npm run test` (57 testes, 1 novo cobrindo criacao/versionamento/transicoes invalidas/trava de edicao apos envio) e `npm run build` passaram. Migration aplicada com `npm run db:migrate` contra o banco real de homologacao (mesmo usado pela producao). Verificado com Playwright ponta a ponta: criar orcamento, enviar, aprovar — sem erros de console, valores e datas corretos na UI. Dados de teste (1 orcamento e os campos denormalizados da oportunidade) limpos do banco ao final.
+
 ## Incidente: eventos fora de escopo capturados na primeira ativacao do webhook (2026-07-21)
 
 O usuario cadastrou o webhook no Auvo com **18 eventos marcados**, incluindo todos os proibidos pelo escopo do MVP (`CLAUDE.md`, secoes 5 e 10.4): pagamento criado/alterado, mensagens (enviada/recebida/atualizada), eventos de painel/card, anotacoes de painel e modelo de mensagem. O webhook ficou `ATIVO` por alguns minutos nessa configuracao.

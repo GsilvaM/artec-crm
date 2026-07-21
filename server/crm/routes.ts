@@ -27,6 +27,8 @@ import {
   pipelineStageCreateSchema,
   pipelineStageUpdateSchema,
   postponeNextActionSchema,
+  quoteCreateSchema,
+  quoteUpdateSchema,
 } from "./validation.js";
 
 type PreHandlerFactory = ReturnType<typeof createRouteGuards>;
@@ -203,6 +205,21 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
     const opportunity = await repository.setOpportunityArchived(getActor(request), readIdParam(request), false);
     if (!opportunity) throw new ApiError(404, "not_found", "Oportunidade nao encontrada.");
     return { opportunity };
+  });
+
+  app.get("/api/opportunities/:id/quotes", { preHandler: [guards.authenticate, guards.requirePermission("opportunities:read")] }, async (request) => ({
+    quotes: await repository.listQuotes(getActor(request), readIdParam(request)),
+  }));
+
+  app.post("/api/opportunities/:id/quotes", { preHandler: [guards.authenticate, guards.requirePermission("opportunities:write")] }, async (request, reply) => {
+    const quote = await repository.createQuote(getActor(request), { opportunityId: readIdParam(request), ...parseBody(quoteCreateSchema, request.body) });
+    return reply.status(201).send({ quote });
+  });
+
+  app.patch("/api/quotes/:id", { preHandler: [guards.authenticate, guards.requirePermission("opportunities:write")] }, async (request) => {
+    const quote = await repository.updateQuote(getActor(request), readIdParam(request), parseBody(quoteUpdateSchema, request.body));
+    if (!quote) throw new ApiError(404, "not_found", "Orcamento nao encontrado.");
+    return { quote };
   });
 
   app.get("/api/pipeline-stages", { preHandler: [guards.authenticate, guards.requirePermission("opportunities:read")] }, async (request) => ({
