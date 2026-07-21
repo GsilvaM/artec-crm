@@ -33,18 +33,20 @@ try {
     FROM crm_internal.auvo_webhook_events
   `;
 
+  const likelyRealEvents = toNumber(row?.likely_real_events);
+
   const output = {
     webhookSecretConfigured: Boolean(config.AUVO_WEBHOOK_SECRET),
     totalEvents: toNumber(row?.total_events),
     syntheticEvents: toNumber(row?.synthetic_events),
-    likelyRealEvents: toNumber(row?.likely_real_events),
+    likelyRealEvents,
     pendingEvents: toNumber(row?.received_events) + toNumber(row?.processing_events),
     failedEvents: toNumber(row?.failed_events),
     ignoredEvents: toNumber(row?.ignored_events),
     processedEvents: toNumber(row?.processed_events),
     latestReceivedAt: row?.latest_received_at?.toISOString() ?? null,
     latestLikelyRealReceivedAt: row?.latest_likely_real_received_at?.toISOString() ?? null,
-    nextOfficialStep: "capture_real_auvo_payloads",
+    nextOfficialStep: likelyRealEvents > 0 ? "analyze_real_auvo_payloads" : "capture_real_auvo_payloads",
   };
 
   console.log(JSON.stringify(output, null, 2));

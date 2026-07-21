@@ -238,4 +238,134 @@ Esse diretorio e ignorado pelo Git. Antes de qualquer fixture ser versionada fut
 - textos livres de mensagens/observacoes;
 - tokens, chaves, assinaturas e cookies.
 
+## 12. Schema real observado (mapeamento oficial, 2026-07-21)
+
+Capturado com um contato real e um atendimento real (criar, alterar, enviar mensagem, concluir), com apenas os 5 eventos do MVP habilitados no Auvo. Documentado por estrutura (nomes e tipos de campo), nunca por valor — nenhum dado pessoal foi copiado para este arquivo.
+
+### Descoberta central: "Atendimento" = sessao de chat, nao ordem de servico
+
+Os eventos `SESSION_NEW`, `SESSION_UPDATE` e `SESSION_COMPLETE` sao o que a tela do Auvo chama de "Atendimento criado/alterado/concluido". A estrutura do payload confirma que, nesta conta Auvo, um "atendimento" e uma **sessao de conversa** (WhatsApp/Instagram/canal, com bot e/ou agente humano) — nao uma ordem de servico tecnica com tecnico, data de visita e equipamento, como o termo poderia sugerir. Isso e informacao nova que nao estava disponivel antes da captura real; a decisao de nao presumir nomes de campo (regra do `CLAUDE-ARTEC-CRM.md`) evitou que essa suposicao errada fosse implementada.
+
+Implicacao direta para a Caixa de Entrada (Marco 7, ainda nao iniciado): cada `SESSION_NEW` representa uma nova conversa de atendimento comercial iniciada com um contato, nao uma visita tecnica agendada. O fluxo de triagem deve tratar isso como "novo atendimento via chat aguardando classificacao comercial", nao como "ordem de servico".
+
+### `CONTACT_NEW` / `CONTACT_UPDATE`
+
+Nome real do tipo de evento no campo `eventType` do payload (nao inferido, lido diretamente do payload capturado).
+
+```
+{
+  date: string (timestamp do evento)
+  eventType: string
+  content: {
+    id: string (ID do contato no Auvo — candidato a auvo_contact_id)
+    name: string
+    phonenumber: string
+    phonenumberFormatted: string
+    email: string | null
+    status: string
+    origin: string
+    active: boolean
+    tags: string[]
+    tagsId: string[]
+    companyId: string
+    createdAt: string (ISO)
+    updatedAt: string (ISO)
+    nameWhatsapp: string | null
+    nameInstagram: string | null
+    nameMessenger: string | null
+    instagram: object | null
+    messengerId: string | null
+    pictureUrl: string | null
+    pictureFileId: string | null
+    annotation: string | null
+    utm: object | null
+    metadata: object
+    customFieldValues: object
+  }
+  changeMetadata: {            // presente em CONTACT_UPDATE; ausente/vazio em CONTACT_NEW
+    source: string
+    userId: string
+    changes: Array<{ property: string; currentValue: string; previousValue: string }>
+  }
+}
+```
+
+Campos confiaveis para identificacao de cliente (ordem de prioridade ja definida na secao 12 deste documento, agora confirmada como implementavel): `content.id` (auvo_contact_id), `content.phonenumberFormatted` (telefone), `content.email`.
+
+### `SESSION_NEW` / `SESSION_UPDATE` / `SESSION_COMPLETE`
+
+```
+{
+  date: string
+  eventType: string
+  content: {
+    id: string (ID da sessao/atendimento no Auvo)
+    contactId: string (referencia ao contato — chave de ligacao com CONTACT_*)
+    status: string
+    active: boolean
+    expired: boolean
+    number: string
+    startAt: string (ISO)
+    endAt: string | null (ISO; nulo enquanto o atendimento nao e concluido)
+    createdAt: string (ISO)
+    updatedAt: string (ISO)
+    channelType: string (canal: whatsapp, instagram, etc.)
+    channelId: string
+    channelDetails: { id, platform, provider, displayName, pictureUrl, providerVariable }
+    companyId: string
+    departmentId: string
+    departmentDetails: { id, name, companyId, description }
+    botId: string | null
+    botVersionId: string | null
+    agentDetails: {            // presente quando ha agente humano atribuido; nulo/ausente em SESSION_NEW inicial
+      id: string
+      name: string
+      email: string
+      userId: string
+      shortName: string
+      phoneNumber: string
+      pictureUrl: string | null
+      pictureFileId: string | null
+    } | null
+    contactDetails: {          // subconjunto do contato, mesma forma de CONTACT_*
+      id, name, phonenumber, phonenumberFormatted, email, status, tagsId, tagsName, instagram, pictureUrl
+    }
+    windowStatus: string
+    waitReply: boolean
+    unreadCount: number
+    lastMessageIn: string | null (ISO)
+    lastMessageOut: string | null (ISO)
+    lastMessageText: string | null   // texto livre da ultima mensagem — nunca deve ser exibido/persistido fora do payload bruto sanitizado
+    firstUserInteractionAt: string | null (ISO)
+    firstAgentMessageAt: string | null (ISO)
+    lastInteractionDate: string (ISO)
+    previousSessionId: string | null
+    classification: object | null
+    metadata: object
+    readTimestamp: string | null
+    previewUrl: string | null
+    utm: object | null
+  }
+  changeMetadata: {           // presente em SESSION_UPDATE/SESSION_COMPLETE; ausente/vazio em SESSION_NEW
+    source: string
+    userId: string
+    changes: Array<{ property: string; currentValue: string; previousValue: string }> | object
+  }
+}
+```
+
+Campos confiaveis para o parser definitivo (Marco 7):
+
+- ID externo do evento/atendimento: `content.id` (unico por sessao; estavel entre `SESSION_NEW`/`SESSION_UPDATE`/`SESSION_COMPLETE` do mesmo atendimento).
+- Vinculo com o contato: `content.contactId`, cruzado com `content.id` dos eventos `CONTACT_*`.
+- Diferenciacao criado/alterado/concluido: pelo `eventType` em si (`SESSION_NEW`/`SESSION_UPDATE`/`SESSION_COMPLETE`), nao pelo campo `status` (que tambem existe mas seu conjunto de valores possiveis ainda nao foi totalmente observado).
+- `endAt` so aparece preenchido em `SESSION_COMPLETE`.
+- `changeMetadata.changes` em `SESSION_UPDATE` mostra exatamente quais propriedades mudaram — util para decidir se uma atualizacao e relevante para a Caixa de Entrada ou apenas ruido (ex: `unreadCount` mudando sozinho).
+
+**Ainda nao observado nesta captura**, portanto nao mapeado: atendimento concluido sem nunca ter tido agente humano (so bot), atendimento com contato sem telefone, evento de erro/indisponibilidade da API. O Marco 7 (parser definitivo) so deve cobrir os casos ja observados; casos adicionais exigem nova captura antes de serem tratados no codigo, pela mesma regra de nao presumir payload.
+
+### Eventos fora de escopo confirmados nesta captura (bloqueados, payload nao persistido)
+
+`MESSAGE_SENT` foi recebido (o usuario enviou uma mensagem de teste durante a captura) e corretamente ignorado pelo denylist do backend, sem persistir o texto da mensagem — comportamento esperado, confirma que o hardening do incidente anterior continua funcionando com o SESSION_ removido do denylist.
+
 O exportador nao deve ser usado como autorizacao para implementar mapeamento definitivo sozinho. Ele apenas prepara material anonimo para analise e testes de contrato apos a captura real.

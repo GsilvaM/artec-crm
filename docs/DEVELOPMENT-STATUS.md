@@ -352,6 +352,14 @@ Fluxos do `CLAUDE-ARTEC-CRM.md` secao 14 que **nao** foram cobertos por E2E real
 - Runbook de incidentes e politica de backup documentados.
 - Analise de planos de consulta (`EXPLAIN`) nas queries mais pesadas dos relatorios.
 
+## Payloads reais do Auvo capturados e mapeados (2026-07-21)
+
+`likelyRealEvents` passou de `0` para eventos reais de `CONTACT_NEW`, `CONTACT_UPDATE`, `SESSION_NEW`, `SESSION_UPDATE` e `SESSION_COMPLETE` (contato e atendimento reais criados pelo usuario, com apenas os 5 eventos do MVP habilitados no Auvo). Schema completo documentado em `docs/AUVO-INTEGRATION.md`, secao 12, por estrutura (nomes/tipos de campo), nunca por valor real.
+
+Achado central, so possivel apos a captura real (confirma a decisao de nao presumir payload antes disso): **"Atendimento" nesta conta Auvo e uma sessao de conversa/chat** (WhatsApp/Instagram, com bot e/ou agente humano), identificada pelo `eventType` literal `SESSION_*`, nao uma ordem de servico tecnica com tecnico/equipamento/data de visita. Isso muda o desenho esperado da Caixa de Entrada: cada `SESSION_NEW` e uma nova conversa comercial aguardando triagem, nao uma visita agendada.
+
+`nextOfficialStep` (via `npm run auvo:homologation:status`) permanece `capture_real_auvo_payloads` porque o script ainda usa o mesmo texto fixo de antes da captura — isso e apenas a mensagem do comando, nao reflete mais o estado real; o proximo passo genuino agora e gerar fixtures anonimizadas e iniciar o parser/Caixa de Entrada (Marco 7).
+
 ## Correcao: SESSION_* nao e fora de escopo (2026-07-21)
 
 Durante o incidente do primeiro registro (18 eventos habilitados por engano), `SESSION_NEW`/`SESSION_UPDATE` apareceram misturados com eventos de mensagem, e foram classificados como fora de escopo por associacao (nao havia evidencia isolada do que representavam). Apagados junto com o resto do lote na limpeza daquele incidente.

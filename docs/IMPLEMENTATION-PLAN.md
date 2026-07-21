@@ -117,12 +117,12 @@ Critério de aceite: alertas prioritários são acionáveis e não geram duplici
 - [x] Idempotência.
 - [x] Tela de eventos.
 - [x] Reprocessamento.
-- [ ] Capturar payloads reais.
-- [ ] Fixtures anonimizadas e testes de contrato.
+- [x] Capturar payloads reais (contato + atendimento reais, 2026-07-21; ver `docs/AUVO-INTEGRATION.md` secao 12 para o schema documentado).
+- [ ] Fixtures anonimizadas e testes de contrato (proximo passo: `npm run auvo:fixtures:export` + revisao manual antes de versionar).
 
 Critério de aceite: eventos repetidos não duplicam entradas e erros são auditáveis.
 
-Status em 2026-07-20: receptor de homologacao concluido, migration `0013_harden_auvo_webhook_events` aplicada, APIs administrativas e tela de eventos disponiveis para gestor. A proxima etapa oficial e capturar payloads reais no Auvo antes de mapear eventos ou implementar Caixa de Entrada definitiva.
+Status em 2026-07-21: receptor de homologacao concluido e endurecido (Marco 6), payloads reais capturados e mapeados (schema documentado em `docs/AUVO-INTEGRATION.md`). Achado central: "Atendimento" nesta conta Auvo e uma sessao de chat (`SESSION_NEW/UPDATE/COMPLETE`), nao uma ordem de servico tecnica. Proxima etapa oficial: gerar fixtures anonimizadas e iniciar o parser definitivo + Caixa de Entrada (Marco 6 do `CLAUDE-ARTEC-CRM.md`, secao 12).
 
 Preparacao da captura real: comando `npm run auvo:homologation:status` disponivel para verificar, sem vazar dados sensiveis, se o segredo esta configurado e se chegaram eventos sinteticos ou reais.
 
