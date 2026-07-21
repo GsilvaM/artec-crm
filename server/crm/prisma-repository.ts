@@ -941,15 +941,20 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     const existing = await this.prisma.auvoWebhookEvent.findUnique({ where: { dedupeKey } });
     if (existing) return { event: mapAuvoWebhookEvent(existing), duplicate: true };
 
+    const eventType = inferEventType(input.payload);
+    const outOfScope = isOutOfScopeAuvoEventType(eventType);
+
     const event = await this.prisma.auvoWebhookEvent.create({
       data: {
         provider: "auvo",
         externalEventId: inferExternalEventId(input.payload),
-        eventType: inferEventType(input.payload),
+        eventType,
         dedupeKey,
-        status: "received",
+        status: outOfScope ? "ignored" : "received",
+        ignoredAt: outOfScope ? new Date() : null,
+        lastError: outOfScope ? "Tipo de evento fora do escopo do MVP; payload nao armazenado." : null,
         sanitizedHeadersJson: input.headers,
-        rawPayloadJson: input.payload as Prisma.InputJsonValue,
+        rawPayloadJson: outOfScope ? ({ eventType, outOfScope: true } as Prisma.InputJsonValue) : (input.payload as Prisma.InputJsonValue),
         payloadHash,
         sourceIpHash: input.sourceIpHash,
         contentLength: input.contentLength,
@@ -1599,6 +1604,16 @@ function mapAuvoWebhookEvent(row: AuvoWebhookEventEntity): AuvoWebhookEventRecor
     schemaVersion: row.schemaVersion,
     nextRetryAt: row.nextRetryAt?.toISOString() ?? null,
   };
+}
+
+const OUT_OF_SCOPE_AUVO_EVENT_TYPE_PREFIXES = ["MESSAGE_", "SESSION_", "PAYMENT_", "CARD_", "PANEL_", "TEMPLATE_"];
+const OUT_OF_SCOPE_AUVO_EVENT_TYPES_EXACT = new Set(["CONTACT_TAG_UPDATE"]);
+
+export function isOutOfScopeAuvoEventType(eventType: string | null): boolean {
+  if (!eventType) return false;
+  const normalized = eventType.trim().toUpperCase();
+  if (OUT_OF_SCOPE_AUVO_EVENT_TYPES_EXACT.has(normalized)) return true;
+  return OUT_OF_SCOPE_AUVO_EVENT_TYPE_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
 
 function inferEventType(payload: unknown): string | null {

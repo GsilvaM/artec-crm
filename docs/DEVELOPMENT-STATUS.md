@@ -249,6 +249,41 @@ Resolvido nesta sessao:
 4. Dominio proprio (`crm.artecclimatizados.com.br`) nao foi configurado; deploy inicial usara dominio `*.vercel.app` ate decisao em contrario.
 5. Sem deploy publicado ainda, a captura de payloads reais do Auvo (Marco 7) continua bloqueada. `likelyRealEvents` permanece `0`.
 
+## Deploy Vercel (2026-07-21)
+
+Deploy publicado pelo usuario em `https://artec-crm.vercel.app/`. Validado nesta sessao:
+
+- `GET /api/health`: `200`, `database: connected`.
+- `GET /`: `200` (frontend servido).
+- `POST /api/webhooks/auvo/:secret` com segredo incorreto: `403 forbidden`, sem vazar o segredo enviado.
+- `GET /api/webhooks/auvo/:secret`: `405`.
+- Rota inexistente: `404` no formato JSON padrao da API.
+- Headers `X-Ratelimit-*` presentes na resposta do webhook, confirmando rate limit ativo em producao.
+- `CRM_DATABASE_URL` de producao aponta para o mesmo projeto Supabase usado localmente (confirmado pelo usuario); migrations `0001`-`0013` ja aplicadas, nenhuma acao adicional de migration necessaria.
+
+Achado de seguranca (nao critico, mas fora do recomendado em `docs/DEPLOY.md`): teste automatizado que envia o `AUVO_WEBHOOK_SECRET` local (sem nunca imprimir o valor) contra a rota publica de producao retornou `202`, ou seja, **o segredo de producao configurado na Vercel e identico ao segredo local atual**. `docs/DEPLOY.md` recomendava um valor exclusivo por ambiente; isso ainda nao foi feito. Evento sintetico de teste (`homologation: true`) foi registrado e nao conta como evento real (`totalEvents` foi de 1 para 2, `likelyRealEvents` continua `0`).
+
+Resolvido em 2026-07-21: novo `AUVO_WEBHOOK_SECRET` gerado (32 bytes aleatorios) exclusivamente para producao, aplicado em Vercel Project Settings > Environment Variables e validado apos redeploy. Confirmado por sondagem automatizada (sem nunca imprimir valores): producao passou a rejeitar (`403`) o segredo local antigo e a aceitar (`202`) apenas o novo valor de producao. Local e producao agora usam segredos distintos. Eventos sinteticos de teste (`homologation: true`) usados nessa validacao nao contam como `likelyRealEvents`.
+
+Proximo passo: configurar a URL `https://artec-crm.vercel.app/api/webhooks/auvo/<segredo-de-producao>` no painel do Auvo (eventos do MVP listados em `docs/AUVO-INTEGRATION.md`) e iniciar a captura real de payloads.
+
+## Incidente: eventos fora de escopo capturados na primeira ativacao do webhook (2026-07-21)
+
+O usuario cadastrou o webhook no Auvo com **18 eventos marcados**, incluindo todos os proibidos pelo escopo do MVP (`CLAUDE.md`, secoes 5 e 10.4): pagamento criado/alterado, mensagens (enviada/recebida/atualizada), eventos de painel/card, anotacoes de painel e modelo de mensagem. O webhook ficou `ATIVO` por alguns minutos nessa configuracao.
+
+Auditoria (apenas contagens e nomes de campo/tipo de evento, nunca conteudo, via `crm_internal.auvo_webhook_events`) encontrou 15 eventos reais recebidos nesse intervalo, sendo:
+
+- Dentro do escopo (mantidos): `CONTACT_NEW` (1), `CONTACT_UPDATE` (3).
+- Fora do escopo (removidos): `MESSAGE_SENT` (3), `MESSAGE_UPDATED` (5), `MESSAGE_RECEIVED` (1), `SESSION_NEW` (1), `SESSION_UPDATE` (1), `CONTACT_TAG_UPDATE` (1). Os eventos de mensagem tinham um campo `content` com o que aparentava ser texto real de conversa do cliente.
+
+Acoes tomadas, com autorizacao explicita do usuario para cada exclusao:
+
+1. Usuario corrigiu a configuracao no painel do Auvo, deixando marcados apenas os 5 eventos do MVP (Atendimento criado/alterado/concluido, Contato criado/alterado).
+2. As 15 linhas fora de escopo foram apagadas do banco de producao (13 linhas via `id`, mais 2 que chegaram durante a janela de confirmacao, identificadas pelo mesmo criterio: tipo de evento fora da lista aprovada e nao sintetico).
+3. Nenhum dado dentro do escopo aprovado foi tocado; os 4 eventos reais de contato permanecem intactos para a proxima etapa (mapeamento de campos).
+
+Hardening adicionado para reduzir recorrencia (`server/crm/prisma-repository.ts`): `isOutOfScopeAuvoEventType` bloqueia por padrao qualquer `eventType` que comece com `MESSAGE_`, `SESSION_`, `PAYMENT_`, `CARD_`, `PANEL_`, `TEMPLATE_`, ou seja exatamente `CONTACT_TAG_UPDATE` — todos confirmados como tipos reais enviados pelo Auvo nesse incidente. Eventos bloqueados continuam gerando uma linha (status `ignored`, visivel na tela administrativa) mas **sem armazenar o payload original** (`rawPayloadJson` vira `{ eventType, outOfScope: true }`), evitando que conteudo fora de escopo chegue a ser persistido mesmo se o painel do Auvo for reconfigurado incorretamente de novo. Tipos de evento desconhecidos (ex: futuros eventos de atendimento, ainda nao observados) continuam passando normalmente — a lista e uma negacao pontual, nao uma lista de permissao, para nao arriscar bloquear eventos legitimos de atendimento por suposicao de nome de campo (proibido pela secao 12 do `CLAUDE.md`). Teste unitario dedicado em `server/crm/prisma-repository.test.ts` (4 casos, sem banco).
+
 ## Correcoes do Marco 5
 
 - Backend ganhou endpoints persistentes de notificacoes internas.
