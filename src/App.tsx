@@ -11,7 +11,6 @@ import {
   createQuote,
   completeNextAction,
   cancelNextAction,
-  archiveNotification,
   loadCrmSnapshot,
   ignoreAuvoWebhookEvent,
   loadCustomerActivities,
@@ -19,14 +18,10 @@ import {
   loadAuvoIntegrationStatus,
   loadAuvoWebhookEvent,
   loadAuvoWebhookEvents,
-  loadNotifications,
   loadOpportunityActivities,
   loseOpportunity,
-  markAllNotificationsRead,
-  markNotificationRead,
   postponeNextAction,
   reprocessAuvoWebhookEvent,
-  snoozeNotification,
   updateOpportunity,
   type Activity,
   type AuvoIntegrationStatus,
@@ -34,7 +29,6 @@ import {
   type AuvoWebhookStatus,
   type CrmSnapshot,
   type NextAction,
-  type Notification,
   type Opportunity,
   type Quote,
   type QuoteStatus,
@@ -48,17 +42,16 @@ import { AuvoInboxPanel } from "./components/AuvoInboxPanel";
 import { AppLayout } from "./components/layout/AppLayout";
 import { EmptyState } from "./components/ui/EmptyState";
 import { LoadingPanels } from "./components/ui/Skeleton";
-import { NotificationList, formatNotificationStatus } from "./components/ui/NotificationList";
 import { CentralComercialPage } from "./features/commercial-center/CentralComercialPage";
 import { ProximasAcoesPage } from "./features/next-actions/ProximasAcoesPage";
 import { OportunidadePage } from "./features/opportunities/OportunidadePage";
 import { ClientePage } from "./features/customers/ClientePage";
 import { ClientesPage } from "./features/customers/ClientesPage";
 import { OportunidadesPage } from "./features/opportunities/OportunidadesPage";
+import { NotificacoesPage } from "./features/notifications/NotificacoesPage";
 
 const SECTION_ID_BY_PATH: Record<string, string> = {
   "/pipeline": "pipeline-section",
-  "/notificacoes": "notificacoes-section",
   "/configuracoes/integracoes/auvo": "auvo-admin-section",
 };
 
@@ -156,6 +149,7 @@ export function App() {
         <Route path="oportunidades" element={<OportunidadesPage currentUserId={authState.user.id} />} />
         <Route path="clientes/:id" element={<ClientePage currentUserId={authState.user.id} />} />
         <Route path="clientes" element={<ClientesPage />} />
+        <Route path="notificacoes" element={<NotificacoesPage />} />
         <Route index element={<Navigate to="/central-comercial" replace />} />
         <Route path="*" element={<AuthenticatedApp authState={authState} onLogout={handleLogout} />} />
       </Route>
@@ -171,8 +165,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [nextActionForm, setNextActionForm] = useState({ customerId: "", opportunityId: "", category: "commercial" as NextAction["category"], title: "", dueAt: "", priority: "normal" as NextAction["priority"] });
   const [timeline, setTimeline] = useState<Activity[]>([]);
   const [timelineTitle, setTimelineTitle] = useState("Linha do tempo");
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [notificationStatus, setNotificationStatus] = useState<"active" | "read" | "archived">("active");
   const [auvoStatus, setAuvoStatus] = useState<AuvoIntegrationStatus | null>(null);
   const [auvoEvents, setAuvoEvents] = useState<AuvoWebhookEvent[]>([]);
   const [selectedAuvoEvent, setSelectedAuvoEvent] = useState<AuvoWebhookEvent | null>(null);
@@ -207,7 +199,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     try {
       const data = await loadCrmSnapshot();
       setSnapshot(data);
-      await refreshNotifications(notificationStatus);
       if (canManageIntegrations) await refreshAuvo();
       setActivityForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
       setNextActionForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
@@ -216,10 +207,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     } finally {
       setIsLoading(false);
     }
-  }
-
-  async function refreshNotifications(status = notificationStatus) {
-    setNotifications((await loadNotifications({ status, limit: "20" })).notifications);
   }
 
   async function refreshAuvo(status = auvoFilter) {
@@ -232,32 +219,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     if (selectedAuvoEvent) {
       setSelectedAuvoEvent(list.events.find((event) => event.id === selectedAuvoEvent.id) ?? selectedAuvoEvent);
     }
-  }
-
-  async function handleNotificationRead(id: string) {
-    await markNotificationRead(id);
-    await refreshNotifications();
-  }
-
-  async function handleAllNotificationsRead() {
-    await markAllNotificationsRead();
-    await refreshNotifications();
-  }
-
-  async function handleNotificationArchive(id: string) {
-    await archiveNotification(id);
-    await refreshNotifications();
-  }
-
-  async function handleNotificationSnooze(id: string) {
-    const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    await snoozeNotification(id, until);
-    await refreshNotifications();
-  }
-
-  async function handleNotificationStatusChange(status: "active" | "read" | "archived") {
-    setNotificationStatus(status);
-    await refreshNotifications(status);
   }
 
   async function handleAuvoFilterChange(status: AuvoWebhookStatus | "") {
@@ -420,24 +381,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
               ) : (
                 <EmptyState title="Nenhuma etapa configurada" text="Configure as etapas do funil para visualizar o quadro." />
               )}
-            </section>
-
-            <section id="notificacoes-section" className="panel notifications-page" aria-label="Notificacoes internas">
-              <header>
-                <div>
-                  <p className="eyebrow">Marco 5</p>
-                  <h2>Notificacoes internas</h2>
-                </div>
-                <div className="filter-actions">
-                  {(["active", "read", "archived"] as const).map((status) => (
-                    <button key={status} className={`button ${notificationStatus === status ? "secondary" : "ghost"}`} type="button" onClick={() => void handleNotificationStatusChange(status)}>
-                      {formatNotificationStatus(status)}
-                    </button>
-                  ))}
-                  <button className="button secondary" type="button" onClick={() => void refreshNotifications()}>Atualizar</button>
-                </div>
-              </header>
-              <NotificationList items={notifications} onRead={handleNotificationRead} onArchive={handleNotificationArchive} onSnooze={handleNotificationSnooze} />
             </section>
 
             {canManageIntegrations ? (
