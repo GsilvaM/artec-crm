@@ -110,6 +110,37 @@ export type MembershipCandidate = {
   isActive: boolean | null;
 };
 
+export type AuvoInboxStatus = "novo" | "em_analise" | "aguardando_dados" | "processado" | "descartado" | "erro_integracao";
+
+export type AuvoInboxItem = {
+  id: string;
+  externalServiceId: string;
+  status: AuvoInboxStatus;
+  suggestedCustomerId: string | null;
+  title: string;
+  contactName: string | null;
+  phoneNormalized: string | null;
+  auvoContactId: string | null;
+  email: string | null;
+  channelType: string | null;
+  resolution: string | null;
+  resolvedOpportunityId: string | null;
+  resolvedCustomerId: string | null;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  discardReason: string | null;
+  lastEventId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ResolveAuvoInboxItemPayload =
+  | { action: "create_opportunity"; clienteId: string; titulo: string; tipoDemanda: string; origem?: string; situacao: string; proximaAcao: string; proximaAcaoEm: string; responsavelId: string }
+  | { action: "link_opportunity"; opportunityId: string }
+  | { action: "warranty" | "support" | "after_sales"; clienteId: string; description: string }
+  | { action: "customer_only"; clienteId: string }
+  | { action: "not_commercial" | "duplicate"; reason?: string };
+
 export type GlobalSearchResult = {
   customers: Customer[];
   opportunities: Opportunity[];
@@ -466,6 +497,14 @@ export async function loadAdminUsers(): Promise<MembershipCandidate[]> {
 
 export async function upsertMembership(userId: string, payload: { role: CrmRole; isActive: boolean }): Promise<MembershipCandidate> {
   return (await apiSend<{ membership: MembershipCandidate }>(`/api/admin/users/${userId}/membership`, "POST", payload)).membership;
+}
+
+export async function loadAuvoInboxItems(status?: AuvoInboxStatus): Promise<AuvoInboxItem[]> {
+  return (await apiGet<{ items: AuvoInboxItem[] }>(`/api/auvo-inbox${toQueryString({ status })}`)).items;
+}
+
+export async function resolveAuvoInboxItem(id: string, payload: ResolveAuvoInboxItemPayload): Promise<AuvoInboxItem> {
+  return (await apiSend<{ item: AuvoInboxItem }>(`/api/auvo-inbox/${id}/resolve`, "POST", payload)).item;
 }
 
 export async function globalSearch(query: string): Promise<GlobalSearchResult> {

@@ -239,6 +239,51 @@ export const quoteUpdateSchema = z
     message: "Informe ao menos um campo para atualizar.",
   });
 
+export const resolveAuvoInboxItemSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create_opportunity"),
+    clienteId: uuid,
+    titulo: z.string().trim().min(2, "Informe o titulo da oportunidade."),
+    tipoDemanda: z.string().trim().min(2, "Informe o tipo de demanda."),
+    origem: optionalText,
+    situacao: z.string().trim().min(2, "Informe a situacao."),
+    proximaAcao: z.string().trim().min(2, "Informe a proxima acao."),
+    proximaAcaoEm: z.string().trim().min(1, "Informe a data da proxima acao."),
+    responsavelId: uuid,
+  }),
+  z.object({
+    action: z.literal("link_opportunity"),
+    opportunityId: uuid,
+  }),
+  z.object({
+    action: z.literal("warranty"),
+    clienteId: uuid,
+    description: z.string().trim().min(2, "Informe a descricao."),
+  }),
+  z.object({
+    action: z.literal("support"),
+    clienteId: uuid,
+    description: z.string().trim().min(2, "Informe a descricao."),
+  }),
+  z.object({
+    action: z.literal("after_sales"),
+    clienteId: uuid,
+    description: z.string().trim().min(2, "Informe a descricao."),
+  }),
+  z.object({
+    action: z.literal("customer_only"),
+    clienteId: uuid,
+  }),
+  z.object({
+    action: z.literal("not_commercial"),
+    reason: optionalText,
+  }),
+  z.object({
+    action: z.literal("duplicate"),
+    reason: optionalText,
+  }),
+]);
+
 export const membershipUpsertSchema = z.object({
   role: z.enum(["gestor", "vendedor", "atendimento"]),
   isActive: z.boolean().default(true),

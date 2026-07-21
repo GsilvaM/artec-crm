@@ -25,6 +25,8 @@ import type {
   CreateOpportunityInput,
   CreatePipelineStageInput,
   CrmDataRepository,
+  AuvoInboxItemRecord,
+  AuvoInboxStatus,
   CustomerRecord,
   GlobalSearchResult,
   LossReasonAdminRecord,
@@ -44,6 +46,7 @@ import type {
   UpdateQuoteInput,
   ReceiveAuvoWebhookEventInput,
   ReceiveAuvoWebhookEventResult,
+  ResolveAuvoInboxItemInput,
   SnoozeNotificationInput,
   UpdateActivityInput,
   UpdateCustomerInput,
@@ -53,6 +56,7 @@ import type {
   UpsertMembershipInput,
 } from "./crm/types.js";
 import { createWebhookPayloadHash, sanitizeWebhookPayload } from "./crm/auvo-webhook.js";
+import { isAuvoSessionEventType, parseAuvoSessionPayload } from "./crm/auvo-parser.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./crm/validation.js";
 
 const now = "2026-07-20T10:00:00.000Z";
@@ -187,6 +191,8 @@ describe("CRM API auth and RBAC", () => {
         "next_actions:write",
         "notifications:read",
         "notifications:write",
+        "auvo_inbox:read",
+        "auvo_inbox:write",
       ],
     });
   });
@@ -923,6 +929,134 @@ describe("CRM activities and next actions API", () => {
     expect(repository.notifications).toHaveLength(0);
   });
 
+  it("keeps the Auvo inbox restricted to gestor/atendimento and supports listing, creating an opportunity and discarding", async () => {
+    const repository = new FakeCrmRepository();
+    const now2 = new Date().toISOString();
+    repository.auvoInboxItems.push(
+      {
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        externalServiceId: "session-1",
+        status: "novo",
+        suggestedCustomerId: null,
+        title: "Atendimento - Fulano",
+        contactName: "Fulano",
+        phoneNormalized: "5511999990000",
+        auvoContactId: "contact-1",
+        email: null,
+        channelType: "whatsapp",
+        resolution: null,
+        resolvedOpportunityId: null,
+        resolvedCustomerId: null,
+        resolvedBy: null,
+        resolvedAt: null,
+        discardReason: null,
+        lastEventId: null,
+        createdAt: now2,
+        updatedAt: now2,
+      },
+      {
+        id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        externalServiceId: "session-2",
+        status: "novo",
+        suggestedCustomerId: null,
+        title: "Atendimento - Ciclano",
+        contactName: "Ciclano",
+        phoneNormalized: null,
+        auvoContactId: null,
+        email: null,
+        channelType: "instagram",
+        resolution: null,
+        resolvedOpportunityId: null,
+        resolvedCustomerId: null,
+        resolvedBy: null,
+        resolvedAt: null,
+        discardReason: null,
+        lastEventId: null,
+        createdAt: now2,
+        updatedAt: now2,
+      },
+    );
+
+    const sellerApp = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true }, crmRepository: repository });
+    const denied = await sellerApp.inject({ method: "GET", url: "/api/auvo-inbox", headers: { authorization: "Bearer valid" } });
+    await sellerApp.close();
+
+    const app = createTestServer({ crmRepository: repository });
+    const listed = await app.inject({ method: "GET", url: "/api/auvo-inbox", headers: { authorization: "Bearer valid" } });
+    const resolved = await app.inject({
+      method: "POST",
+      url: "/api/auvo-inbox/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/resolve",
+      headers: { authorization: "Bearer valid" },
+      payload: {
+        action: "create_opportunity",
+        clienteId: customerId,
+        titulo: "Instalacao via Auvo",
+        tipoDemanda: "instalacao",
+        situacao: "em andamento",
+        proximaAcao: "Ligar para o cliente",
+        proximaAcaoEm: "2026-08-01T10:00:00.000Z",
+        responsavelId: actorId,
+      },
+    });
+    const alreadyResolved = await app.inject({
+      method: "POST",
+      url: "/api/auvo-inbox/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/resolve",
+      headers: { authorization: "Bearer valid" },
+      payload: { action: "not_commercial" },
+    });
+    const discarded = await app.inject({
+      method: "POST",
+      url: "/api/auvo-inbox/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/resolve",
+      headers: { authorization: "Bearer valid" },
+      payload: { action: "duplicate", reason: "Mesmo contato ja atendido em outro item" },
+    });
+    await app.close();
+
+    expect(denied.statusCode).toBe(403);
+    expect(listed.json().items).toHaveLength(2);
+    expect(resolved.statusCode).toBe(200);
+    expect(resolved.json().item).toMatchObject({ status: "processado", resolution: "opportunity_created" });
+    expect(resolved.json().item.resolvedOpportunityId).toBeTruthy();
+    expect(alreadyResolved.statusCode).toBe(409);
+    expect(discarded.statusCode).toBe(200);
+    expect(discarded.json().item).toMatchObject({ status: "descartado", resolution: "duplicate", discardReason: "Mesmo contato ja atendido em outro item" });
+  });
+
+  it("automatically creates an Auvo inbox item from a SESSION_NEW webhook and suggests a customer match by phone", async () => {
+    const repository = new FakeCrmRepository();
+    const knownPhoneCustomer = makeCustomer({ id: "88888888-8888-4888-8888-888888888888", nome: "Contato Conhecido", telefoneNormalizado: "5527888883627" });
+    repository.customers.push(knownPhoneCustomer);
+    const app = createTestServer({ crmRepository: repository });
+    const sessionPayload = {
+      eventType: "SESSION_NEW",
+      content: {
+        id: "session-real-1",
+        contactId: "contact-real-1",
+        channelType: "whatsapp",
+        contactDetails: { name: "Novo Contato", phonenumberFormatted: "27888883627", email: null },
+      },
+    };
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/webhooks/auvo/${auvoSecret}`,
+      headers: { "content-type": "application/json" },
+      payload: sessionPayload,
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(202);
+    expect(repository.auvoInboxItems).toHaveLength(1);
+    expect(repository.auvoInboxItems[0]).toMatchObject({
+      externalServiceId: "session-real-1",
+      status: "novo",
+      contactName: "Novo Contato",
+      auvoContactId: "contact-real-1",
+      phoneNormalized: "5527888883627",
+      suggestedCustomerId: knownPhoneCustomer.id,
+    });
+  });
+
   it("rejects unsafe Auvo webhook requests without leaking secrets", async () => {
     const app = createTestServer({});
     const wrongSecret = await app.inject({ method: "POST", url: "/api/webhooks/auvo/wrong-secret", headers: { "content-type": "application/json" }, payload: { ok: true } });
@@ -1098,6 +1232,7 @@ class FakeCrmRepository implements CrmDataRepository {
   ];
   private lossReasons: LossReasonAdminRecord[] = [{ id: lossReasonId, nome: "sem retorno", isActive: true }];
   quotes: QuoteRecord[] = [];
+  auvoInboxItems: AuvoInboxItemRecord[] = [];
   private membershipCandidates: MembershipCandidateRecord[] = [
     { userId: actorId, email: "gestor@artec.local", hasMembership: true, role: "gestor", isActive: true },
     { userId: "77777777-7777-4777-8777-777777777777", email: "vendedor@artec.local", hasMembership: false, role: null, isActive: null },
@@ -1417,6 +1552,73 @@ class FakeCrmRepository implements CrmDataRepository {
     };
   }
 
+  async listAuvoInboxItems(_actor: Actor, filters: { status?: AuvoInboxStatus }): Promise<AuvoInboxItemRecord[]> {
+    return this.auvoInboxItems.filter((item) => !filters.status || item.status === filters.status);
+  }
+
+  async getAuvoInboxItem(_actor: Actor, id: string): Promise<AuvoInboxItemRecord | null> {
+    return this.auvoInboxItems.find((item) => item.id === id) ?? null;
+  }
+
+  async resolveAuvoInboxItem(actor: Actor, id: string, input: ResolveAuvoInboxItemInput): Promise<AuvoInboxItemRecord | null> {
+    const item = this.auvoInboxItems.find((entry) => entry.id === id);
+    if (!item) return null;
+    if (item.status === "processado" || item.status === "descartado") {
+      throw new ApiError(409, "bad_request", "Este item da Caixa de Entrada ja foi resolvido.");
+    }
+
+    switch (input.action) {
+      case "not_commercial":
+      case "duplicate":
+        item.status = "descartado";
+        item.resolution = input.action;
+        item.discardReason = input.reason ?? null;
+        break;
+      case "customer_only":
+        item.status = "processado";
+        item.resolution = "customer_only";
+        item.resolvedCustomerId = input.clienteId;
+        break;
+      case "warranty":
+      case "support":
+      case "after_sales":
+        await this.createActivity(actor, { customerId: input.clienteId, type: input.action, description: input.description, source: "system" });
+        item.status = "processado";
+        item.resolution = `${input.action}_registered`;
+        item.resolvedCustomerId = input.clienteId;
+        break;
+      case "link_opportunity": {
+        const opportunity = await this.getOpportunity(actor, input.opportunityId);
+        if (!opportunity) throw new ApiError(422, "bad_request", "Oportunidade informada nao existe.");
+        item.status = "processado";
+        item.resolution = "linked_existing_opportunity";
+        item.resolvedOpportunityId = input.opportunityId;
+        item.resolvedCustomerId = opportunity.clienteId;
+        break;
+      }
+      case "create_opportunity": {
+        const opportunity = await this.createOpportunity(actor, {
+          clienteId: input.clienteId,
+          titulo: input.titulo,
+          tipoDemanda: input.tipoDemanda,
+          origem: input.origem ?? "Auvo",
+          responsavelId: input.responsavelId,
+          situacao: input.situacao,
+          proximaAcao: input.proximaAcao,
+          proximaAcaoEm: input.proximaAcaoEm,
+        });
+        item.status = "processado";
+        item.resolution = "opportunity_created";
+        item.resolvedOpportunityId = opportunity.id;
+        item.resolvedCustomerId = input.clienteId;
+        break;
+      }
+    }
+    item.resolvedBy = actor.id;
+    item.resolvedAt = now;
+    return item;
+  }
+
   async listNotifications(actor: Actor, filters: NotificationFilters): Promise<NotificationListRecord> {
     const filtered = this.notifications.filter((notification) => {
       if (notification.userId !== actor.id) return false;
@@ -1508,6 +1710,45 @@ class FakeCrmRepository implements CrmDataRepository {
       nextRetryAt: null,
     };
     this.auvoEvents.unshift(event);
+
+    if (isAuvoSessionEventType(event.eventType)) {
+      const parsed = parseAuvoSessionPayload(payload);
+      if (parsed) {
+        const existingItem = this.auvoInboxItems.find((item) => item.externalServiceId === parsed.externalServiceId);
+        if (existingItem) {
+          existingItem.lastEventId = event.id;
+        } else {
+          const phoneNormalized = normalizePhone(parsed.phoneRaw);
+          const suggestedCustomerId =
+            (parsed.auvoContactId ? this.customers.find((customer) => customer.id === parsed.auvoContactId)?.id : undefined) ??
+            (phoneNormalized ? this.customers.find((customer) => customer.telefoneNormalizado === phoneNormalized)?.id : undefined) ??
+            (parsed.email ? this.customers.find((customer) => customer.email === parsed.email)?.id : undefined) ??
+            null;
+          this.auvoInboxItems.push({
+            id: randomUUID(),
+            externalServiceId: parsed.externalServiceId,
+            status: "novo",
+            suggestedCustomerId,
+            title: parsed.contactName ? `Atendimento - ${parsed.contactName}` : "Atendimento Auvo sem nome de contato",
+            contactName: parsed.contactName,
+            phoneNormalized,
+            auvoContactId: parsed.auvoContactId,
+            email: parsed.email,
+            channelType: parsed.channelType,
+            resolution: null,
+            resolvedOpportunityId: null,
+            resolvedCustomerId: null,
+            resolvedBy: null,
+            resolvedAt: null,
+            discardReason: null,
+            lastEventId: event.id,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+    }
+
     return { event, duplicate: false };
   }
 

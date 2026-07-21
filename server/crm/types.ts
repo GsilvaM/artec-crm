@@ -345,6 +345,37 @@ export type UpsertMembershipInput = {
   isActive: boolean;
 };
 
+export type AuvoInboxStatus = "novo" | "em_analise" | "aguardando_dados" | "processado" | "descartado" | "erro_integracao";
+
+export type AuvoInboxItemRecord = {
+  id: string;
+  externalServiceId: string;
+  status: AuvoInboxStatus;
+  suggestedCustomerId: string | null;
+  title: string;
+  contactName: string | null;
+  phoneNormalized: string | null;
+  auvoContactId: string | null;
+  email: string | null;
+  channelType: string | null;
+  resolution: string | null;
+  resolvedOpportunityId: string | null;
+  resolvedCustomerId: string | null;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  discardReason: string | null;
+  lastEventId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ResolveAuvoInboxItemInput =
+  | { action: "create_opportunity"; clienteId: string; titulo: string; tipoDemanda: string; origem?: string | null; situacao: string; proximaAcao: string; proximaAcaoEm: string; responsavelId: string }
+  | { action: "link_opportunity"; opportunityId: string }
+  | { action: "warranty" | "support" | "after_sales"; clienteId: string; description: string }
+  | { action: "customer_only"; clienteId: string }
+  | { action: "not_commercial" | "duplicate"; reason?: string | null };
+
 export type GlobalSearchResult = {
   customers: CustomerRecord[];
   opportunities: OpportunityRecord[];
@@ -578,6 +609,9 @@ export type CrmDataRepository = {
   upsertMembership(actor: Actor, userId: string, input: UpsertMembershipInput): Promise<MembershipCandidateRecord>;
   getCommercialReport(actor: Actor, filters: CommercialReportFilters): Promise<CommercialReportRecord>;
   globalSearch(actor: Actor, query: string): Promise<GlobalSearchResult>;
+  listAuvoInboxItems(actor: Actor, filters: { status?: AuvoInboxStatus }): Promise<AuvoInboxItemRecord[]>;
+  getAuvoInboxItem(actor: Actor, id: string): Promise<AuvoInboxItemRecord | null>;
+  resolveAuvoInboxItem(actor: Actor, id: string, input: ResolveAuvoInboxItemInput): Promise<AuvoInboxItemRecord | null>;
   listQuotes(actor: Actor, opportunityId: string): Promise<QuoteRecord[]>;
   createQuote(actor: Actor, input: CreateQuoteInput): Promise<QuoteRecord>;
   updateQuote(actor: Actor, id: string, input: UpdateQuoteInput): Promise<QuoteRecord | null>;

@@ -395,6 +395,7 @@ export const ModelName = {
   AuditLog: 'AuditLog',
   Notification: 'Notification',
   AuvoWebhookEvent: 'AuvoWebhookEvent',
+  AuvoInboxItem: 'AuvoInboxItem',
   MigrationHistory: 'MigrationHistory'
 } as const
 
@@ -411,7 +412,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "userMembership" | "customer" | "pipelineStage" | "lossReason" | "opportunity" | "quote" | "activity" | "nextAction" | "auditLog" | "notification" | "auvoWebhookEvent" | "migrationHistory"
+    modelProps: "userMembership" | "customer" | "pipelineStage" | "lossReason" | "opportunity" | "quote" | "activity" | "nextAction" | "auditLog" | "notification" | "auvoWebhookEvent" | "auvoInboxItem" | "migrationHistory"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1229,6 +1230,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AuvoInboxItem: {
+      payload: Prisma.$AuvoInboxItemPayload<ExtArgs>
+      fields: Prisma.AuvoInboxItemFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AuvoInboxItemFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AuvoInboxItemFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload>
+        }
+        findFirst: {
+          args: Prisma.AuvoInboxItemFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AuvoInboxItemFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload>
+        }
+        findMany: {
+          args: Prisma.AuvoInboxItemFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload>[]
+        }
+        create: {
+          args: Prisma.AuvoInboxItemCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload>
+        }
+        createMany: {
+          args: Prisma.AuvoInboxItemCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AuvoInboxItemCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload>[]
+        }
+        delete: {
+          args: Prisma.AuvoInboxItemDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload>
+        }
+        update: {
+          args: Prisma.AuvoInboxItemUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload>
+        }
+        deleteMany: {
+          args: Prisma.AuvoInboxItemDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AuvoInboxItemUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AuvoInboxItemUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload>[]
+        }
+        upsert: {
+          args: Prisma.AuvoInboxItemUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoInboxItemPayload>
+        }
+        aggregate: {
+          args: Prisma.AuvoInboxItemAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAuvoInboxItem>
+        }
+        groupBy: {
+          args: Prisma.AuvoInboxItemGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuvoInboxItemGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AuvoInboxItemCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuvoInboxItemCountAggregateOutputType> | number
+        }
+      }
+    }
     MigrationHistory: {
       payload: Prisma.$MigrationHistoryPayload<ExtArgs>
       fields: Prisma.MigrationHistoryFieldRefs
@@ -1572,6 +1647,31 @@ export const AuvoWebhookEventScalarFieldEnum = {
 export type AuvoWebhookEventScalarFieldEnum = (typeof AuvoWebhookEventScalarFieldEnum)[keyof typeof AuvoWebhookEventScalarFieldEnum]
 
 
+export const AuvoInboxItemScalarFieldEnum = {
+  id: 'id',
+  externalServiceId: 'externalServiceId',
+  status: 'status',
+  suggestedCustomerId: 'suggestedCustomerId',
+  title: 'title',
+  contactName: 'contactName',
+  phoneNormalized: 'phoneNormalized',
+  auvoContactId: 'auvoContactId',
+  email: 'email',
+  channelType: 'channelType',
+  resolution: 'resolution',
+  resolvedOpportunityId: 'resolvedOpportunityId',
+  resolvedCustomerId: 'resolvedCustomerId',
+  resolvedBy: 'resolvedBy',
+  resolvedAt: 'resolvedAt',
+  discardReason: 'discardReason',
+  lastEventId: 'lastEventId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AuvoInboxItemScalarFieldEnum = (typeof AuvoInboxItemScalarFieldEnum)[keyof typeof AuvoInboxItemScalarFieldEnum]
+
+
 export const MigrationHistoryScalarFieldEnum = {
   version: 'version',
   name: 'name',
@@ -1833,6 +1933,7 @@ export type GlobalOmitConfig = {
   auditLog?: Prisma.AuditLogOmit
   notification?: Prisma.NotificationOmit
   auvoWebhookEvent?: Prisma.AuvoWebhookEventOmit
+  auvoInboxItem?: Prisma.AuvoInboxItemOmit
   migrationHistory?: Prisma.MigrationHistoryOmit
 }
 

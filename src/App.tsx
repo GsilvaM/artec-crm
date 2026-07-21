@@ -54,6 +54,7 @@ import { PipelineBoard } from "./components/PipelineBoard";
 import { AdminPanel } from "./components/AdminPanel";
 import { QuotesPanel } from "./components/QuotesPanel";
 import { ReportsPanel } from "./components/ReportsPanel";
+import { AuvoInboxPanel } from "./components/AuvoInboxPanel";
 
 type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
 
@@ -210,6 +211,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const canManageIntegrations = authState.user.permissions.includes("integrations:read");
   const canManageUsers = authState.user.permissions.includes("users:manage");
   const canViewReports = authState.user.permissions.includes("reports:read");
+  const canManageAuvoInbox = authState.user.permissions.includes("auvo_inbox:read");
 
   const metrics = useMemo(
     () => [
@@ -830,6 +832,8 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                 </div>
               </section>
             ) : null}
+
+            {canManageAuvoInbox ? <AuvoInboxPanel customers={activeCustomers} currentUserId={authState.user.id} /> : null}
 
             {canViewReports ? <ReportsPanel stages={snapshot.stages} /> : null}
 

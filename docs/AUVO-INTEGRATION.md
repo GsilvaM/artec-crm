@@ -368,4 +368,36 @@ Campos confiaveis para o parser definitivo (Marco 7):
 
 `MESSAGE_SENT` foi recebido (o usuario enviou uma mensagem de teste durante a captura) e corretamente ignorado pelo denylist do backend, sem persistir o texto da mensagem — comportamento esperado, confirma que o hardening do incidente anterior continua funcionando com o SESSION_ removido do denylist.
 
+## 13. Caixa de Entrada (Marco 7, implementado em 2026-07-21)
+
+Parser em `server/crm/auvo-parser.ts` (`parseAuvoSessionPayload`, `isAuvoSessionEventType`): funcoes puras, testadas isoladamente (`server/crm/auvo-parser.test.ts`), sem tocar banco. So processam `eventType` que comeca com `SESSION_` — os demais eventos (`CONTACT_*`, e qualquer outro) nao geram item de triagem.
+
+Fluxo de ingestao (`server/crm/prisma-repository.ts`, metodo `receiveAuvoWebhookEvent`):
+
+1. Payload bruto e persistido em `crm_internal.auvo_webhook_events` normalmente (sem mudanca).
+2. Se o `eventType` for `SESSION_*` e nao estiver fora de escopo, o parser extrai `external_service_id` (= `content.id`), `auvo_contact_id`, `contact_name`, telefone (bruto, depois normalizado com a mesma funcao usada em clientes), `email` e `channel_type`.
+3. Busca por item de triagem existente com o mesmo `external_service_id` (idempotente): se existir, so atualiza `last_event_id` — cobre `SESSION_UPDATE`/`SESSION_COMPLETE` do mesmo atendimento, e reentregas duplicadas do mesmo `SESSION_NEW`.
+4. Se nao existir, cria um novo item com `status = 'novo'` e tenta sugerir um cliente existente, nesta ordem: `auvo_contact_id` -> telefone normalizado -> e-mail. Nunca por nome. Se nada bater, `suggested_customer_id` fica nulo — a tela mostra "Nenhum encontrado" e a decisao fica com quem faz a triagem.
+5. Qualquer erro nesse processamento e engolido (nao derruba a resposta `202` do webhook); o payload bruto ja esta salvo e pode ser reconciliado depois.
+
+**Atendimento concluido no Auvo (`SESSION_COMPLETE`) nao fecha nem altera o item de triagem automaticamente** — so atualiza `last_event_id`, conforme invariante do produto (concluir no Auvo != concluir/aprovar/perder no CRM).
+
+### Acoes de triagem (`POST /api/auvo-inbox/:id/resolve`)
+
+Permissao `auvo_inbox:write` (gestor e atendimento). Um item so pode ser resolvido uma vez (`processado` ou `descartado` sao estados finais; tentar resolver de novo retorna `409`).
+
+| Acao | Efeito |
+| --- | --- |
+| `create_opportunity` | Cria oportunidade via o mesmo fluxo do Marco 2 (`origem` default `"Auvo"`), vincula ao item. |
+| `link_opportunity` | Registra uma atividade do sistema na oportunidade informada, vincula ao item, nao cria nada novo. |
+| `warranty` / `support` / `after_sales` | Cria atividade do tipo correspondente no cliente informado (Marco 3), sem oportunidade. |
+| `customer_only` | So confirma/vincula o cliente, sem criar nada. |
+| `not_commercial` / `duplicate` | Marca `status = 'descartado'` com motivo opcional; nao cria nada. |
+
+Nenhuma acao cria cliente novo automaticamente pela Caixa de Entrada nesta fatia — o operador cria o cliente pelo formulario ja existente ("Novo cliente") antes de resolver, se necessario. Decisao deliberada para nao duplicar a validacao de clientes (telefone normalizado, alerta de duplicidade) em dois lugares.
+
+### Backfill unico (nao versionado como script permanente)
+
+Os 3 primeiros eventos `SESSION_*` reais foram capturados antes deste parser existir (ficaram so em `crm_internal.auvo_webhook_events`, sem item de triagem). Um script local unico (nao commitado, rodado uma vez em `tmp/`) reprocessou os eventos `received` existentes e criou os itens retroativamente. Novos eventos a partir de 2026-07-21 sao processados automaticamente pelo fluxo normal do webhook.
+
 O exportador nao deve ser usado como autorizacao para implementar mapeamento definitivo sozinho. Ele apenas prepara material anonimo para analise e testes de contrato apos a captura real.

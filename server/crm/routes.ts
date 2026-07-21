@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Permission } from "../auth/rbac.js";
 import { ApiError } from "../errors.js";
 import type { ServerDependencies } from "../app.js";
-import type { Actor } from "./types.js";
+import type { Actor, AuvoInboxStatus } from "./types.js";
 import {
   activityCreateSchema,
   activityUpdateSchema,
@@ -30,6 +30,7 @@ import {
   postponeNextActionSchema,
   quoteCreateSchema,
   quoteUpdateSchema,
+  resolveAuvoInboxItemSchema,
 } from "./validation.js";
 
 type PreHandlerFactory = ReturnType<typeof createRouteGuards>;
@@ -106,6 +107,23 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
 
   app.post("/api/notifications/reconcile", { preHandler: [guards.authenticate, guards.requirePermission("notifications:reconcile")] }, async (request) => {
     return repository.reconcileNotifications(getActor(request));
+  });
+
+  app.get("/api/auvo-inbox", { preHandler: [guards.authenticate, guards.requirePermission("auvo_inbox:read")] }, async (request) => {
+    const query = request.query as { status?: AuvoInboxStatus };
+    return { items: await repository.listAuvoInboxItems(getActor(request), { status: query.status }) };
+  });
+
+  app.get("/api/auvo-inbox/:id", { preHandler: [guards.authenticate, guards.requirePermission("auvo_inbox:read")] }, async (request) => {
+    const item = await repository.getAuvoInboxItem(getActor(request), readIdParam(request));
+    if (!item) throw new ApiError(404, "not_found", "Item da Caixa de Entrada nao encontrado.");
+    return { item };
+  });
+
+  app.post("/api/auvo-inbox/:id/resolve", { preHandler: [guards.authenticate, guards.requirePermission("auvo_inbox:write")] }, async (request) => {
+    const item = await repository.resolveAuvoInboxItem(getActor(request), readIdParam(request), parseBody(resolveAuvoInboxItemSchema, request.body));
+    if (!item) throw new ApiError(404, "not_found", "Item da Caixa de Entrada nao encontrado.");
+    return { item };
   });
 
   app.get("/api/search", { preHandler: [guards.authenticate, guards.requirePermission("customers:read")] }, async (request) => {

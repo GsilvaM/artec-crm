@@ -130,14 +130,16 @@ Preparacao de fixtures: comando `npm run auvo:fixtures:export` disponivel para g
 
 ## 6. Auvo — Caixa de Entrada
 
-- [ ] Mapear eventos reais.
-- [ ] API de leitura e cache de token.
-- [ ] Sugestão de cliente.
-- [ ] Triagem completa.
-- [ ] Garantia/suporte no histórico sem oportunidade.
-- [ ] Vínculo com oportunidade existente.
+- [x] Mapear eventos reais (`docs/AUVO-INTEGRATION.md` secao 12).
+- [ ] API de leitura e cache de token da API Auvo (nao foi necessario nesta fatia; os campos disponiveis no webhook ja bastam para o parser e a triagem).
+- [x] Sugestão de cliente (por `auvo_contact_id` -> telefone normalizado -> email, nunca por nome; nenhuma mesclagem automatica).
+- [x] Triagem completa (painel `AuvoInboxPanel`, 8 acoes: criar oportunidade, vincular a existente, garantia, suporte, pos-venda, somente cliente, nao comercial, duplicado).
+- [x] Garantia/suporte no histórico sem oportunidade (reaproveita `createActivity` do Marco 3, sem criar oportunidade).
+- [x] Vínculo com oportunidade existente.
 
 Critério de aceite: atendimento do Auvo chega, é triado e gera o destino correto com histórico.
+
+Status em 2026-07-21: implementado com dados reais (4 itens de triagem reais capturados e reprocessados via backfill unico). Parser (`server/crm/auvo-parser.ts`) processa apenas `SESSION_*` (o que a UI do Auvo chama de "Atendimento"); cada `SESSION_NEW` gera no maximo um item de triagem (idempotente por `external_service_id`), nunca uma oportunidade automatica. `SESSION_UPDATE`/`SESSION_COMPLETE` apenas atualizam o vinculo com o ultimo evento — atendimento concluido no Auvo nao encerra nem altera a triagem sozinho, conforme invariante do produto.
 
 ## 7. Orçamentos e fechamento comercial
 

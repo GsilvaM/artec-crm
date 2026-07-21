@@ -18,7 +18,9 @@ export type Permission =
   | "settings:write"
   | "integrations:read"
   | "integrations:write"
-  | "reports:read";
+  | "reports:read"
+  | "auvo_inbox:read"
+  | "auvo_inbox:write";
 
 export const rolePermissions: Record<CrmRole, Permission[]> = {
   gestor: [
@@ -40,9 +42,11 @@ export const rolePermissions: Record<CrmRole, Permission[]> = {
     "integrations:read",
     "integrations:write",
     "reports:read",
+    "auvo_inbox:read",
+    "auvo_inbox:write",
   ],
   vendedor: ["self:read", "customers:read", "customers:write", "opportunities:read", "opportunities:write", "activities:read", "activities:write", "next_actions:read", "next_actions:write", "notifications:read", "notifications:write"],
-  atendimento: ["self:read", "customers:read", "customers:write", "opportunities:read", "opportunities:write", "activities:read", "activities:write", "next_actions:read", "next_actions:write", "notifications:read", "notifications:write"],
+  atendimento: ["self:read", "customers:read", "customers:write", "opportunities:read", "opportunities:write", "activities:read", "activities:write", "next_actions:read", "next_actions:write", "notifications:read", "notifications:write", "auvo_inbox:read", "auvo_inbox:write"],
 };
 
 export function getPermissionsForRole(role: CrmRole): Permission[] {

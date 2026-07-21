@@ -360,6 +360,18 @@ Achado central, so possivel apos a captura real (confirma a decisao de nao presu
 
 `nextOfficialStep` (via `npm run auvo:homologation:status`) permanece `capture_real_auvo_payloads` porque o script ainda usa o mesmo texto fixo de antes da captura — isso e apenas a mensagem do comando, nao reflete mais o estado real; o proximo passo genuino agora e gerar fixtures anonimizadas e iniciar o parser/Caixa de Entrada (Marco 7).
 
+## Marco 7: Caixa de Entrada do Auvo (2026-07-21)
+
+Implementado com dados reais, nao sinteticos. Migration `0015_criar_caixa_entrada_auvo` estende `crm_internal.auvo_inbox_items` (tabela ja existia desde o Marco 1, nunca usada) com campos de resolucao (`resolution`, `resolved_opportunity_id`, `resolved_customer_id`, `resolved_by`, `resolved_at`, `discard_reason`) e indices. Sem RLS/grants para `authenticated` — mesmo padrao de `auvo_webhook_events`, ja que `crm_internal` inteiro e revogado de `anon`/`authenticated` desde a migration `0006`; acesso exclusivamente pelo backend com RBAC proprio (`auvo_inbox:read`/`auvo_inbox:write`, novo, concedido a gestor e atendimento, nao a vendedor).
+
+Parser (`server/crm/auvo-parser.ts`) + ingestao automatica no recebimento do webhook + 8 acoes de triagem via `POST /api/auvo-inbox/:id/resolve`. Detalhes completos do fluxo em `docs/AUVO-INTEGRATION.md`, secao 13.
+
+Backfill unico rodado contra o banco real para reprocessar os eventos `SESSION_*` capturados antes deste codigo existir: 4 itens de triagem reais criados a partir de eventos ja armazenados, nenhum com cliente sugerido (nenhum dos contatos reais capturados ja existia como cliente no CRM, comportamento correto — sem falso positivo de mesclagem).
+
+Validacao: `npm run typecheck`, `npm run test` (67 testes; novos: 4 do parser puro, 1 de listagem/RBAC/acoes de resolucao via fake repository, 1 de ingestao automatica ponta a ponta via webhook simulado com sugestao de cliente por telefone) e `npm run build` passaram. Verificado com Playwright contra o banco real: os 4 itens reais renderizaram corretamente (nome do contato, telefone, canal, sem sugestao falsa); fluxo de resolucao testado ponta a ponta com um item sintetico dedicado (criado e apagado so para o teste, para nao alterar a triagem real de clientes de verdade) — marcado como duplicado com motivo, confirmado na UI sem erros de console.
+
+Decisoes de escopo registradas, nao esquecimentos: sem leitura da API Auvo (os campos do proprio webhook ja bastam); sem criacao de cliente novo embutida na tela de resolucao (reusa o formulario "Novo cliente" ja existente, evitando duplicar validacao de telefone/duplicidade em dois lugares); sem seletor de oportunidade existente na acao "vincular" (campo de texto livre para o ID por enquanto).
+
 ## Correcao: SESSION_* nao e fora de escopo (2026-07-21)
 
 Durante o incidente do primeiro registro (18 eventos habilitados por engano), `SESSION_NEW`/`SESSION_UPDATE` apareceram misturados com eventos de mensagem, e foram classificados como fora de escopo por associacao (nao havia evidencia isolada do que representavam). Apagados junto com o resto do lote na limpeza daquele incidente.

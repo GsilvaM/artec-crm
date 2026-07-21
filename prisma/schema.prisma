@@ -272,6 +272,34 @@ model AuvoWebhookEvent {
   @@schema("crm_internal")
 }
 
+model AuvoInboxItem {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  externalServiceId     String    @unique @map("external_service_id") @db.Text
+  status                String    @db.Text
+  suggestedCustomerId   String?   @map("suggested_customer_id") @db.Uuid
+  title                 String    @db.Text
+  contactName           String?   @map("contact_name") @db.Text
+  phoneNormalized       String?   @map("phone_normalized") @db.Text
+  auvoContactId         String?   @map("auvo_contact_id") @db.Text
+  email                 String?   @db.Text
+  channelType           String?   @map("channel_type") @db.Text
+  resolution            String?   @db.Text
+  resolvedOpportunityId String?   @map("resolved_opportunity_id") @db.Uuid
+  resolvedCustomerId    String?   @map("resolved_customer_id") @db.Uuid
+  resolvedBy            String?   @map("resolved_by") @db.Uuid
+  resolvedAt            DateTime? @map("resolved_at") @db.Timestamptz(6)
+  discardReason         String?   @map("discard_reason") @db.Text
+  lastEventId           String?   @map("last_event_id") @db.Uuid
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, createdAt], map: "auvo_inbox_items_status_idx")
+  @@index([auvoContactId], map: "auvo_inbox_items_auvo_contact_id_idx")
+  @@index([phoneNormalized], map: "auvo_inbox_items_phone_normalized_idx")
+  @@map("auvo_inbox_items")
+  @@schema("crm_internal")
+}
+
 model MigrationHistory {
   version    String   @id @db.Text
   name       String   @db.Text

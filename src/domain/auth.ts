@@ -16,7 +16,9 @@ export type CrmPermission =
   | "settings:write"
   | "integrations:read"
   | "integrations:write"
-  | "reports:read";
+  | "reports:read"
+  | "auvo_inbox:read"
+  | "auvo_inbox:write";
 
 export type CrmUser = {
   id: string;

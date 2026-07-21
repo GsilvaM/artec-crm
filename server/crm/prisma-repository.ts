@@ -5,6 +5,8 @@ import type {
   Actor,
   ActivityRecord,
   ApproveOpportunityInput,
+  AuvoInboxItemRecord,
+  AuvoInboxStatus,
   AuvoIntegrationStatusRecord,
   AuvoWebhookEventFilters,
   AuvoWebhookEventListRecord,
@@ -42,6 +44,7 @@ import type {
   UpdateQuoteInput,
   ReceiveAuvoWebhookEventInput,
   ReceiveAuvoWebhookEventResult,
+  ResolveAuvoInboxItemInput,
   SnoozeNotificationInput,
   UpdateActivityInput,
   UpdateCustomerInput,
@@ -52,6 +55,7 @@ import type {
 } from "./types.js";
 import type { CrmRole } from "../auth/rbac.js";
 import { createWebhookPayloadHash, normalizeAuvoWebhookStatus, sanitizeWebhookPayload } from "./auvo-webhook.js";
+import { isAuvoSessionEventType, parseAuvoSessionPayload } from "./auvo-parser.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./validation.js";
 
 type PrismaExecutor = Pick<
@@ -1129,7 +1133,188 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       },
     });
 
+    if (!outOfScope && isAuvoSessionEventType(eventType)) {
+      await this.upsertInboxItemFromSessionEvent(event.id, input.payload).catch(() => {
+        // A falha ao processar a Caixa de Entrada nao pode derrubar a resposta rapida do webhook.
+        // O payload bruto ja esta persistido em auvo_webhook_events; o item pode ser reconciliado depois.
+      });
+    }
+
     return { event: mapAuvoWebhookEvent(event), duplicate: false };
+  }
+
+  private async upsertInboxItemFromSessionEvent(eventId: string, payload: unknown): Promise<void> {
+    const parsed = parseAuvoSessionPayload(payload);
+    if (!parsed) return;
+
+    const existing = await this.prisma.auvoInboxItem.findUnique({ where: { externalServiceId: parsed.externalServiceId } });
+    if (existing) {
+      await this.prisma.auvoInboxItem.update({
+        where: { id: existing.id },
+        data: { lastEventId: eventId },
+      });
+      return;
+    }
+
+    const phoneNormalized = normalizePhone(parsed.phoneRaw);
+    const suggestedCustomerId = await this.suggestCustomerForInboxItem(parsed.auvoContactId, phoneNormalized, parsed.email);
+
+    await this.prisma.auvoInboxItem.create({
+      data: {
+        externalServiceId: parsed.externalServiceId,
+        status: "novo",
+        suggestedCustomerId,
+        title: parsed.contactName ? `Atendimento - ${parsed.contactName}` : "Atendimento Auvo sem nome de contato",
+        contactName: parsed.contactName,
+        phoneNormalized,
+        auvoContactId: parsed.auvoContactId,
+        email: parsed.email,
+        channelType: parsed.channelType,
+        lastEventId: eventId,
+      },
+    });
+  }
+
+  private async suggestCustomerForInboxItem(auvoContactId: string | null, phoneNormalized: string | null, email: string | null): Promise<string | null> {
+    if (auvoContactId) {
+      const byContactId = await this.prisma.customer.findUnique({ where: { auvoContactId }, select: { id: true } });
+      if (byContactId) return byContactId.id;
+    }
+    if (phoneNormalized) {
+      const byPhone = await this.prisma.customer.findFirst({ where: { telefoneNormalizado: phoneNormalized, archivedAt: null }, select: { id: true } });
+      if (byPhone) return byPhone.id;
+    }
+    if (email) {
+      const byEmail = await this.prisma.customer.findFirst({ where: { email, archivedAt: null }, select: { id: true } });
+      if (byEmail) return byEmail.id;
+    }
+    return null;
+  }
+
+  async listAuvoInboxItems(_actor: Actor, filters: { status?: AuvoInboxStatus }): Promise<AuvoInboxItemRecord[]> {
+    const items = await this.prisma.auvoInboxItem.findMany({
+      where: { ...(filters.status ? { status: filters.status } : {}) },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+    return items.map(mapAuvoInboxItem);
+  }
+
+  async getAuvoInboxItem(_actor: Actor, id: string): Promise<AuvoInboxItemRecord | null> {
+    const item = await this.prisma.auvoInboxItem.findUnique({ where: { id } });
+    return item ? mapAuvoInboxItem(item) : null;
+  }
+
+  async resolveAuvoInboxItem(actor: Actor, id: string, input: ResolveAuvoInboxItemInput): Promise<AuvoInboxItemRecord | null> {
+    const current = await this.prisma.auvoInboxItem.findUnique({ where: { id } });
+    if (!current) return null;
+    if (current.status === "processado" || current.status === "descartado") {
+      throw new ApiError(409, "bad_request", "Este item da Caixa de Entrada ja foi resolvido.");
+    }
+
+    switch (input.action) {
+      case "not_commercial":
+      case "duplicate": {
+        const item = await this.prisma.auvoInboxItem.update({
+          where: { id },
+          data: {
+            status: "descartado",
+            resolution: input.action,
+            discardReason: input.reason ?? null,
+            resolvedBy: actor.id,
+            resolvedAt: new Date(),
+          },
+        });
+        return mapAuvoInboxItem(item);
+      }
+
+      case "customer_only": {
+        const item = await this.prisma.auvoInboxItem.update({
+          where: { id },
+          data: {
+            status: "processado",
+            resolution: "customer_only",
+            resolvedCustomerId: input.clienteId,
+            resolvedBy: actor.id,
+            resolvedAt: new Date(),
+          },
+        });
+        return mapAuvoInboxItem(item);
+      }
+
+      case "warranty":
+      case "support":
+      case "after_sales": {
+        await this.createActivity(actor, {
+          customerId: input.clienteId,
+          type: input.action,
+          description: input.description,
+          source: "system",
+          metadata: { auvoInboxItemId: id, auvoExternalServiceId: current.externalServiceId },
+        });
+        const item = await this.prisma.auvoInboxItem.update({
+          where: { id },
+          data: {
+            status: "processado",
+            resolution: `${input.action}_registered`,
+            resolvedCustomerId: input.clienteId,
+            resolvedBy: actor.id,
+            resolvedAt: new Date(),
+          },
+        });
+        return mapAuvoInboxItem(item);
+      }
+
+      case "link_opportunity": {
+        const opportunity = await this.getOpportunity(actor, input.opportunityId);
+        if (!opportunity) throw new ApiError(422, "bad_request", "Oportunidade informada nao existe.");
+        await this.createActivity(actor, {
+          customerId: opportunity.clienteId,
+          opportunityId: input.opportunityId,
+          type: "note",
+          description: `Atendimento Auvo vinculado a esta oportunidade (item de triagem ${id}).`,
+          source: "system",
+          metadata: { auvoInboxItemId: id, auvoExternalServiceId: current.externalServiceId },
+        });
+        const item = await this.prisma.auvoInboxItem.update({
+          where: { id },
+          data: {
+            status: "processado",
+            resolution: "linked_existing_opportunity",
+            resolvedOpportunityId: input.opportunityId,
+            resolvedCustomerId: opportunity.clienteId,
+            resolvedBy: actor.id,
+            resolvedAt: new Date(),
+          },
+        });
+        return mapAuvoInboxItem(item);
+      }
+
+      case "create_opportunity": {
+        const opportunity = await this.createOpportunity(actor, {
+          clienteId: input.clienteId,
+          titulo: input.titulo,
+          tipoDemanda: input.tipoDemanda,
+          origem: input.origem ?? "Auvo",
+          responsavelId: input.responsavelId,
+          situacao: input.situacao,
+          proximaAcao: input.proximaAcao,
+          proximaAcaoEm: input.proximaAcaoEm,
+        });
+        const item = await this.prisma.auvoInboxItem.update({
+          where: { id },
+          data: {
+            status: "processado",
+            resolution: "opportunity_created",
+            resolvedOpportunityId: opportunity.id,
+            resolvedCustomerId: input.clienteId,
+            resolvedBy: actor.id,
+            resolvedAt: new Date(),
+          },
+        });
+        return mapAuvoInboxItem(item);
+      }
+    }
   }
 
   async listAuvoWebhookEvents(_actor: Actor, filters: AuvoWebhookEventFilters): Promise<AuvoWebhookEventListRecord> {
@@ -1940,6 +2125,50 @@ function mapNotification(row: NotificationEntity): NotificationRecord {
     snoozedUntil: row.snoozedUntil?.toISOString() ?? null,
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     metadata: row.metadata as Record<string, unknown>,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function mapAuvoInboxItem(row: {
+  id: string;
+  externalServiceId: string;
+  status: string;
+  suggestedCustomerId: string | null;
+  title: string;
+  contactName: string | null;
+  phoneNormalized: string | null;
+  auvoContactId: string | null;
+  email: string | null;
+  channelType: string | null;
+  resolution: string | null;
+  resolvedOpportunityId: string | null;
+  resolvedCustomerId: string | null;
+  resolvedBy: string | null;
+  resolvedAt: Date | null;
+  discardReason: string | null;
+  lastEventId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): AuvoInboxItemRecord {
+  return {
+    id: row.id,
+    externalServiceId: row.externalServiceId,
+    status: row.status as AuvoInboxStatus,
+    suggestedCustomerId: row.suggestedCustomerId,
+    title: row.title,
+    contactName: row.contactName,
+    phoneNormalized: row.phoneNormalized,
+    auvoContactId: row.auvoContactId,
+    email: row.email,
+    channelType: row.channelType,
+    resolution: row.resolution,
+    resolvedOpportunityId: row.resolvedOpportunityId,
+    resolvedCustomerId: row.resolvedCustomerId,
+    resolvedBy: row.resolvedBy,
+    resolvedAt: row.resolvedAt?.toISOString() ?? null,
+    discardReason: row.discardReason,
+    lastEventId: row.lastEventId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
