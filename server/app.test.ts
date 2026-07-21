@@ -825,6 +825,40 @@ describe("CRM activities and next actions API", () => {
     expect(oversized.statusCode).toBe(413);
   });
 
+  it("rejects a same-length wrong Auvo secret using the constant-time comparison path", async () => {
+    const app = createTestServer({});
+    const sameLengthWrongSecret = auvoSecret.slice(0, -1) + (auvoSecret.endsWith("x") ? "y" : "x");
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/webhooks/auvo/${sameLengthWrongSecret}`,
+      headers: { "content-type": "application/json" },
+      payload: { ok: true },
+    });
+    await app.close();
+
+    expect(sameLengthWrongSecret.length).toBe(auvoSecret.length);
+    expect(response.statusCode).toBe(403);
+    expect(JSON.stringify(response.json())).not.toContain(auvoSecret);
+  });
+
+  it("rate limits the Auvo webhook route after too many requests from the same client", async () => {
+    const app = createTestServer({});
+
+    let lastResponse;
+    for (let i = 0; i < 61; i += 1) {
+      lastResponse = await app.inject({
+        method: "POST",
+        url: "/api/webhooks/auvo/wrong-secret",
+        headers: { "content-type": "application/json" },
+        payload: { ok: true },
+      });
+    }
+    await app.close();
+
+    expect(lastResponse?.statusCode).toBe(429);
+    expect(lastResponse?.json()).toMatchObject({ error: { code: "rate_limited" } });
+  });
+
   it("keeps Auvo admin APIs restricted to gestor and supports detail, filters, reprocess and ignore", async () => {
     const repository = new FakeCrmRepository();
     const event = (await repository.receiveAuvoWebhookEvent({

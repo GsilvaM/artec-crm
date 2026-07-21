@@ -1,6 +1,6 @@
 # Development Status
 
-Atualizado em: 2026-07-20
+Atualizado em: 2026-07-21
 
 ## Escopo desta homologacao
 
@@ -218,6 +218,36 @@ Fora do Marco 6:
 - sincronizacao ou escrita no Auvo;
 - leitura da API Auvo antes da resposta do webhook;
 - pagamentos, financeiro, mensagens completas e card moves.
+
+## Auvo - Hardening de seguranca (2026-07-21)
+
+Auditoria realizada sobre o estado herdado do commit `e1f9904`. Confirmado:
+
+- `webhookSecretConfigured: true`, `likelyRealEvents: 0`, `nextOfficialStep: capture_real_auvo_payloads` (via `npm run auvo:homologation:status`).
+- Todas as migrations `0001` a `0013` seguem `applied`.
+- Rota publica `POST /api/webhooks/auvo/:secret` existe em `server/app.ts` e ja era a unica rota publica de recepcao.
+
+Gaps encontrados contra os requisitos obrigatorios de seguranca do webhook e corrigidos nesta sessao:
+
+- comparacao do segredo era `!==` direto (vazamento de timing por tamanho/prefixo); trocado por `secretsMatch` com `node:crypto.timingSafeEqual`.
+- nao havia rate limit na rota publica; adicionado `@fastify/rate-limit` (60 req/min por IP) aplicado somente as rotas do webhook Auvo (`global: false`), com `errorResponseBuilder` retornando `ApiError(429, "rate_limited", ...)` no mesmo formato de erro da API.
+- novo `ApiErrorCode` `rate_limited` adicionado em `server/errors.ts`.
+- rota do webhook extraida para `registerAuvoWebhookRoutes`, registrada via `app.register()` apos o plugin de rate limit, para garantir que o hook `onRoute` do `@fastify/rate-limit` esteja ativo antes da rota ser definida (bug real encontrado: registrar rota diretamente apos `void app.register(rateLimit, ...)` no mesmo tick nao aplicava o rate limit, pois o plugin so inicializa no boot do avvio).
+- testes novos em `server/app.test.ts`: segredo errado do mesmo tamanho (cobre o branch `timingSafeEqual`) e estouro do rate limit (61 requisicoes, espera `429` com `code: rate_limited`).
+- `npm run typecheck`, `npm run test` (48 testes) e `npm run build` passaram apos as mudancas.
+
+Resolvido nesta sessao:
+
+- Usuario confirmou que `AUVO_WEBHOOK_SECRET` local reutilizava a chave de autenticacao do Auvo Chat. Segredo rotacionado localmente para um valor novo, aleatorio (32 bytes, `node:crypto.randomBytes`), sem relacao com qualquer credencial do Auvo Chat/API. Valor nao foi impresso em nenhum momento; apenas o comprimento (64 caracteres hex) foi conferido.
+- Usuario decidiu hospedar frontend e backend juntos, como projeto unico na Vercel (backend como funcao serverless), em vez de tunel temporario. Codigo preparado (`server/bootstrap.ts`, `api/index.ts`, `vercel.json`, `CRM_DATABASE_POOL_URL`); ver `docs/DEPLOY.md` para os passos completos.
+
+## Bloqueios externos que permanecem
+
+1. Conta/projeto na Vercel ainda nao existem — usuario informou que precisa criar. Passos manuais completos em `docs/DEPLOY.md`, secao 3.
+2. `AUVO_WEBHOOK_SECRET` de producao ainda nao existe — deve ser gerado exclusivamente para o ambiente de producao na Vercel (nao reaproveitar o valor local rotacionado nesta sessao).
+3. Migrations de producao ainda nao foram aplicadas contra o banco que a Vercel vai usar (mesmo Supabase, mas o passo manual de rodar `npm run db:migrate` contra producao nao foi executado nesta sessao).
+4. Dominio proprio (`crm.artecclimatizados.com.br`) nao foi configurado; deploy inicial usara dominio `*.vercel.app` ate decisao em contrario.
+5. Sem deploy publicado ainda, a captura de payloads reais do Auvo (Marco 7) continua bloqueada. `likelyRealEvents` permanece `0`.
 
 ## Correcoes do Marco 5
 

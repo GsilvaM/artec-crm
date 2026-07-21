@@ -138,6 +138,8 @@ Garantias atuais:
 
 - segredo apenas no backend via `AUVO_WEBHOOK_SECRET`;
 - sem `VITE_` para segredo;
+- comparacao do segredo em tempo constante (`node:crypto.timingSafeEqual`), sem short-circuit por tamanho;
+- rate limit de 60 requisicoes/minuto por IP na rota publica (`POST` e fallback `405`), com resposta `429` sanitizada (`rate_limited`);
 - somente `POST` e `application/json`;
 - limite de payload de 256 KiB;
 - headers persistidos somente por allowlist;

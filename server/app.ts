@@ -1,6 +1,7 @@
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { getPermissionsForRole, roleHasPermission, type Permission } from "./auth/rbac.js";
 import type { AuthenticatedUser, AuthVerifier, MembershipRepository } from "./auth/types.js";
 import type { ServerConfig } from "./config.js";
@@ -46,6 +47,11 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
     credentials: true,
   });
 
+  void app.register(rateLimit, {
+    global: false,
+    errorResponseBuilder: () => new ApiError(429, "rate_limited", "Muitas requisicoes. Tente novamente em instantes."),
+  });
+
   app.setErrorHandler((error, request, reply) => {
     const publicError = toPublicError(error);
 
@@ -77,55 +83,8 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
     timestamp: new Date().toISOString(),
   }));
 
-  app.post("/api/webhooks/auvo/:secret", async (request, reply) => {
-    const secret = readSecretParam(request);
-    const expectedSecret = dependencies.config.AUVO_WEBHOOK_SECRET;
-    if (!expectedSecret) throw new ApiError(503, "internal_error", "Webhook Auvo nao configurado.");
-    if (secret !== expectedSecret) throw new ApiError(403, "forbidden", "Webhook Auvo recusado.");
-
-    const contentType = request.headers["content-type"] ?? "";
-    if (!String(contentType).toLowerCase().includes("application/json")) {
-      throw new ApiError(415, "bad_request", "Webhook Auvo aceita somente application/json.");
-    }
-
-    const contentLength = readContentLength(request.headers["content-length"]);
-    if (contentLength !== null && contentLength > AUVO_WEBHOOK_MAX_BYTES) {
-      throw new ApiError(413, "bad_request", "Payload do webhook excede o limite permitido.");
-    }
-
-    if (!isJsonObject(request.body)) throw new ApiError(400, "bad_request", "Payload JSON obrigatorio.");
-
-    const startedAt = Date.now();
-    const result = await dependencies.crmRepository.receiveAuvoWebhookEvent({
-      payload: request.body,
-      headers: sanitizeWebhookHeaders(request.headers),
-      sourceIpHash: hashSourceIp(request.ip),
-      contentLength,
-    });
-    request.log.info(
-      {
-        eventId: result.event.id,
-        status: result.event.status,
-        eventType: result.event.eventType,
-        duplicate: result.duplicate,
-        durationMs: Date.now() - startedAt,
-      },
-      "auvo_webhook_received",
-    );
-
-    return reply.status(202).send({
-      status: result.duplicate ? "duplicate" : "received",
-      eventId: result.event.id,
-      duplicate: result.duplicate,
-    });
-  });
-
-  app.route({
-    method: ["GET", "PUT", "PATCH", "DELETE"],
-    url: "/api/webhooks/auvo/:secret",
-    handler: async () => {
-      throw new ApiError(405, "bad_request", "Use POST para enviar webhook Auvo.");
-    },
+  void app.register(async (instance) => {
+    registerAuvoWebhookRoutes(instance, dependencies);
   });
 
   app.get("/api/me", { preHandler: [authenticate(dependencies), requirePermission("self:read")] }, async (request) => {
@@ -156,6 +115,64 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
   });
 
   return app;
+}
+
+function registerAuvoWebhookRoutes(instance: FastifyInstance, dependencies: ServerDependencies): void {
+  instance.post(
+    "/api/webhooks/auvo/:secret",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const secret = readSecretParam(request);
+      const expectedSecret = dependencies.config.AUVO_WEBHOOK_SECRET;
+      if (!expectedSecret) throw new ApiError(503, "internal_error", "Webhook Auvo nao configurado.");
+      if (!secretsMatch(secret, expectedSecret)) throw new ApiError(403, "forbidden", "Webhook Auvo recusado.");
+
+      const contentType = request.headers["content-type"] ?? "";
+      if (!String(contentType).toLowerCase().includes("application/json")) {
+        throw new ApiError(415, "bad_request", "Webhook Auvo aceita somente application/json.");
+      }
+
+      const contentLength = readContentLength(request.headers["content-length"]);
+      if (contentLength !== null && contentLength > AUVO_WEBHOOK_MAX_BYTES) {
+        throw new ApiError(413, "bad_request", "Payload do webhook excede o limite permitido.");
+      }
+
+      if (!isJsonObject(request.body)) throw new ApiError(400, "bad_request", "Payload JSON obrigatorio.");
+
+      const startedAt = Date.now();
+      const result = await dependencies.crmRepository.receiveAuvoWebhookEvent({
+        payload: request.body,
+        headers: sanitizeWebhookHeaders(request.headers),
+        sourceIpHash: hashSourceIp(request.ip),
+        contentLength,
+      });
+      request.log.info(
+        {
+          eventId: result.event.id,
+          status: result.event.status,
+          eventType: result.event.eventType,
+          duplicate: result.duplicate,
+          durationMs: Date.now() - startedAt,
+        },
+        "auvo_webhook_received",
+      );
+
+      return reply.status(202).send({
+        status: result.duplicate ? "duplicate" : "received",
+        eventId: result.event.id,
+        duplicate: result.duplicate,
+      });
+    },
+  );
+
+  instance.route({
+    method: ["GET", "PUT", "PATCH", "DELETE"],
+    url: "/api/webhooks/auvo/:secret",
+    config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
+    handler: async () => {
+      throw new ApiError(405, "bad_request", "Use POST para enviar webhook Auvo.");
+    },
+  });
 }
 
 function authenticate(dependencies: ServerDependencies) {
@@ -209,6 +226,18 @@ function readBearerToken(header: string | undefined): string {
   }
 
   return token;
+}
+
+function secretsMatch(provided: string, expected: string): boolean {
+  const providedBuffer = Buffer.from(provided);
+  const expectedBuffer = Buffer.from(expected);
+
+  if (providedBuffer.length !== expectedBuffer.length) {
+    timingSafeEqual(expectedBuffer, expectedBuffer);
+    return false;
+  }
+
+  return timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
 function readSecretParam(request: FastifyRequest): string {

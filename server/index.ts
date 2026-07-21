@@ -1,20 +1,9 @@
-import { PrismaMembershipRepository } from "./auth/prisma-membership-repository.js";
-import { SupabaseTokenVerifier } from "./auth/supabase-token-verifier.js";
-import { buildServer } from "./app.js";
+import { buildCrmServer } from "./bootstrap.js";
 import { loadConfig } from "./config.js";
-import { PrismaDatabaseHealth } from "./database/health.js";
-import { disconnectPrismaClient, getPrismaClient } from "./database/prisma.js";
-import { PrismaCrmDataRepository } from "./crm/prisma-repository.js";
+import { disconnectPrismaClient } from "./database/prisma.js";
 
 const config = loadConfig();
-const prisma = getPrismaClient(config.CRM_DATABASE_URL);
-const app = buildServer({
-  config,
-  authVerifier: new SupabaseTokenVerifier(config.CRM_SUPABASE_URL, config.CRM_SUPABASE_ANON_KEY),
-  membershipRepository: new PrismaMembershipRepository(prisma),
-  crmRepository: new PrismaCrmDataRepository(prisma),
-  databaseHealth: new PrismaDatabaseHealth(prisma),
-});
+const app = buildCrmServer(config);
 
 let isClosing = false;
 

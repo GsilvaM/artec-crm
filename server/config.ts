@@ -7,6 +7,7 @@ const envSchema = z.object({
   CRM_PORT: z.coerce.number().int().positive().default(4100),
   CRM_ALLOWED_ORIGINS: z.string().min(1),
   CRM_DATABASE_URL: z.string().min(1),
+  CRM_DATABASE_POOL_URL: z.string().min(1).optional(),
   CRM_SUPABASE_URL: z.string().url(),
   CRM_SUPABASE_ANON_KEY: z.string().min(1),
   AUVO_WEBHOOK_SECRET: z.string().min(8).optional(),
