@@ -12,6 +12,8 @@ import {
   createOpportunity,
   createQuote,
   completeNextAction,
+  globalSearch,
+  type GlobalSearchResult,
   cancelNextAction,
   archiveNotification,
   loadCrmSnapshot,
@@ -177,6 +179,7 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [auvoFilter, setAuvoFilter] = useState<AuvoWebhookStatus | "">("");
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [quotesOpportunity, setQuotesOpportunity] = useState<Opportunity | null>(null);
+  const [searchResults, setSearchResults] = useState<GlobalSearchResult | null>(null);
 
   const activeCustomers = snapshot?.customers.filter((customer) => !customer.archivedAt) ?? [];
   const activeOpportunities = snapshot?.opportunities.filter((opportunity) => opportunity.status === "ativa") ?? [];
@@ -220,6 +223,17 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   useEffect(() => {
     void refresh();
   }, []);
+
+  useEffect(() => {
+    if (search.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      void globalSearch(search).then(setSearchResults).catch(() => setSearchResults(null));
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
 
   async function refresh() {
     setIsLoading(true);
@@ -558,12 +572,41 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
 
       <main className="workspace">
         <header className="topbar">
-          <label className="search-box">
-            <Search aria-hidden="true" />
-            <input type="search" placeholder="Buscar no CRM" aria-label="Buscar no CRM" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => {
-              if (event.key === "Enter") void refresh();
-            }} />
-          </label>
+          <div className="search-shell">
+            <label className="search-box">
+              <Search aria-hidden="true" />
+              <input type="search" placeholder="Buscar no CRM" aria-label="Buscar no CRM" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => {
+                if (event.key === "Enter") void refresh();
+                if (event.key === "Escape") setSearchResults(null);
+              }} />
+            </label>
+            {searchResults && (searchResults.customers.length || searchResults.opportunities.length) ? (
+              <div className="search-dropdown" role="listbox" aria-label="Resultados da busca">
+                {searchResults.customers.length ? (
+                  <div className="search-dropdown-group">
+                    <span className="search-dropdown-label">Clientes</span>
+                    {searchResults.customers.map((customer) => (
+                      <button key={customer.id} type="button" className="search-dropdown-item" onClick={() => { void openCustomerTimeline(customer.id); setSearchResults(null); }}>
+                        <strong>{customer.nome}</strong>
+                        <span>{customer.telefone ?? customer.empresa ?? ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {searchResults.opportunities.length ? (
+                  <div className="search-dropdown-group">
+                    <span className="search-dropdown-label">Oportunidades</span>
+                    {searchResults.opportunities.map((opportunity) => (
+                      <button key={opportunity.id} type="button" className="search-dropdown-item" onClick={() => { void openOpportunityTimeline(opportunity.id); setSearchResults(null); }}>
+                        <strong>{opportunity.titulo}</strong>
+                        <span>{opportunity.clienteNome} - {opportunity.etapaNome}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
           <div className="user-chip">
             <UserRound aria-hidden="true" />
             <span>{authState.user.email}</span>

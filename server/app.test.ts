@@ -26,6 +26,7 @@ import type {
   CreatePipelineStageInput,
   CrmDataRepository,
   CustomerRecord,
+  GlobalSearchResult,
   LossReasonAdminRecord,
   LossReasonRecord,
   MembershipCandidateRecord,
@@ -721,6 +722,21 @@ describe("CRM activities and next actions API", () => {
     expect(response.json().commercialCenter.summary.newOpportunities).toBeGreaterThan(0);
   });
 
+  it("returns matching customers and opportunities from global search, scoped by role", async () => {
+    const repository = new FakeCrmRepository();
+    await repository.createOpportunity({ id: actorId, role: "gestor" }, { ...makeCreateOpportunityInput(), titulo: "Instalacao Ar Condicionado Base" });
+    const app = createTestServer({ crmRepository: repository });
+    const found = await app.inject({ method: "GET", url: "/api/search?q=Base", headers: { authorization: "Bearer valid" } });
+    const empty = await app.inject({ method: "GET", url: "/api/search", headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(found.statusCode).toBe(200);
+    expect(found.json().results.customers.length).toBeGreaterThan(0);
+    expect(found.json().results.opportunities.length).toBeGreaterThan(0);
+    expect(empty.statusCode).toBe(200);
+    expect(empty.json().results).toEqual({ customers: [], opportunities: [] });
+  });
+
   it("keeps commercial reports restricted to gestor and returns aggregated metrics", async () => {
     const repository = new FakeCrmRepository();
     await repository.createOpportunity({ id: actorId, role: "gestor" }, makeCreateOpportunityInput());
@@ -1376,6 +1392,17 @@ class FakeCrmRepository implements CrmDataRepository {
       averageDaysToLoss: null,
       overdueFollowUps: this.nextActions.filter((action) => action.status === "pending" && action.category === "commercial" && action.dueAt < now).length,
       completedFollowUps: this.nextActions.filter((action) => action.status === "completed" && action.category === "commercial").length,
+    };
+  }
+
+  async globalSearch(actor: Actor, query: string): Promise<GlobalSearchResult> {
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) return { customers: [], opportunities: [] };
+    return {
+      customers: this.customers.filter((customer) => customer.nome.toLowerCase().includes(trimmed) || customer.empresa?.toLowerCase().includes(trimmed)).slice(0, 8),
+      opportunities: this.opportunities
+        .filter((opportunity) => (actor.role !== "vendedor" || opportunity.responsavelId === actor.id) && opportunity.titulo.toLowerCase().includes(trimmed))
+        .slice(0, 8),
     };
   }
 

@@ -319,6 +319,14 @@ Fora do escopo desta fatia, por decisao e nao por esquecimento: tempo medio de t
 
 Validacao: `npm run typecheck`, `npm run test` (58 testes, 1 novo cobrindo RBAC e presenca das metricas agregadas) e `npm run build` passaram. Verificado com Playwright contra o ambiente real de homologacao: metricas renderizadas batem entre si (ex.: soma de "oportunidades por etapa" bate com "oportunidades criadas"; "dias ate orcamento" retornou corretamente "Sem dados" apos a limpeza do orcamento de teste do marco anterior, em vez de um numero fabricado).
 
+## Busca global (2026-07-21)
+
+`GET /api/search?q=` (permissao `customers:read`, disponivel para os tres papeis) combina `listCustomers`/`listOpportunities` reaproveitando os mesmos filtros de busca ja existentes (nao duplica logica de query). Adicionado `auvo_contact_id` como criterio exato de busca de cliente, que faltava apesar de citado no `docs/PRODUCT-SPEC.md`. Resultado limitado a 8 clientes + 8 oportunidades para uso como "ir para" rapido, nao como listagem completa (a tabela principal continua sendo a busca detalhada).
+
+Frontend: a caixa de busca da topbar (ja existente) ganhou um dropdown com debounce de 300ms, agrupado por tipo, navegando direto para a linha do tempo do cliente/oportunidade ao clicar. `Enter` continua disparando a busca completa nas tabelas, como antes — o dropdown e um atalho adicional, nao uma substituicao.
+
+Validacao: `npm run typecheck`, `npm run test` (59 testes, 1 novo cobrindo busca combinada e query vazia) e `npm run build` passaram. Verificado com Playwright: digitar "Homologacao" retornou clientes reais agrupados, clicar no primeiro resultado abriu a linha do tempo correta e fechou o dropdown, sem erros de console.
+
 ## Incidente: eventos fora de escopo capturados na primeira ativacao do webhook (2026-07-21)
 
 O usuario cadastrou o webhook no Auvo com **18 eventos marcados**, incluindo todos os proibidos pelo escopo do MVP (`CLAUDE.md`, secoes 5 e 10.4): pagamento criado/alterado, mensagens (enviada/recebida/atualizada), eventos de painel/card, anotacoes de painel e modelo de mensagem. O webhook ficou `ATIVO` por alguns minutos nessa configuracao.

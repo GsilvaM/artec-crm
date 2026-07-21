@@ -110,6 +110,11 @@ export type MembershipCandidate = {
   isActive: boolean | null;
 };
 
+export type GlobalSearchResult = {
+  customers: Customer[];
+  opportunities: Opportunity[];
+};
+
 export type CommercialReportFilters = {
   from?: string;
   to?: string;
@@ -461,6 +466,10 @@ export async function loadAdminUsers(): Promise<MembershipCandidate[]> {
 
 export async function upsertMembership(userId: string, payload: { role: CrmRole; isActive: boolean }): Promise<MembershipCandidate> {
   return (await apiSend<{ membership: MembershipCandidate }>(`/api/admin/users/${userId}/membership`, "POST", payload)).membership;
+}
+
+export async function globalSearch(query: string): Promise<GlobalSearchResult> {
+  return (await apiGet<{ results: GlobalSearchResult }>(`/api/search${toQueryString({ q: query })}`)).results;
 }
 
 export async function loadCommercialReport(filters: CommercialReportFilters = {}): Promise<CommercialReport> {

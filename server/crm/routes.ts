@@ -108,6 +108,11 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
     return repository.reconcileNotifications(getActor(request));
   });
 
+  app.get("/api/search", { preHandler: [guards.authenticate, guards.requirePermission("customers:read")] }, async (request) => {
+    const query = request.query as { q?: string };
+    return { results: await repository.globalSearch(getActor(request), query.q ?? "") };
+  });
+
   app.get("/api/reports/commercial", { preHandler: [guards.authenticate, guards.requirePermission("reports:read")] }, async (request) => {
     const query = parseBody(commercialReportQuerySchema, request.query);
     return {

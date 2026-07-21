@@ -345,6 +345,11 @@ export type UpsertMembershipInput = {
   isActive: boolean;
 };
 
+export type GlobalSearchResult = {
+  customers: CustomerRecord[];
+  opportunities: OpportunityRecord[];
+};
+
 export type CommercialReportFilters = {
   from?: string;
   to?: string;
@@ -572,6 +577,7 @@ export type CrmDataRepository = {
   listMembershipCandidates(actor: Actor): Promise<MembershipCandidateRecord[]>;
   upsertMembership(actor: Actor, userId: string, input: UpsertMembershipInput): Promise<MembershipCandidateRecord>;
   getCommercialReport(actor: Actor, filters: CommercialReportFilters): Promise<CommercialReportRecord>;
+  globalSearch(actor: Actor, query: string): Promise<GlobalSearchResult>;
   listQuotes(actor: Actor, opportunityId: string): Promise<QuoteRecord[]>;
   createQuote(actor: Actor, input: CreateQuoteInput): Promise<QuoteRecord>;
   updateQuote(actor: Actor, id: string, input: UpdateQuoteInput): Promise<QuoteRecord | null>;

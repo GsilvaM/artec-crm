@@ -23,6 +23,7 @@ import type {
   CreatePipelineStageInput,
   CrmDataRepository,
   CustomerRecord,
+  GlobalSearchResult,
   LossReasonAdminRecord,
   LossReasonRecord,
   MembershipCandidateRecord,
@@ -165,6 +166,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
                 { nome: { contains: filters.search, mode: "insensitive" } },
                 { empresa: { contains: filters.search, mode: "insensitive" } },
                 { telefoneNormalizado: normalizePhone(filters.search) },
+                { auvoContactId: filters.search },
               ],
             }
           : {}),
@@ -874,6 +876,21 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       averageDaysToLoss: averageDays(lost.map((opportunity) => [opportunity.dataEntrada, opportunity.dataPerda])),
       overdueFollowUps,
       completedFollowUps,
+    };
+  }
+
+  async globalSearch(actor: Actor, query: string): Promise<GlobalSearchResult> {
+    const trimmed = query.trim();
+    if (!trimmed) return { customers: [], opportunities: [] };
+
+    const [customers, opportunities] = await Promise.all([
+      this.listCustomers(actor, { search: trimmed }),
+      this.listOpportunities(actor, { search: trimmed }),
+    ]);
+
+    return {
+      customers: customers.slice(0, 8),
+      opportunities: opportunities.slice(0, 8),
     };
   }
 

@@ -161,6 +161,12 @@ Critério de aceite: valores comerciais são mensuráveis sem qualquer lançamen
 
 Status em 2026-07-21: rotas `/api/admin/*` restritas a `gestor` (permissoes `settings:read`, `settings:write`, `users:manage`, ja existentes no RBAC mas sem uso ate agora). Testado com dados reais de homologacao (leitura e escrita ponta a ponta via Playwright).
 
+## 7c. Busca global
+
+- [x] `GET /api/search?q=` combinando clientes e oportunidades (nome, empresa, telefone normalizado, ID Auvo do cliente; titulo e cliente da oportunidade).
+- [x] Dropdown de resultados rapidos anexado a caixa de busca existente da topbar, com debounce de 300ms, agrupado por tipo, navegando direto para a linha do tempo do cliente/oportunidade ao clicar.
+- [x] Escopo por papel: vendedor so ve oportunidades sob sua responsabilidade nos resultados (clientes continuam visiveis a todos, igual ja acontecia na busca da tabela).
+
 ## 8. Relatórios e hardening
 
 - [x] Dashboard por período (`GET /api/reports/commercial`, restrito a gestor via permissao `reports:read` ja existente no RBAC).
