@@ -88,7 +88,7 @@ Status em 2026-07-20: concluido no codigo e validado por typecheck, testes e bui
 
 ## 3. Funil, follow-ups e agenda
 
-- [ ] Kanban com alternativa por ações rápidas.
+- [x] Kanban com alternativa por ações rápidas (sem drag-and-drop; mover etapa via seletor acessível, aprovar/perder reutilizam os fluxos existentes).
 - [x] Follow-ups de hoje e vencidos como proximas acoes filtraveis.
 - [x] Concluir/reagendar/cancelar com resultado e historico.
 - [ ] Agenda comercial.

@@ -1,6 +1,7 @@
 import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Copy, Edit3, LogIn, LogOut, Plus, RefreshCw, Search, UserRound, XCircle } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
+import { formatDateTime, formatMoney } from "./domain/format";
 import {
   approveOpportunity,
   archiveOpportunity,
@@ -42,6 +43,7 @@ import {
   type Notification,
   type Opportunity,
 } from "./domain/crm";
+import { PipelineBoard } from "./components/PipelineBoard";
 
 type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
 
@@ -402,6 +404,16 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     await refresh();
   }
 
+  async function handleMoveOpportunityStage(opportunityId: string, etapaId: string) {
+    setError(null);
+    try {
+      await updateOpportunity(opportunityId, { etapaId });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel mover a oportunidade de etapa.");
+    }
+  }
+
   async function handleArchiveOpportunity(opportunity: Opportunity) {
     if (!window.confirm(`Arquivar ${opportunity.titulo}? O historico sera preservado.`)) return;
     await archiveOpportunity(opportunity.id);
@@ -639,6 +651,27 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                   <div><dt>Conversao simples</dt><dd>{formatPercent(snapshot.commercialCenter.summary.simpleConversionRate)}</dd></div>
                 </dl>
               </article>
+            </section>
+
+            <section className="data-section pipeline-section" aria-label="Funil comercial">
+              <header className="pipeline-section-header">
+                <div>
+                  <p className="eyebrow">Funil comercial</p>
+                  <h2>Oportunidades por etapa</h2>
+                </div>
+              </header>
+              {snapshot.stages.length ? (
+                <PipelineBoard
+                  stages={snapshot.stages}
+                  opportunities={snapshot.opportunities}
+                  onMoveStage={handleMoveOpportunityStage}
+                  onApprove={handleApproveOpportunity}
+                  onLose={handleLoseOpportunity}
+                  onOpenTimeline={openOpportunityTimeline}
+                />
+              ) : (
+                <EmptyState title="Nenhuma etapa configurada" text="Configure as etapas do funil para visualizar o quadro." />
+              )}
             </section>
 
             <section className="panel notifications-page" aria-label="Notificacoes internas">
@@ -1115,11 +1148,6 @@ function NotificationList({ items, onRead, onArchive, onSnooze }: {
   );
 }
 
-function formatDateTime(value: string | null): string {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
-}
-
 function formatShortDate(value: string | null | undefined): string {
   if (!value) return "Nunca";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
@@ -1131,10 +1159,6 @@ function formatAuvoStatus(status: AuvoWebhookStatus): string {
   if (status === "processed") return "Processado";
   if (status === "ignored") return "Ignorado";
   return "Falha";
-}
-
-function formatMoney(valueInCents: number): string {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valueInCents / 100);
 }
 
 function formatPercent(value: number): string {

@@ -1303,9 +1303,12 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
   private async assertStageExists(stageId: string): Promise<void> {
     const stage = await this.prisma.pipelineStage.findUnique({
       where: { id: stageId },
-      select: { id: true },
+      select: { id: true, isTerminal: true },
     });
     if (!stage) throw new ApiError(422, "bad_request", "Etapa informada nao existe.");
+    if (stage.isTerminal) {
+      throw new ApiError(409, "bad_request", "Etapas terminais so podem ser atingidas pelo fluxo de aprovar ou perder a oportunidade.");
+    }
   }
 
   private async assertActiveLossReason(lossReasonId: string): Promise<void> {

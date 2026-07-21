@@ -303,6 +303,33 @@ describe("CRM customers and opportunities API", () => {
     expect(invalidLossReason.json().error.message).toBe("Motivo de perda informado nao existe ou esta inativo.");
   });
 
+  it("rejects moving an opportunity into a terminal stage outside the approve/lose flow", async () => {
+    const app = createTestServer({});
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/opportunities",
+      headers: { authorization: "Bearer valid" },
+      payload: makeCreateOpportunityInput(),
+    });
+    const movedToTerminal = await app.inject({
+      method: "PATCH",
+      url: `/api/opportunities/${created.json().opportunity.id}`,
+      headers: { authorization: "Bearer valid" },
+      payload: { etapaId: lostStageId },
+    });
+    const createdInTerminal = await app.inject({
+      method: "POST",
+      url: "/api/opportunities",
+      headers: { authorization: "Bearer valid" },
+      payload: { ...makeCreateOpportunityInput(), etapaId: lostStageId },
+    });
+    await app.close();
+
+    expect(movedToTerminal.statusCode).toBe(409);
+    expect(movedToTerminal.json().error.message).toBe("Etapas terminais so podem ser atingidas pelo fluxo de aprovar ou perder a oportunidade.");
+    expect(createdInTerminal.statusCode).toBe(409);
+  });
+
   it("prevents sellers from assigning opportunities to another responsible user", async () => {
     const app = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true } });
     const response = await app.inject({
@@ -1459,7 +1486,11 @@ class FakeCrmRepository implements CrmDataRepository {
   }
 
   private assertStageExists(stageId: string): void {
-    if (!this.stages.some((stage) => stage.id === stageId)) throw new ApiError(422, "bad_request", "Etapa informada nao existe.");
+    const stage = this.stages.find((item) => item.id === stageId);
+    if (!stage) throw new ApiError(422, "bad_request", "Etapa informada nao existe.");
+    if (stage.isTerminal) {
+      throw new ApiError(409, "bad_request", "Etapas terminais so podem ser atingidas pelo fluxo de aprovar ou perder a oportunidade.");
+    }
   }
 
   private assertActiveLossReason(lossReasonId: string): void {

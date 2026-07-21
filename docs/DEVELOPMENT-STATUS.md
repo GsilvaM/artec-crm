@@ -267,6 +267,22 @@ Resolvido em 2026-07-21: novo `AUVO_WEBHOOK_SECRET` gerado (32 bytes aleatorios)
 
 Proximo passo: configurar a URL `https://artec-crm.vercel.app/api/webhooks/auvo/<segredo-de-producao>` no painel do Auvo (eventos do MVP listados em `docs/AUVO-INTEGRATION.md`) e iniciar a captura real de payloads.
 
+## Funil comercial visual (2026-07-21)
+
+Implementado `src/components/PipelineBoard.tsx`: quadro com uma coluna por etapa (`crm.etapas_funil`, ordenadas por `ordem`), cartao por oportunidade mostrando cliente, titulo, tipo de demanda, origem (quando houver), valor (aprovado ou estimado), situacao, proxima acao com indicador de atraso e status.
+
+Decisoes de escopo:
+
+- Sem drag-and-drop. O `CLAUDE-ARTEC-CRM.md` permite drag-and-drop "apenas se seguro e acessivel"; optou-se por um `<select>` nativo por cartao para mover a oportunidade entre etapas nao terminais, que e acessivel por teclado por padrao.
+- Etapas terminais (`Aprovado`, `Perdido`) nao aparecem como destino no seletor de mover; cartoes nessas etapas so tem o botao "Historico" (sem mover/aprovar/perder de novo).
+- **Hardening de backend adicionado junto**: `assertStageExists` em `server/crm/prisma-repository.ts` agora rejeita (`409`) mover ou criar uma oportunidade diretamente em etapa terminal fora dos fluxos `/approve` e `/lose`. Esse gap ja existia antes do Funil (a rota `PATCH /api/opportunities/:id` aceitava `etapaId` de etapa terminal sem validar), mas ficou mais facil de acionar por acidente com o quadro visual, entao foi corrigido nesta mesma fatia. Teste novo em `server/app.test.ts` ("rejects moving an opportunity into a terminal stage outside the approve/lose flow").
+- "Tempo na etapa" (citado no `CLAUDE-ARTEC-CRM.md` e `docs/PRODUCT-SPEC.md` como campo do cartao) **nao foi implementado nesta fatia**: o schema atual so tem `dataEntrada` (entrada na oportunidade) e `updatedAt` (qualquer alteracao), nenhum dos dois reflete especificamente a data de entrada na etapa atual. Adicionar isso exigiria uma coluna nova e um trigger dedicado; decidiu-se nao inventar um numero impreciso. Fica registrado como pendencia real, nao como "concluido".
+
+Validacao:
+
+- `npm run typecheck`, `npm run test` (53 testes) e `npm run build` passaram.
+- Verificado visualmente com Playwright (instalado nesta sessao como dependencia de desenvolvimento, tambem preparando a infraestrutura de E2E do item 14): login real de homologacao, screenshot do quadro renderizado, movimentacao real de uma oportunidade entre etapas confirmada na UI (com refresh assincrono da tela) e devolvida ao estado original ao final do teste. Nenhum erro de console ou de rede durante a verificacao.
+
 ## Incidente: eventos fora de escopo capturados na primeira ativacao do webhook (2026-07-21)
 
 O usuario cadastrou o webhook no Auvo com **18 eventos marcados**, incluindo todos os proibidos pelo escopo do MVP (`CLAUDE.md`, secoes 5 e 10.4): pagamento criado/alterado, mensagens (enviada/recebida/atualizada), eventos de painel/card, anotacoes de painel e modelo de mensagem. O webhook ficou `ATIVO` por alguns minutos nessa configuracao.
