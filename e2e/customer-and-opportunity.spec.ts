@@ -18,6 +18,9 @@ test("creates a customer, creates an opportunity for it, and sees it on the pipe
   const customersTable = page.locator("table", { has: page.getByRole("columnheader", { name: "Telefone" }) });
   await expect(customersTable.getByText(customerName)).toBeVisible({ timeout: 15_000 });
 
+  await page.getByRole("link", { name: "Oportunidades" }).click();
+  await page.waitForURL(/\/oportunidades$/);
+
   const opportunityForm = page.locator("form", { has: page.getByRole("heading", { name: "Nova oportunidade" }) });
   await opportunityForm.getByLabel("Cliente").selectOption({ label: customerName });
   await opportunityForm.getByLabel("Titulo").fill(opportunityTitle);
@@ -26,6 +29,9 @@ test("creates a customer, creates an opportunity for it, and sees it on the pipe
   await opportunityForm.getByLabel("Proxima acao", { exact: true }).fill("Ligar para o cliente");
   await opportunityForm.getByLabel("Data da proxima acao").fill("2026-08-01T10:00");
   await opportunityForm.getByRole("button", { name: /Salvar oportunidade/i }).click();
+  await expect(page.locator("#oportunidades-section").getByText(opportunityTitle)).toBeVisible({ timeout: 15_000 });
 
+  await page.getByRole("link", { name: "Funil" }).click();
+  await page.waitForURL(/\/pipeline$/);
   await expect(page.locator("section.pipeline-section")).toContainText(opportunityTitle, { timeout: 15_000 });
 });

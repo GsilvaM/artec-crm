@@ -371,16 +371,28 @@ export async function loadCrmSnapshot(search = "", commercialFilters: Commercial
   };
 }
 
-export async function loadMoreCustomers(cursor: string, search = ""): Promise<{ customers: Customer[]; nextCursor: string | null }> {
-  const params = new URLSearchParams({ cursor });
+export async function loadCustomersPage(search = "", cursor?: string): Promise<{ customers: Customer[]; nextCursor: string | null }> {
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", cursor);
   if (search.trim()) params.set("search", search.trim());
-  return apiGet<{ customers: Customer[]; nextCursor: string | null }>(`/api/customers?${params.toString()}`);
+  const query = params.toString();
+  return apiGet<{ customers: Customer[]; nextCursor: string | null }>(`/api/customers${query ? `?${query}` : ""}`);
+}
+
+export async function loadMoreCustomers(cursor: string, search = ""): Promise<{ customers: Customer[]; nextCursor: string | null }> {
+  return loadCustomersPage(search, cursor);
+}
+
+export async function loadOpportunitiesPage(search = "", cursor?: string): Promise<{ opportunities: Opportunity[]; nextCursor: string | null }> {
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", cursor);
+  if (search.trim()) params.set("search", search.trim());
+  const query = params.toString();
+  return apiGet<{ opportunities: Opportunity[]; nextCursor: string | null }>(`/api/opportunities${query ? `?${query}` : ""}`);
 }
 
 export async function loadMoreOpportunities(cursor: string, search = ""): Promise<{ opportunities: Opportunity[]; nextCursor: string | null }> {
-  const params = new URLSearchParams({ cursor });
-  if (search.trim()) params.set("search", search.trim());
-  return apiGet<{ opportunities: Opportunity[]; nextCursor: string | null }>(`/api/opportunities?${params.toString()}`);
+  return loadOpportunitiesPage(search, cursor);
 }
 
 export async function loadCustomer(id: string): Promise<Customer> {

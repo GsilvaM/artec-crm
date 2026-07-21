@@ -1,4 +1,4 @@
-import { AlertCircle, Archive, CheckCircle2, Clock, Copy, Edit3, LogIn, LogOut, Plus, RefreshCw, Search, XCircle } from "lucide-react";
+import { AlertCircle, Clock, Copy, LogIn, LogOut, Plus, RefreshCw } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
@@ -6,18 +6,13 @@ import { formatActivityType, formatDateTime, formatMoney } from "./domain/format
 import {
   approveOpportunity,
   archiveOpportunity,
-  archiveCustomer,
-  createCustomer,
   createActivity,
   createNextAction,
-  createOpportunity,
   createQuote,
   completeNextAction,
   cancelNextAction,
   archiveNotification,
   loadCrmSnapshot,
-  loadMoreCustomers,
-  loadMoreOpportunities,
   ignoreAuvoWebhookEvent,
   loadCustomerActivities,
   loadOpportunityQuotes,
@@ -32,14 +27,12 @@ import {
   postponeNextAction,
   reprocessAuvoWebhookEvent,
   snoozeNotification,
-  updateCustomer,
   updateOpportunity,
   type Activity,
   type AuvoIntegrationStatus,
   type AuvoWebhookEvent,
   type AuvoWebhookStatus,
   type CrmSnapshot,
-  type Customer,
   type NextAction,
   type Notification,
   type Opportunity,
@@ -60,11 +53,11 @@ import { CentralComercialPage } from "./features/commercial-center/CentralComerc
 import { ProximasAcoesPage } from "./features/next-actions/ProximasAcoesPage";
 import { OportunidadePage } from "./features/opportunities/OportunidadePage";
 import { ClientePage } from "./features/customers/ClientePage";
+import { ClientesPage } from "./features/customers/ClientesPage";
+import { OportunidadesPage } from "./features/opportunities/OportunidadesPage";
 
 const SECTION_ID_BY_PATH: Record<string, string> = {
   "/pipeline": "pipeline-section",
-  "/clientes": "clientes-section",
-  "/oportunidades": "oportunidades-section",
   "/notificacoes": "notificacoes-section",
   "/configuracoes/integracoes/auvo": "auvo-admin-section",
 };
@@ -160,7 +153,9 @@ export function App() {
         <Route path="central-comercial" element={<CentralComercialPage currentUserId={authState.user.id} />} />
         <Route path="proximas-acoes" element={<ProximasAcoesPage currentUserId={authState.user.id} />} />
         <Route path="oportunidades/:id" element={<OportunidadePage currentUserId={authState.user.id} canManageUsers={authState.user.permissions.includes("users:manage")} />} />
+        <Route path="oportunidades" element={<OportunidadesPage currentUserId={authState.user.id} />} />
         <Route path="clientes/:id" element={<ClientePage currentUserId={authState.user.id} />} />
+        <Route path="clientes" element={<ClientesPage />} />
         <Route index element={<Navigate to="/central-comercial" replace />} />
         <Route path="*" element={<AuthenticatedApp authState={authState} onLogout={handleLogout} />} />
       </Route>
@@ -172,9 +167,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [snapshot, setSnapshot] = useState<CrmSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [customerForm, setCustomerForm] = useState({ nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" });
-  const [opportunityForm, setOpportunityForm] = useState({ clienteId: "", titulo: "", tipoDemanda: "instalacao", situacao: "em andamento", proximaAcao: "", proximaAcaoEm: "" });
   const [activityForm, setActivityForm] = useState({ customerId: "", opportunityId: "", type: "note" as Activity["type"], description: "" });
   const [nextActionForm, setNextActionForm] = useState({ customerId: "", opportunityId: "", category: "commercial" as NextAction["category"], title: "", dueAt: "", priority: "normal" as NextAction["priority"] });
   const [timeline, setTimeline] = useState<Activity[]>([]);
@@ -187,13 +179,10 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [auvoFilter, setAuvoFilter] = useState<AuvoWebhookStatus | "">("");
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [quotesOpportunity, setQuotesOpportunity] = useState<Opportunity | null>(null);
-  const [isLoadingMoreCustomers, setIsLoadingMoreCustomers] = useState(false);
-  const [isLoadingMoreOpportunities, setIsLoadingMoreOpportunities] = useState(false);
 
   const activeCustomers = snapshot?.customers.filter((customer) => !customer.archivedAt) ?? [];
   const activeOpportunities = snapshot?.opportunities.filter((opportunity) => opportunity.status === "ativa") ?? [];
   const opportunitiesWithoutNextAction = activeOpportunities.filter((opportunity) => !opportunity.proximaAcao || !opportunity.proximaAcaoEm);
-  const defaultStageId = snapshot?.stages[0]?.id;
   const firstLossReasonId = snapshot?.lossReasons[0]?.id;
   const canManageIntegrations = authState.user.permissions.includes("integrations:read");
   const canManageUsers = authState.user.permissions.includes("users:manage");
@@ -216,11 +205,10 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     setIsLoading(true);
     setError(null);
     try {
-      const data = await loadCrmSnapshot(search);
+      const data = await loadCrmSnapshot();
       setSnapshot(data);
       await refreshNotifications(notificationStatus);
       if (canManageIntegrations) await refreshAuvo();
-      setOpportunityForm((current) => ({ ...current, clienteId: current.clienteId || data.customers[0]?.id || "" }));
       setActivityForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
       setNextActionForm((current) => ({ ...current, customerId: current.customerId || data.customers[0]?.id || "" }));
     } catch (err) {
@@ -291,70 +279,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     await refreshAuvo();
   }
 
-  async function handleCreateCustomer(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    try {
-      await createCustomer({ tipoPessoa: "fisica", ...customerForm });
-      setCustomerForm({ nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" });
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel salvar o cliente.");
-    }
-  }
-
-  async function handleCreateOpportunity(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    try {
-      await createOpportunity({
-        ...opportunityForm,
-        etapaId: defaultStageId,
-        responsavelId: authState.user.id,
-      });
-      setOpportunityForm((current) => ({ ...current, titulo: "", proximaAcao: "", proximaAcaoEm: "" }));
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel salvar a oportunidade.");
-    }
-  }
-
-  async function handleArchiveCustomer(customer: Customer) {
-    if (!window.confirm(`Arquivar ${customer.nome}? O historico sera preservado.`)) return;
-    await archiveCustomer(customer.id);
-    await refresh();
-  }
-
-  async function handleLoadMoreCustomers() {
-    if (!snapshot?.customersNextCursor) return;
-    setIsLoadingMoreCustomers(true);
-    try {
-      const page = await loadMoreCustomers(snapshot.customersNextCursor, search);
-      setSnapshot((current) =>
-        current ? { ...current, customers: [...current.customers, ...page.customers], customersNextCursor: page.nextCursor } : current,
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar mais clientes.");
-    } finally {
-      setIsLoadingMoreCustomers(false);
-    }
-  }
-
-  async function handleLoadMoreOpportunities() {
-    if (!snapshot?.opportunitiesNextCursor) return;
-    setIsLoadingMoreOpportunities(true);
-    try {
-      const page = await loadMoreOpportunities(snapshot.opportunitiesNextCursor, search);
-      setSnapshot((current) =>
-        current ? { ...current, opportunities: [...current.opportunities, ...page.opportunities], opportunitiesNextCursor: page.nextCursor } : current,
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar mais oportunidades.");
-    } finally {
-      setIsLoadingMoreOpportunities(false);
-    }
-  }
-
   async function handleCreateActivity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -391,13 +315,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nao foi possivel criar a proxima acao.");
     }
-  }
-
-  async function handleEditCustomer(customer: Customer) {
-    const telefone = window.prompt("Telefone do cliente", customer.telefone ?? "");
-    if (telefone === null) return;
-    await updateCustomer(customer.id, { telefone });
-    await refresh();
   }
 
   async function handleApproveOpportunity(opportunity: Opportunity) {
@@ -590,35 +507,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
             ) : null}
 
             <section className="split-layout">
-              <form className="panel compact-form" onSubmit={handleCreateCustomer}>
-                <h2>Novo cliente</h2>
-                <label>Nome<input required value={customerForm.nome} onChange={(event) => setCustomerForm({ ...customerForm, nome: event.target.value })} /></label>
-                <label>Telefone<input value={customerForm.telefone} onChange={(event) => setCustomerForm({ ...customerForm, telefone: event.target.value })} /></label>
-                <label>E-mail<input type="email" value={customerForm.email} onChange={(event) => setCustomerForm({ ...customerForm, email: event.target.value })} /></label>
-                <label>Empresa<input value={customerForm.empresa} onChange={(event) => setCustomerForm({ ...customerForm, empresa: event.target.value })} /></label>
-                <div className="form-row">
-                  <label>Bairro<input value={customerForm.bairro} onChange={(event) => setCustomerForm({ ...customerForm, bairro: event.target.value })} /></label>
-                  <label>Cidade<input value={customerForm.cidade} onChange={(event) => setCustomerForm({ ...customerForm, cidade: event.target.value })} /></label>
-                </div>
-                <button className="button primary" type="submit"><Plus aria-hidden="true" />Salvar cliente</button>
-              </form>
-
-              <form className="panel compact-form" onSubmit={handleCreateOpportunity}>
-                <h2>Nova oportunidade</h2>
-                <label>Cliente<select required value={opportunityForm.clienteId} onChange={(event) => setOpportunityForm({ ...opportunityForm, clienteId: event.target.value })}>
-                  <option value="">Selecione</option>
-                  {activeCustomers.map((customer) => <option value={customer.id} key={customer.id}>{customer.nome}</option>)}
-                </select></label>
-                <label>Titulo<input required value={opportunityForm.titulo} onChange={(event) => setOpportunityForm({ ...opportunityForm, titulo: event.target.value })} /></label>
-                <label>Tipo de demanda<input required value={opportunityForm.tipoDemanda} onChange={(event) => setOpportunityForm({ ...opportunityForm, tipoDemanda: event.target.value })} /></label>
-                <label>Situacao<input required value={opportunityForm.situacao} onChange={(event) => setOpportunityForm({ ...opportunityForm, situacao: event.target.value })} /></label>
-                <label>Proxima acao<input required value={opportunityForm.proximaAcao} onChange={(event) => setOpportunityForm({ ...opportunityForm, proximaAcao: event.target.value })} /></label>
-                <label>Data da proxima acao<input required type="datetime-local" value={opportunityForm.proximaAcaoEm} onChange={(event) => setOpportunityForm({ ...opportunityForm, proximaAcaoEm: event.target.value })} /></label>
-                <button className="button primary" type="submit" disabled={!activeCustomers.length}><Plus aria-hidden="true" />Salvar oportunidade</button>
-              </form>
-            </section>
-
-            <section className="split-layout">
               <form className="panel compact-form" onSubmit={handleCreateActivity}>
                 <h2>Registrar atividade</h2>
                 <label>Cliente<select required value={activityForm.customerId} onChange={(event) => setActivityForm({ ...activityForm, customerId: event.target.value })}>
@@ -656,79 +544,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
                 </select></label>
                 <button className="button primary" type="submit"><Clock aria-hidden="true" />Criar proxima acao</button>
               </form>
-            </section>
-
-            <section id="clientes-section" className="data-section">
-              <div className="pipeline-section-header">
-                <h2>Clientes e oportunidades</h2>
-                <label className="search-box">
-                  <Search aria-hidden="true" />
-                  <input
-                    type="search"
-                    placeholder="Filtrar por nome, telefone ou empresa"
-                    aria-label="Filtrar clientes e oportunidades"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") void refresh();
-                    }}
-                  />
-                </label>
-              </div>
-              {activeCustomers.length ? (
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Nome</th><th>Telefone</th><th>Empresa</th><th>Oportunidades</th><th>Acoes</th></tr></thead>
-                    <tbody>{activeCustomers.map((customer) => (
-                      <tr key={customer.id}>
-                        <td>{customer.nome}{customer.duplicatePhoneCustomerIds.length ? <span className="badge warning">possivel duplicidade</span> : null}</td>
-                        <td>{customer.telefone ?? "-"}</td>
-                        <td>{customer.empresa ?? "-"}</td>
-                        <td>{customer.opportunitiesCount}</td>
-                        <td className="actions-cell">
-                          <Link className="button secondary" to={`/clientes/${customer.id}`}>Abrir</Link>
-                          <button className="icon-button" type="button" aria-label={`Editar ${customer.nome}`} onClick={() => void handleEditCustomer(customer)}><Edit3 aria-hidden="true" /></button>
-                          <button className="icon-button" type="button" aria-label={`Arquivar ${customer.nome}`} onClick={() => void handleArchiveCustomer(customer)}><Archive aria-hidden="true" /></button>
-                        </td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
-                </div>
-              ) : <EmptyState title="Nenhum cliente cadastrado" text="Cadastre o primeiro cliente para criar oportunidades comerciais." />}
-              {snapshot.customersNextCursor ? (
-                <button className="button secondary" type="button" disabled={isLoadingMoreCustomers} onClick={() => void handleLoadMoreCustomers()}>
-                  {isLoadingMoreCustomers ? "Carregando..." : "Carregar mais clientes"}
-                </button>
-              ) : null}
-            </section>
-
-            <section id="oportunidades-section" className="data-section">
-              <h2>Oportunidades</h2>
-              {snapshot.opportunities.length ? (
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Titulo</th><th>Cliente</th><th>Etapa</th><th>Situacao</th><th>Proxima acao</th><th>Status</th><th>Acoes</th></tr></thead>
-                    <tbody>{snapshot.opportunities.map((opportunity) => (
-                      <tr key={opportunity.id}>
-                        <td>{opportunity.titulo}</td>
-                        <td>{opportunity.clienteNome}</td>
-                        <td>{opportunity.etapaNome}</td>
-                        <td>{opportunity.situacao}</td>
-                        <td>{opportunity.proximaAcao ? `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}` : <span className="badge danger-badge">sem proxima acao</span>}</td>
-                        <td><span className="badge">{opportunity.status}</span></td>
-                        <td className="actions-cell">
-                          <Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir</Link>
-                        </td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
-                </div>
-              ) : <EmptyState title="Nenhuma oportunidade cadastrada" text="Crie uma oportunidade com responsavel, proxima acao e data." />}
-              {snapshot.opportunitiesNextCursor ? (
-                <button className="button secondary" type="button" disabled={isLoadingMoreOpportunities} onClick={() => void handleLoadMoreOpportunities()}>
-                  {isLoadingMoreOpportunities ? "Carregando..." : "Carregar mais oportunidades"}
-                </button>
-              ) : null}
             </section>
 
             <section className="data-section timeline-section">
