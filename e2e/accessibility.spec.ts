@@ -28,4 +28,12 @@ test.describe("WCAG automated audit", () => {
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });
+
+  test("proximas acoes page has no automatically detectable violations", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Proximas acoes" }).click();
+    await page.waitForURL(/\/proximas-acoes$/);
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
 });

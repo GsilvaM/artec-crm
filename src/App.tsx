@@ -57,29 +57,14 @@ import { EmptyState } from "./components/ui/EmptyState";
 import { LoadingPanels } from "./components/ui/Skeleton";
 import { NotificationList, formatNotificationStatus } from "./components/ui/NotificationList";
 import { CentralComercialPage } from "./features/commercial-center/CentralComercialPage";
+import { ProximasAcoesPage } from "./features/next-actions/ProximasAcoesPage";
 
 const SECTION_ID_BY_PATH: Record<string, string> = {
-  "/central-comercial": "central-comercial",
   "/pipeline": "pipeline-section",
   "/clientes": "clientes-section",
   "/oportunidades": "oportunidades-section",
-  "/proximas-acoes": "proximas-acoes-section",
   "/notificacoes": "notificacoes-section",
   "/configuracoes/integracoes/auvo": "auvo-admin-section",
-};
-
-type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
-
-type ActionOperation = {
-  mode: "complete" | "postpone" | "cancel";
-  action: NextAction;
-  completionResult: string;
-  dueAt: string;
-  cancellationReason: string;
-  nextTitle: string;
-  nextDueAt: string;
-  nextCategory: NextAction["category"];
-  nextPriority: NextAction["priority"];
 };
 
 export function App() {
@@ -171,6 +156,7 @@ export function App() {
     <Routes>
       <Route element={<AppLayout userEmail={authState.user.email} onLogout={handleLogout} canManageIntegrations={canManageIntegrations} />}>
         <Route path="central-comercial" element={<CentralComercialPage currentUserId={authState.user.id} />} />
+        <Route path="proximas-acoes" element={<ProximasAcoesPage currentUserId={authState.user.id} />} />
         <Route index element={<Navigate to="/central-comercial" replace />} />
         <Route path="*" element={<AuthenticatedApp authState={authState} onLogout={handleLogout} />} />
       </Route>
@@ -187,8 +173,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const [opportunityForm, setOpportunityForm] = useState({ clienteId: "", titulo: "", tipoDemanda: "instalacao", situacao: "em andamento", proximaAcao: "", proximaAcaoEm: "" });
   const [activityForm, setActivityForm] = useState({ customerId: "", opportunityId: "", type: "note" as Activity["type"], description: "" });
   const [nextActionForm, setNextActionForm] = useState({ customerId: "", opportunityId: "", category: "commercial" as NextAction["category"], title: "", dueAt: "", priority: "normal" as NextAction["priority"] });
-  const [actionFilter, setActionFilter] = useState<ActionFilter>("overdue");
-  const [actionOperation, setActionOperation] = useState<ActionOperation | null>(null);
   const [timeline, setTimeline] = useState<Activity[]>([]);
   const [timelineTitle, setTimelineTitle] = useState("Linha do tempo");
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -207,10 +191,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
   const opportunitiesWithoutNextAction = activeOpportunities.filter((opportunity) => !opportunity.proximaAcao || !opportunity.proximaAcaoEm);
   const defaultStageId = snapshot?.stages[0]?.id;
   const firstLossReasonId = snapshot?.lossReasons[0]?.id;
-  const visibleNextActions = useMemo(
-    () => filterNextActions(snapshot?.nextActions ?? [], actionFilter),
-    [snapshot?.nextActions, actionFilter],
-  );
   const canManageIntegrations = authState.user.permissions.includes("integrations:read");
   const canManageUsers = authState.user.permissions.includes("users:manage");
   const canViewReports = authState.user.permissions.includes("reports:read");
@@ -464,58 +444,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
     await refresh();
   }
 
-  function openActionOperation(action: NextAction, mode: ActionOperation["mode"]) {
-    setError(null);
-    setActionOperation({
-      action,
-      mode,
-      completionResult: "",
-      dueAt: toDateTimeLocalValue(action.dueAt),
-      cancellationReason: "",
-      nextTitle: "",
-      nextDueAt: "",
-      nextCategory: action.category,
-      nextPriority: "normal",
-    });
-  }
-
-  async function handleActionOperationSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!actionOperation) return;
-    setError(null);
-    const { action, mode } = actionOperation;
-    const replacementRequired = needsReplacementAction(action, snapshot?.opportunities ?? []);
-    const nextAction = replacementRequired
-      ? {
-          customerId: action.customerId,
-          opportunityId: action.opportunityId,
-          responsibleUserId: authState.user.id,
-          category: actionOperation.nextCategory,
-          title: actionOperation.nextTitle,
-          dueAt: actionOperation.nextDueAt,
-          priority: actionOperation.nextPriority,
-        }
-      : null;
-
-    try {
-      if (replacementRequired && (!actionOperation.nextTitle.trim() || !actionOperation.nextDueAt)) {
-        setError("Defina a proxima acao antes de concluir esta atividade.");
-        return;
-      }
-      if (mode === "complete") {
-        await completeNextAction(action.id, { completionResult: actionOperation.completionResult, nextAction });
-      } else if (mode === "postpone") {
-        await postponeNextAction(action.id, actionOperation.dueAt);
-      } else {
-        await cancelNextAction(action.id, actionOperation.cancellationReason, nextAction);
-      }
-      setActionOperation(null);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel atualizar a proxima acao.");
-    }
-  }
-
   async function openCustomerTimeline(id: string) {
     const customer = snapshot?.customers.find((item) => item.id === id);
     setTimeline(await loadCustomerActivities(id));
@@ -735,74 +663,6 @@ function AuthenticatedApp({ authState, onLogout }: { authState: Extract<AuthStat
               </form>
             </section>
 
-            <section id="proximas-acoes-section" className="data-section">
-              <h2>Proximas acoes</h2>
-              <div className="segmented-control" aria-label="Filtros de proximas acoes">
-                {(["overdue", "today", "upcoming", "completed", "cancelled"] as ActionFilter[]).map((filter) => (
-                  <button className={actionFilter === filter ? "active" : ""} type="button" key={filter} onClick={() => setActionFilter(filter)}>
-                    {formatActionFilter(filter)}
-                  </button>
-                ))}
-              </div>
-              {actionOperation ? (
-                <form className="panel compact-form action-operation" onSubmit={handleActionOperationSubmit}>
-                  <div>
-                    <p className="eyebrow">{actionOperation.action.customerName}</p>
-                    <h3>{formatOperationTitle(actionOperation.mode)}</h3>
-                  </div>
-                  {actionOperation.mode === "complete" ? (
-                    <label>Resultado<input required value={actionOperation.completionResult} onChange={(event) => setActionOperation({ ...actionOperation, completionResult: event.target.value })} /></label>
-                  ) : null}
-                  {actionOperation.mode === "postpone" ? (
-                    <label>Novo vencimento<input required type="datetime-local" value={actionOperation.dueAt} onChange={(event) => setActionOperation({ ...actionOperation, dueAt: event.target.value })} /></label>
-                  ) : null}
-                  {actionOperation.mode === "cancel" ? (
-                    <label>Motivo do cancelamento<input required value={actionOperation.cancellationReason} onChange={(event) => setActionOperation({ ...actionOperation, cancellationReason: event.target.value })} /></label>
-                  ) : null}
-                  {needsReplacementAction(actionOperation.action, snapshot.opportunities) && actionOperation.mode !== "postpone" ? (
-                    <fieldset className="replacement-fields">
-                      <legend>Nova proxima acao obrigatoria</legend>
-                      <label>Acao<input required value={actionOperation.nextTitle} onChange={(event) => setActionOperation({ ...actionOperation, nextTitle: event.target.value })} /></label>
-                      <label>Vencimento<input required type="datetime-local" value={actionOperation.nextDueAt} onChange={(event) => setActionOperation({ ...actionOperation, nextDueAt: event.target.value })} /></label>
-                      <label>Categoria<select value={actionOperation.nextCategory} onChange={(event) => setActionOperation({ ...actionOperation, nextCategory: event.target.value as NextAction["category"] })}>
-                        <option value="commercial">Comercial</option><option value="warranty">Garantia</option><option value="support">Suporte</option><option value="after_sales">Pos-venda</option>
-                      </select></label>
-                      <label>Prioridade<select value={actionOperation.nextPriority} onChange={(event) => setActionOperation({ ...actionOperation, nextPriority: event.target.value as NextAction["priority"] })}>
-                        <option value="normal">Normal</option><option value="high">Alta</option><option value="low">Baixa</option>
-                      </select></label>
-                    </fieldset>
-                  ) : null}
-                  <div className="form-actions">
-                    <button className="button primary" type="submit">Salvar</button>
-                    <button className="button secondary" type="button" onClick={() => setActionOperation(null)}>Cancelar</button>
-                  </div>
-                </form>
-              ) : null}
-              {visibleNextActions.length ? (
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Acao</th><th>Cliente</th><th>Contexto</th><th>Categoria</th><th>Vencimento</th><th>Prioridade</th><th>Status</th><th>Acoes</th></tr></thead>
-                    <tbody>{visibleNextActions.map((action) => (
-                      <tr key={action.id}>
-                        <td>{action.title}{isOverdue(action) ? <span className="badge danger-badge">vencida</span> : null}</td>
-                        <td>{action.customerName}</td>
-                        <td>{action.opportunityTitle ?? "Atendimento"}</td>
-                        <td><span className="badge">{formatActionCategory(action.category)}</span></td>
-                        <td>{formatDateTime(action.dueAt)}</td>
-                        <td><span className="badge">{formatPriority(action.priority)}</span></td>
-                        <td><span className="badge">{action.status}</span></td>
-                        <td className="actions-cell">
-                          <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => openActionOperation(action, "complete")}>Concluir</button>
-                          <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => openActionOperation(action, "postpone")}>Reagendar</button>
-                          <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => openActionOperation(action, "cancel")}>Cancelar</button>
-                        </td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
-                </div>
-              ) : <EmptyState title="Nenhuma proxima acao" text="Crie uma acao pendente para acompanhar cliente, garantia, suporte ou oportunidade." />}
-            </section>
-
             <section id="clientes-section" className="data-section">
               <div className="pipeline-section-header">
                 <h2>Clientes e oportunidades</h2>
@@ -989,77 +849,5 @@ function formatAuvoStatus(status: AuvoWebhookStatus): string {
   if (status === "processed") return "Processado";
   if (status === "ignored") return "Ignorado";
   return "Falha";
-}
-
-function toDateTimeLocalValue(value: string | null): string {
-  if (!value) return "";
-  const date = new Date(value);
-  const offsetMs = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
-}
-
-function isOverdue(action: NextAction): boolean {
-  return action.status === "pending" && new Date(action.dueAt).getTime() < Date.now();
-}
-
-function isTodayAction(action: NextAction): boolean {
-  if (action.status !== "pending") return false;
-  const now = new Date();
-  const due = new Date(action.dueAt);
-  return due.getFullYear() === now.getFullYear() && due.getMonth() === now.getMonth() && due.getDate() === now.getDate();
-}
-
-function filterNextActions(actions: NextAction[], filter: ActionFilter): NextAction[] {
-  return actions.filter((action) => {
-    if (filter === "overdue") return isOverdue(action);
-    if (filter === "today") return isTodayAction(action);
-    if (filter === "upcoming") return action.status === "pending" && !isOverdue(action) && !isTodayAction(action);
-    return action.status === filter;
-  });
-}
-
-function formatActionFilter(filter: ActionFilter): string {
-  const labels: Record<ActionFilter, string> = {
-    overdue: "Vencidas",
-    today: "Hoje",
-    upcoming: "Proximas",
-    completed: "Concluidas",
-    cancelled: "Canceladas",
-  };
-  return labels[filter];
-}
-
-function uniqueValues(values: Array<string | null | undefined>): string[] {
-  return Array.from(new Set(values.filter((value): value is string => Boolean(value?.trim()))));
-}
-
-function formatOperationTitle(mode: ActionOperation["mode"]): string {
-  if (mode === "complete") return "Concluir proxima acao";
-  if (mode === "postpone") return "Reagendar proxima acao";
-  return "Cancelar proxima acao";
-}
-
-function needsReplacementAction(action: NextAction, opportunities: Opportunity[]): boolean {
-  return opportunities.some((opportunity) =>
-    opportunity.status === "ativa" &&
-    opportunity.currentNextActionId === action.id &&
-    opportunity.id === action.opportunityId,
-  );
-}
-
-function formatPriority(priority: NextAction["priority"]): string {
-  if (priority === "high") return "Alta";
-  if (priority === "low") return "Baixa";
-  return "Normal";
-}
-
-function formatActionCategory(category: NextAction["category"]): string {
-  const labels: Record<NextAction["category"], string> = {
-    commercial: "Comercial",
-    warranty: "Garantia",
-    support: "Suporte",
-    after_sales: "Pos-venda",
-  };
-  return labels[category];
 }
 

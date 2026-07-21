@@ -426,6 +426,29 @@ export async function createActivity(payload: { customerId: string; opportunityI
   return (await apiSend<{ activity: Activity }>("/api/activities", "POST", payload)).activity;
 }
 
+export type NextActionFilters = {
+  responsibleUserId?: string;
+  status?: NextAction["status"];
+  category?: NextAction["category"];
+  priority?: NextAction["priority"];
+  overdue?: boolean;
+  today?: boolean;
+  future?: boolean;
+};
+
+export async function loadNextActions(filters: NextActionFilters = {}): Promise<NextAction[]> {
+  const query = toQueryString({
+    responsibleUserId: filters.responsibleUserId,
+    status: filters.status,
+    category: filters.category,
+    priority: filters.priority,
+    overdue: filters.overdue ? "true" : undefined,
+    today: filters.today ? "true" : undefined,
+    future: filters.future ? "true" : undefined,
+  });
+  return (await apiGet<{ nextActions: NextAction[] }>(`/api/next-actions${query}`)).nextActions;
+}
+
 export async function createNextAction(payload: { customerId: string; opportunityId?: string | null; responsibleUserId: string; category?: NextAction["category"]; title: string; dueAt: string; priority?: NextAction["priority"] }): Promise<NextAction> {
   return (await apiSend<{ nextAction: NextAction }>("/api/next-actions", "POST", payload)).nextAction;
 }
