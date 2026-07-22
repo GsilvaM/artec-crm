@@ -116,18 +116,18 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
         {isLoading ? (
           <LoadingPanels />
         ) : opportunities.length ? (
-          <div className="table-wrap">
+          <div className="table-wrap mobile-cards">
             <table>
               <thead><tr><th>Titulo</th><th>Cliente</th><th>Etapa</th><th>Situacao</th><th>Proxima acao</th><th>Status</th><th>Acoes</th></tr></thead>
               <tbody>
                 {opportunities.map((opportunity) => (
                   <tr key={opportunity.id}>
-                    <td>{opportunity.titulo}</td>
-                    <td>{opportunity.clienteNome}</td>
-                    <td>{opportunity.etapaNome}</td>
-                    <td>{opportunity.situacao}</td>
-                    <td>{opportunity.proximaAcao ? `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}` : <span className="badge danger-badge">sem proxima acao</span>}</td>
-                    <td><span className="badge">{opportunity.status}</span></td>
+                    <td data-label="Titulo">{opportunity.titulo}</td>
+                    <td data-label="Cliente">{opportunity.clienteNome}</td>
+                    <td data-label="Etapa">{opportunity.etapaNome}</td>
+                    <td data-label="Situacao">{opportunity.situacao}</td>
+                    <td data-label="Proxima acao">{opportunity.proximaAcao ? `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}` : <span className="badge danger-badge">sem proxima acao</span>}</td>
+                    <td data-label="Status"><span className="badge">{opportunity.status}</span></td>
                     <td className="actions-cell"><Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir</Link></td>
                   </tr>
                 ))}

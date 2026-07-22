@@ -24,13 +24,31 @@ const PAGES = [
   { label: "Proximas acoes", linkName: "Proximas acoes", urlPattern: /\/proximas-acoes$/ },
 ];
 
-test.describe("Responsividade sem overflow horizontal acidental", () => {
-  for (const viewport of VIEWPORTS) {
-    test(`sem overflow horizontal em ${viewport.name}`, async ({ page }) => {
-      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+for (const viewport of VIEWPORTS) {
+  test.describe(`Responsividade sem overflow horizontal acidental — ${viewport.name}`, () => {
+    // Definido via test.use (viewport de contexto) em vez de
+    // page.setViewportSize em runtime: setar o viewport so depois da
+    // primeira navegacao nao sincroniza de forma confiavel com a avaliacao
+    // inicial de @media/CSSOM no Chromium, o que fazia o botao do menu
+    // mobile parecer "fora do viewport" de forma intermitente.
+    test.use({ viewport: { width: viewport.width, height: viewport.height } });
+
+    // Abaixo de 768px a sidebar vira drawer fechado por padrao (secao 13).
+    // Decidido pela largura do viewport (conhecida e fixa por bloco via
+    // test.use), nao por uma checagem de visibilidade em runtime — isVisible()
+    // nao espera/reconsulta como toBeVisible(), e pode capturar um instante
+    // transitorio da renderizacao e responder de forma inconsistente.
+    const isMobileLayout = viewport.width <= 767;
+
+    test("sem overflow horizontal", async ({ page }) => {
       await loginAsHomologationGestor(page);
 
       for (const target of PAGES) {
+        if (isMobileLayout) {
+          await page.getByRole("button", { name: "Abrir menu de navegacao" }).click();
+          await expect(page.getByRole("link", { name: target.linkName })).toBeVisible();
+        }
+
         await page.getByRole("link", { name: target.linkName }).click();
         await page.waitForURL(target.urlPattern);
         await page.waitForLoadState("networkidle");
@@ -39,5 +57,5 @@ test.describe("Responsividade sem overflow horizontal acidental", () => {
         expect(overflow, `${target.label} @ ${viewport.name} nao deve ter overflow horizontal (scrollWidth - innerWidth = ${overflow})`).toBeLessThanOrEqual(1);
       }
     });
-  }
-});
+  });
+}

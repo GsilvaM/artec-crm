@@ -1,6 +1,6 @@
 # Artec CRM — Design system e UX
 
-Atualizado em: 2026-07-21 (reescrito na Fase 1 da refatoracao de frontend, `refactor/frontend-design-system`)
+Atualizado em: 2026-07-22 (Fase 1 a 4 da refatoracao de frontend concluidas, `refactor/frontend-design-system`)
 
 > Este documento descreve o sistema **real**, implementado e em uso. A versao anterior descrevia uma stack aspiracional (shadcn/ui, Tailwind, Radix UI, TanStack Table, dnd-kit, Sonner) que nunca foi adotada — mantida aqui como nota historica para nao repetir o erro: **confirme a stack real antes de assumir bibliotecas**.
 
@@ -9,10 +9,11 @@ Atualizado em: 2026-07-21 (reescrito na Fase 1 da refatoracao de frontend, `refa
 - **Estilo**: CSS puro com custom properties (`src/styles.css`, arquivo unico e global). Sem Tailwind, sem CSS Modules, sem styled-components, sem vanilla-extract.
 - **Componentes**: React 19 com componentes de funcao simples. Sem biblioteca de componentes de terceiros (nao ha shadcn/ui, Radix, Base UI). Onde faz sentido, componentes primitivos proprios vivem em `src/components/ui/` (`EmptyState`, `Skeleton`/`LoadingPanels`) e `src/components/layout/` (`Sidebar`).
 - **Icones**: `lucide-react`, unica biblioteca usada em todo o produto (nunca misturar com outra).
-- **Roteamento**: `react-router-dom` (adicionado na Fase 1 desta refatoracao — unica dependencia nova, decisao registrada e validada com o usuario antes de instalar, por ser mudanca de stack). `BrowserRouter` no topo (`src/main.tsx`), rotas declaradas em `src/App.tsx`.
+- **Roteamento**: `react-router-dom` (adicionado na Fase 1 desta refatoracao). `BrowserRouter` no topo (`src/main.tsx`), rotas declaradas em `src/App.tsx`, todas as paginas carregadas via `React.lazy()` + `<Suspense>` (code-splitting por rota, Fase 4).
+- **PWA**: `vite-plugin-pwa` (adicionado na Fase 4 — segunda e ultima dependencia nova desta refatoracao) gera `manifest.webmanifest` e service worker (Workbox) a partir de `vite.config.ts`. Service worker so faz cache do app shell (JS/CSS/HTML/icones); nenhuma chamada `/api/*` e cacheada (decisao deliberada, ver `docs/DEVELOPMENT-STATUS.md`, secao Fase 4). Icone do app: `public/icons/icon-source.svg` (unica fonte vetorial), PNGs gerados por `scripts/generate-icons.mjs`.
 - **Estado/dados**: sem Redux/Zustand/React Query/SWR. Estado local via `useState`/`useMemo`/`useEffect`; chamadas de API centralizadas e tipadas em `src/domain/crm.ts`.
 - **TypeScript**: modo `strict` (`tsconfig.app.json`).
-- **Toasts/dialogs**: nao ha biblioteca de toast (Sonner ou equivalente); feedback hoje e via `<div className="alert">` inline e `window.confirm` para confirmacao destrutiva simples. Avaliar se um `Toast`/`ConfirmAction` dedicado se justifica na Fase 2, sem adicionar dependencia nova sem necessidade comprovada.
+- **Toasts/dialogs**: nao ha biblioteca de toast (Sonner ou equivalente); feedback hoje e via `<div className="alert">` inline e `window.confirm` para confirmacao destrutiva simples. Nao adicionado nesta refatoracao por falta de necessidade comprovada — `alert`/`confirm` cobriram todos os fluxos reconstruidos sem reclamação de UX registrada.
 
 ## 2. Princípios
 
@@ -158,10 +159,14 @@ Não usar: confete, parallax, pulso contínuo, sino piscando, bounce.
 
 Português do Brasil, direto e humano. Preferir "Próxima ação", "Nova oportunidade", "Registrar follow-up", "Concluir ação", "Marcar como perdido", "Arquivar". Evitar jargão técnico, "workflow", "ticket", "deal". Nunca chamar valor aprovado de "receita" ou "faturamento".
 
-## 10. Pendências conhecidas ao final da Fase 1
+## 10. Pendências reais ao final da Fase 4 (refatoração concluída)
 
-- Rotas ainda renderizam o componente monolítico inteiro (ver seção 4) — separação real por superfície é Fase 2.
-- Sem alternativa mobile para tabelas densas (Clientes/Oportunidades) — Fase 2/3.
-- Sidebar em mobile empilha no topo (`position: static`), não é um drawer — Fase 3.
-- Sem componente `Toast`/`Dialog`/`ConfirmAction` dedicado — feedback ainda via `alert`/`window.confirm`.
+Resolvidas ao longo das Fases 2–4 (não repetir aqui como pendência): o componente monolítico foi extraído por rota (Fase 2.1–2.8); Clientes/Oportunidades ganharam alternativa de cards no mobile (Fase 4); a Sidebar virou drawer real no mobile (Fase 4); PWA completo com manifest, ícones e service worker (Fase 4); code-splitting por rota (Fase 4).
+
+Pendências reais que continuam em aberto, por escopo ou por exigirem decisão/ação externa:
+
+- Sem componente `Toast`/`Dialog`/`ConfirmAction` dedicado — feedback ainda via `alert`/`window.confirm`; funcionou em todos os fluxos reconstruídos, sem necessidade comprovada de trocar.
+- Tabelas fora de Clientes/Oportunidades (motivos de perda, usuários, relatórios) ainda usam rolagem horizontal interna no mobile em vez de cards — seguro (não gera overflow de página), mas não é o padrão ideal da seção 10.5.
+- Bloqueio proativo de ação de escrita quando offline (hoje reativo: a ação falha e o erro aparece, não é bloqueada preventivamente antes do clique).
+- Revisão manual com leitor de tela real e zoom 200% (`docs/ACCESSIBILITY-AUDIT.md`, seção 4).
 - Sem PWA (manifest, service worker, ícones) — Fase 4.

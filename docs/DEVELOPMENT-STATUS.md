@@ -610,6 +610,55 @@ Detalhe completo em `docs/ACCESSIBILITY-AUDIT.md` secao 5. Resumo:
 
 Nao alterado: nenhum endpoint de backend, nenhuma migration. Commit local na branch `refactor/frontend-design-system`, sem push.
 
+## Refatoracao de frontend — Fase 4: PWA, code-splitting e validacao final (2026-07-22)
+
+Mudanca de stack (instalacao de dependencia nova) reportada aqui em vez de pausar para perguntar, conforme autorizacao do usuario para concluir a refatoracao sem pausas ("va ate o fim do projeto, tem liberdade"): adicionado `vite-plugin-pwa` (devDependency) para gerar manifest + service worker via Workbox, em vez de escrever um service worker a mao (risco maior de bug de cache/lifecycle). `npm audit` continua com as mesmas 3 vulnerabilidades moderadas pre-existentes em `@prisma/dev` (ferramental de dev do Prisma, ja documentado, nenhuma nova introduzida por essa dependencia).
+
+### Icone do app
+
+Nao havia logo/asset de marca no repositorio (confirmado na Fase 0). Criado um simbolo proprio simples: "A" branca sobre `--color-primary` (`#2454c7`), mesma identidade do `.brand-mark` ja usado na Sidebar e nas telas de autenticacao — não um simbolo novo desconectado do resto do produto. Fonte vetorial unica em `public/icons/icon-source.svg`; todos os PNGs (`144`, `152`, `180`, `192`, `384`, `512`) gerados a partir dela via `scripts/generate-icons.mjs` (usa o Chromium do Playwright, ja instalado, para renderizar e capturar — evita adicionar `sharp` ou outra dependencia de imagem so para isso). Conteudo do glifo ocupa a zona segura central (~45% da largura/altura, dentro dos 80% exigidos para `maskable`), confirmado por inspecao visual do PNG gerado.
+
+### Manifest e HTML
+
+`vite.config.ts`: manifest via `VitePWA({ manifest: {...} })` — `name`/`short_name` "Artec CRM", `start_url` aponta para `/central-comercial` (tela util, nao uma landing), `display: "standalone"`, `orientation: "portrait"`, `theme_color`/`background_color` alinhados aos tokens de marca, icones `192`/`512` (`purpose: "any"`) e `512` (`purpose: "maskable"`) como entradas separadas (nunca combinadas em `"any maskable"`), mais `144`/`152`/`384` para cobertura ampla. `index.html` ganhou `<meta name="theme-color">`, favicon SVG com fallback PNG, e `<link rel="apple-touch-icon">` (iOS nao le o manifest da mesma forma que Android/Chrome).
+
+### Service worker — escopo deliberadamente limitado
+
+`workbox.globPatterns` cobre so o app shell (`js/css/html/svg/png/ico` do build); `navigateFallbackDenylist` exclui `/api/**` explicitamente. Nenhuma chamada a `/api/*` e cacheada ou interceptada — decisao explicita da secao 25.4 do prompt: o Artec CRM lida com dados comerciais sensiveis a conflito (aprovacao, valores, follow-up), e cache/fila de escrita offline nao foi pedido nem autorizado. `devOptions.enabled: false` mantem o service worker desligado em dev/E2E, para nao interferir nos 33 specs Playwright que rodam contra os servidores de desenvolvimento.
+
+### Prompt de instalacao e estado offline
+
+- `src/hooks/useInstallPrompt.ts` + `src/components/feedback/InstallPrompt.tsx`: captura `beforeinstallprompt`, guarda o evento, e mostra um convite proprio (nao o prompt automatico do navegador) — só depois que o usuario ja navegou para uma segunda rota (aproximação de "depois de concluir algo util", não no carregamento da tela, secao 25.3). Dispensar grava em `localStorage` e nao volta a insistir na mesma sessao/dispositivo. No iOS (sem evento `beforeinstallprompt`), mostra instrucao textual para o menu Compartilhar do Safari.
+- `src/hooks/useOnlineStatus.ts` + `src/components/feedback/OfflineBanner.tsx`: banner discreto (nao modal) quando `navigator.onLine` é `false`, avisando que acoes de escrita podem falhar ate a conexao voltar.
+- **Limite reconhecido, nao "resolvido por completo"**: nao foi adicionado um bloqueio proativo por botao em cada formulario de escrita (aprovar, perder, concluir follow-up) quando offline — cada pagina ja captura erro de rede e exibe via `role="alert"` visivel (nao falha silenciosamente, que era o requisito central da secao 25.4), mas o aviso hoje é reativo (após tentar), nao preventivo (antes de habilitar o botao). Registrado como pendencia real, nao como concluido.
+
+### Code-splitting por rota
+
+O bundle unico de producao (`src/App.tsx` importando todas as paginas estaticamente) gerava um chunk de 549 kB (aviso do Vite, registrado como pendencia na Fase 2.7/2.8). Todas as 12 paginas roteadas (`CentralComercialPage`, `PipelinePage`, `ProximasAcoesPage`, `OportunidadePage`, `OportunidadesPage`, `ClientePage`, `ClientesPage`, `NotificacoesPage`, `RelatoriosPage`, `AdministracaoPage`, `AuvoAdminPage`, `CaixaAuvoPage`) passaram a usar `React.lazy()`, com um `<Suspense fallback={<LoadingPanels />}>` dentro de `AppLayout` (em volta do `<Outlet />`, para a Sidebar/Topbar nunca desaparecerem durante o carregamento). Bundle principal caiu de 549 kB para 484 kB (gzip 140 kB); cada pagina virou um chunk proprio de 1-13 kB, carregado sob demanda.
+
+### Validacao final da Fase 4
+
+- `npm run typecheck`, `npm run test` (69 testes) e `npm run build` passaram (build agora tambem gera `dist/sw.js`, `dist/workbox-*.js` e `dist/manifest.webmanifest`, 36 entradas precacheadas, ~590 KiB).
+- `npx playwright test` (33 specs, servidores de dev com service worker desabilitado por `devOptions.enabled: false`) — todos passando, confirmando que o code-splitting por rota nao quebrou nenhum fluxo real.
+- Verificacao de instalabilidade equivalente a Lighthouse (sem instalar Lighthouse — usado o Chromium do Playwright ja disponivel via `scripts/check-pwa.mjs`, contra `vite preview` servindo o build real de producao): `link[rel=manifest]` presente, `meta[name=theme-color]` presente, `link[rel=apple-touch-icon]` presente, `navigator.serviceWorker.getRegistration()` retornou um registro ativo, **zero erros de console**. Manifest, icones (`192`/`384`/`512`) e `sw.js` responderam `200` com `content-type` correto (`application/manifest+json`, `image/png`, `text/javascript`) via curl direto contra o preview.
+- HTTPS e service worker em producao: ja confirmados na Fase de Deploy anterior (`https://artec-crm.vercel.app`, headers de seguranca e `Strict-Transport-Security` validados) — pre-requisito de instalabilidade ja satisfeito no ambiente real, nao apenas local.
+
+Nao alterado nesta fatia: nenhum endpoint de backend, nenhuma migration, nenhuma regra de negocio. Commit local na branch `refactor/frontend-design-system`, sem push.
+
+### Sidebar em drawer no mobile + tabelas em cards (fechado durante a Fase 4)
+
+Ao gerar o primeiro screenshot mobile real para validar a Fase 4, ficou evidente que a Fase 3 tinha sido marcada como concluida sem fechar um item que o proprio `docs/DESIGN-SYSTEM.md` (secao 10, "Pendencias conhecidas") ja registrava: "Sidebar em mobile empilha no topo (`position: static`), nao e um drawer". Corrigido nesta mesma sessao, antes do relatorio final, em vez de deixar como pendencia conhecida e nao corrigida:
+
+- `src/components/layout/Sidebar.tsx`: recebe `isMobileOpen`/`onCloseMobile`; abaixo de 767px vira `position: fixed` fora da tela (`transform: translateX(-100%)`), com backdrop proprio (`.sidebar-backdrop`) que fecha ao clicar fora. Foco vai para o primeiro link ao abrir; `Escape` fecha; clicar em qualquer item de navegacao fecha o drawer automaticamente (fecha "sozinho" ao navegar, sem passo extra).
+- `src/components/layout/Topbar.tsx`: novo botao hamburguer (`.mobile-nav-toggle`, so visivel `<=767px`) abre o drawer.
+- `src/components/layout/AppLayout.tsx`: passa a possuir o estado `isMobileNavOpen` (unico dono, repassado para Sidebar e Topbar).
+- Tabelas densas de Clientes e Oportunidades (`ClientesPage.tsx`, `OportunidadesPage.tsx`): classe `.table-wrap.mobile-cards` + `data-label` por celula — em `<=767px` cada `<tr>` vira um cartao com rotulo (`::before { content: attr(data-label) }`) em vez de rolar horizontalmente. Fecha a pendencia da secao 10.5/13 ("no mobile, trocar tabela larga por cards"). Escopo: as duas listas de maior uso citadas explicitamente na secao 10.5; as demais tabelas do produto (motivos de perda, usuarios, relatorios) continuam com rolagem horizontal interna seguro (`.table-wrap { overflow-x: auto }`), registrado como pendencia menor, nao como "concluido por completo".
+- `e2e/responsive.spec.ts` atualizado para abrir o drawer mobile antes de clicar em links de navegacao quando o viewport e `<=767px`.
+
+**Licao de teste registrada**: a primeira tentativa de cobrir isso em E2E usou `page.setViewportSize()` em runtime e depois checagem de visibilidade (`locator.isVisible()`) para decidir se clicava no botao hamburguer — ambas causaram falhas intermitentes reais (nao de produto): `setViewportSize` chamado antes da primeira navegacao nao sincroniza de forma confiavel com a avaliacao inicial de `@media`/CSSOM do Chromium (corrigido usando `test.use({ viewport })`, que aplica o viewport na criacao do contexto), e `isVisible()` nao espera/reconsulta como `toBeVisible()`, entao pode capturar um instante transitorio da renderizacao. Corrigido definitivamente decidindo pela largura do viewport conhecida em tempo de teste (`viewport.width <= 767`), sem depender de nenhuma checagem de visibilidade em runtime. Documentado aqui porque e um padrao reutilizavel para qualquer novo teste que precise interagir com layout responsivo controlado por media query.
+
+Validacao: `npm run typecheck`, `npm run test` (69 testes), `npm run build` e `npx playwright test` (33 specs) passaram apos essas correcoes.
+
 ### Proximo passo
 
-Fase 4: PWA completo (manifest, service worker, icones, `beforeinstallprompt`), code-splitting por rota (bundle atual de 549 kB registrado como pendencia na Fase 2.7/2.8) e validacao final (Lighthouse/instalabilidade, relatorio final da refatoracao).
+Nenhuma fase pendente do plano de 4 fases da refatoracao de frontend. Pendencias reais registradas (nao bloqueios): bloqueio proativo de escrita offline por formulario (hoje so reativo), revisao com leitor de tela real e zoom 200% (`docs/ACCESSIBILITY-AUDIT.md` secao 4), tabelas fora de Clientes/Oportunidades ainda sem alternativa de cards no mobile (rolagem horizontal interna, nao overflow de pagina), captura de payload real do Auvo para eventos alem dos 5 do MVP ja mapeados (fora do escopo desta refatoracao visual). Deploy de producao ja existe e nao foi tocado nesta refatoracao; publicar as mudancas exige `git push` explicito, nao executado.

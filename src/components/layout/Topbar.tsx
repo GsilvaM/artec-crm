@@ -1,11 +1,15 @@
-import { Bell, LogOut, Search, UserRound } from "lucide-react";
+import { Bell, LogOut, Menu, Search, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NotificationList } from "../ui/NotificationList";
 import { globalSearch, type GlobalSearchResult } from "../../domain/crm";
 import { useNotifications } from "../../features/notifications/useNotifications";
 
-export function Topbar({ userEmail, onLogout }: { userEmail: string | null; onLogout: () => void | Promise<void> }) {
+export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
+  userEmail: string | null;
+  onLogout: () => void | Promise<void>;
+  onOpenMobileNav: () => void;
+}) {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<GlobalSearchResult | null>(null);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
@@ -53,6 +57,9 @@ export function Topbar({ userEmail, onLogout }: { userEmail: string | null; onLo
   return (
     <>
       <header className="topbar">
+        <button className="icon-button mobile-nav-toggle" type="button" aria-label="Abrir menu de navegacao" onClick={onOpenMobileNav}>
+          <Menu aria-hidden="true" />
+        </button>
         <div className="search-shell">
           <label className="search-box">
             <Search aria-hidden="true" />

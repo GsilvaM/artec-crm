@@ -112,16 +112,16 @@ export function ClientesPage() {
         {isLoading ? (
           <LoadingPanels />
         ) : activeCustomers.length ? (
-          <div className="table-wrap">
+          <div className="table-wrap mobile-cards">
             <table>
               <thead><tr><th>Nome</th><th>Telefone</th><th>Empresa</th><th>Oportunidades</th><th>Acoes</th></tr></thead>
               <tbody>
                 {activeCustomers.map((customer) => (
                   <tr key={customer.id}>
-                    <td>{customer.nome}{customer.duplicatePhoneCustomerIds.length ? <span className="badge warning">possivel duplicidade</span> : null}</td>
-                    <td>{customer.telefone ?? "-"}</td>
-                    <td>{customer.empresa ?? "-"}</td>
-                    <td>{customer.opportunitiesCount}</td>
+                    <td data-label="Nome">{customer.nome}{customer.duplicatePhoneCustomerIds.length ? <span className="badge warning">possivel duplicidade</span> : null}</td>
+                    <td data-label="Telefone">{customer.telefone ?? "-"}</td>
+                    <td data-label="Empresa">{customer.empresa ?? "-"}</td>
+                    <td data-label="Oportunidades">{customer.opportunitiesCount}</td>
                     <td className="actions-cell">
                       <Link className="button secondary" to={`/clientes/${customer.id}`}>Abrir</Link>
                       <button className="button ghost" type="button" onClick={() => void handleArchive(customer)}>Arquivar</button>

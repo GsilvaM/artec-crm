@@ -1,21 +1,26 @@
 import { AlertCircle, LogIn, LogOut } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, Suspense, lazy, useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
 import { AppLayout } from "./components/layout/AppLayout";
 import { EmptyState } from "./components/ui/EmptyState";
-import { CentralComercialPage } from "./features/commercial-center/CentralComercialPage";
-import { ProximasAcoesPage } from "./features/next-actions/ProximasAcoesPage";
-import { OportunidadePage } from "./features/opportunities/OportunidadePage";
-import { ClientePage } from "./features/customers/ClientePage";
-import { ClientesPage } from "./features/customers/ClientesPage";
-import { OportunidadesPage } from "./features/opportunities/OportunidadesPage";
-import { NotificacoesPage } from "./features/notifications/NotificacoesPage";
-import { PipelinePage } from "./features/pipeline/PipelinePage";
-import { RelatoriosPage } from "./features/reports/RelatoriosPage";
-import { AdministracaoPage } from "./features/settings/AdministracaoPage";
-import { AuvoAdminPage } from "./features/integrations/AuvoAdminPage";
-import { CaixaAuvoPage } from "./features/integrations/CaixaAuvoPage";
+
+// Cada pagina vira um chunk separado (code-splitting por rota) — evita que o
+// bundle inicial carregue Pipeline, Relatorios, Administracao etc. antes de
+// serem visitados. Seção 21 do prompt de refatoração pede evitar bundles
+// grandes por padrão; o build sem isso gerava um unico chunk de ~549 kB.
+const CentralComercialPage = lazy(() => import("./features/commercial-center/CentralComercialPage").then((m) => ({ default: m.CentralComercialPage })));
+const ProximasAcoesPage = lazy(() => import("./features/next-actions/ProximasAcoesPage").then((m) => ({ default: m.ProximasAcoesPage })));
+const OportunidadePage = lazy(() => import("./features/opportunities/OportunidadePage").then((m) => ({ default: m.OportunidadePage })));
+const ClientePage = lazy(() => import("./features/customers/ClientePage").then((m) => ({ default: m.ClientePage })));
+const ClientesPage = lazy(() => import("./features/customers/ClientesPage").then((m) => ({ default: m.ClientesPage })));
+const OportunidadesPage = lazy(() => import("./features/opportunities/OportunidadesPage").then((m) => ({ default: m.OportunidadesPage })));
+const NotificacoesPage = lazy(() => import("./features/notifications/NotificacoesPage").then((m) => ({ default: m.NotificacoesPage })));
+const PipelinePage = lazy(() => import("./features/pipeline/PipelinePage").then((m) => ({ default: m.PipelinePage })));
+const RelatoriosPage = lazy(() => import("./features/reports/RelatoriosPage").then((m) => ({ default: m.RelatoriosPage })));
+const AdministracaoPage = lazy(() => import("./features/settings/AdministracaoPage").then((m) => ({ default: m.AdministracaoPage })));
+const AuvoAdminPage = lazy(() => import("./features/integrations/AuvoAdminPage").then((m) => ({ default: m.AuvoAdminPage })));
+const CaixaAuvoPage = lazy(() => import("./features/integrations/CaixaAuvoPage").then((m) => ({ default: m.CaixaAuvoPage })));
 
 export function App() {
   const [authState, setAuthState] = useState<AuthState>({ status: "loading" });

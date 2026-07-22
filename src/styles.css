@@ -377,6 +377,14 @@ a:focus-visible {
   color: var(--foreground-on-dark);
 }
 
+.mobile-nav-toggle {
+  display: none;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
 .brand-row,
 .user-chip,
 .search-box {
@@ -870,6 +878,39 @@ a:focus-visible {
 .danger-alert {
   border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
   color: var(--danger);
+}
+
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.install-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.install-prompt span {
+  flex: 1 1 260px;
+  font-weight: 600;
 }
 
 .data-section {
@@ -1671,6 +1712,92 @@ tr:last-child td {
     right: 16px;
     left: 16px;
     width: auto;
+  }
+
+  /* Sidebar vira drawer no mobile (secao 13: "navegacao em drawer"), em vez
+     de empilhar estatica no topo como no breakpoint de tablet. */
+  .mobile-nav-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: var(--z-modal);
+    width: min(280px, 85vw);
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform var(--duration-base) var(--easing-standard);
+    box-shadow: var(--shadow-lg);
+    overflow-y: auto;
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    background: rgba(11, 31, 58, 0.4);
+  }
+
+  /* Tabelas densas (Clientes/Oportunidades) viram cards empilhados em vez de
+     rolar horizontalmente — secao 10.5/13 do prompt de refatoracao. */
+  .table-wrap.mobile-cards table,
+  .table-wrap.mobile-cards tbody,
+  .table-wrap.mobile-cards tr,
+  .table-wrap.mobile-cards td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-wrap.mobile-cards thead {
+    display: none;
+  }
+
+  .table-wrap.mobile-cards tr {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+  }
+
+  .table-wrap.mobile-cards tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .table-wrap.mobile-cards td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--surface-muted);
+  }
+
+  .table-wrap.mobile-cards td:last-child {
+    border-bottom: 0;
+  }
+
+  .table-wrap.mobile-cards td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    color: var(--foreground-muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .table-wrap.mobile-cards td.actions-cell {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .table-wrap.mobile-cards td.actions-cell::before {
+    display: none;
   }
 
   .pipeline-mobile-tabs {
