@@ -1159,6 +1159,27 @@ tr:last-child td {
   gap: 8px;
 }
 
+.pipeline-card-open {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-weight: 800;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pipeline-card-open:hover,
+.pipeline-card-open:focus-visible {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.pipeline-mobile-tabs {
+  display: none;
+}
+
 .pipeline-card-title {
   margin: 0;
   color: var(--foreground-muted);
@@ -1411,6 +1432,10 @@ tr:last-child td {
   color: var(--foreground-muted);
 }
 
+.empty-state-actions {
+  margin-top: 8px;
+}
+
 .timeline-section {
   padding-bottom: 24px;
 }
@@ -1644,6 +1669,25 @@ tr:last-child td {
     right: 16px;
     left: 16px;
     width: auto;
+  }
+
+  .pipeline-mobile-tabs {
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .pipeline-board {
+    overflow-x: visible;
+  }
+
+  .pipeline-column {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .pipeline-column[data-mobile-hidden="true"] {
+    display: none;
   }
 }
 

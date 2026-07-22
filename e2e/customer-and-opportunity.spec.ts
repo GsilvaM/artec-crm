@@ -33,5 +33,5 @@ test("creates a customer, creates an opportunity for it, and sees it on the pipe
 
   await page.getByRole("link", { name: "Funil" }).click();
   await page.waitForURL(/\/pipeline$/);
-  await expect(page.locator("section.pipeline-section")).toContainText(opportunityTitle, { timeout: 15_000 });
+  await expect(page.locator(".pipeline-board")).toContainText(opportunityTitle, { timeout: 15_000 });
 });

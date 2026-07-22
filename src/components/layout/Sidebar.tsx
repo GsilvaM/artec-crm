@@ -1,4 +1,4 @@
-import { Bell, Briefcase, LayoutDashboard, ListChecks, Settings2, Users, Workflow } from "lucide-react";
+import { BarChart3, Bell, Briefcase, Inbox, LayoutDashboard, ListChecks, Settings2, ShieldCheck, Users, Workflow } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 export type SidebarNavItem = {
@@ -16,11 +16,25 @@ const BASE_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Notificacoes", path: "/notificacoes", icon: Bell },
 ];
 
-const ADMIN_NAV_ITEM: SidebarNavItem = { label: "Integracao Auvo", path: "/configuracoes/integracoes/auvo", icon: Settings2 };
+const REPORTS_NAV_ITEM: SidebarNavItem = { label: "Relatorios", path: "/relatorios", icon: BarChart3 };
+const AUVO_INBOX_NAV_ITEM: SidebarNavItem = { label: "Caixa Auvo", path: "/caixa-auvo", icon: Inbox };
+const ADMIN_NAV_ITEM: SidebarNavItem = { label: "Administracao", path: "/configuracoes/administracao", icon: ShieldCheck };
+const INTEGRATIONS_NAV_ITEM: SidebarNavItem = { label: "Integracao Auvo", path: "/configuracoes/integracoes/auvo", icon: Settings2 };
 
-export function Sidebar({ canManageIntegrations }: { canManageIntegrations: boolean }) {
+export function Sidebar({ canViewReports, canManageAuvoInbox, canManageUsers, canManageIntegrations }: {
+  canViewReports: boolean;
+  canManageAuvoInbox: boolean;
+  canManageUsers: boolean;
+  canManageIntegrations: boolean;
+}) {
   const location = useLocation();
-  const items = canManageIntegrations ? [...BASE_NAV_ITEMS, ADMIN_NAV_ITEM] : BASE_NAV_ITEMS;
+  const items = [
+    ...BASE_NAV_ITEMS,
+    ...(canViewReports ? [REPORTS_NAV_ITEM] : []),
+    ...(canManageAuvoInbox ? [AUVO_INBOX_NAV_ITEM] : []),
+    ...(canManageUsers ? [ADMIN_NAV_ITEM] : []),
+    ...(canManageIntegrations ? [INTEGRATIONS_NAV_ITEM] : []),
+  ];
   const isRootPath = location.pathname === "/";
 
   return (
@@ -47,4 +61,4 @@ export function Sidebar({ canManageIntegrations }: { canManageIntegrations: bool
   );
 }
 
-export { BASE_NAV_ITEMS, ADMIN_NAV_ITEM };
+export { BASE_NAV_ITEMS, ADMIN_NAV_ITEM, AUVO_INBOX_NAV_ITEM, INTEGRATIONS_NAV_ITEM, REPORTS_NAV_ITEM };

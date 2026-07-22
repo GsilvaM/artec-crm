@@ -571,3 +571,34 @@ Ao final de cada fase: rodar validacoes (`typecheck`, `test`, `build`, `e2e` qua
 ### Estado ao final da Fase 0
 
 Auditoria concluida. Nenhum arquivo de codigo foi alterado. Aguardando validacao humana antes de iniciar a Fase 1 (fundacao do design system), incluindo uma decisao explicita sobre introduzir ou nao `react-router` nesta refatoracao, ja que é uma mudança de stack e o prompt pede para reportar isso antes de agir.
+
+## Refatoracao de frontend — Fase 2.7/2.8: Funil, Integracao Auvo, Caixa Auvo, Relatorios e Administracao (2026-07-22)
+
+Autorizacao do usuario para prosseguir sem pausa entre fases ate o fim da refatoracao ("va ate o fim do projeto, tem liberdade"). Continuando a partir da Fase 2.6 (Notificacoes), que ja estava concluida e commitada.
+
+Achado ao auditar o estado real antes de codar: `PipelineBoard`, `AdminPanel`, `ReportsPanel` e `AuvoInboxPanel` ja usavam integralmente o vocabulario visual estabelecido nas Fases 1/2.1-2.6 (`panel`, `badge`, `button primary/secondary/ghost`, `table-wrap`, `admin-grid`, `metric-card`, `filter-actions`, `eyebrow`) — nao precisavam de redesenho visual. O problema era puramente arquitetural: a Sidebar ja linkava para `/pipeline` e `/configuracoes/integracoes/auvo`, mas essas rotas nao existiam em `<Routes>`; ambas caiam no catch-all `*`, que renderizava `AuthenticatedApp`, um componente de ~450 linhas com o quadro do funil, a area administrativa do Auvo, a Caixa de Entrada Auvo, o painel de administracao, o painel de relatorios, e formularios genericos de atividade/proxima acao duplicados — tudo empilhado numa unica pagina, sem navegacao real entre essas areas.
+
+Trabalho desta fatia:
+
+- **`PipelinePage`** (`src/features/pipeline/PipelinePage.tsx`, rota `/pipeline`): usa `loadCrmSnapshot()` (mesma chamada que ja existia) e cruza `commercialCenter.stalledOpportunities` com as oportunidades do quadro para acender um badge "parada" por card — item que a Fase 0 tinha registrado como gap ("o backend ja calcula stalledOpportunities... mas o cartao do Pipeline nao exibe esse sinal"). Fechado sem chamada extra ao backend.
+- **`PipelineBoard`** refeito: os botoes de aprovar/perder direto no card (que dependiam de `window.prompt` para valor/data — UX abaixo do padrao ja estabelecido no resto do produto) foram removidos em favor de um botao "Abrir oportunidade" que navega para `/oportunidades/:id`, onde o fluxo de aprovacao/perda ja existe completo, validado e testado (`OportunidadePage`). Evita duplicar regra de negocio de aprovacao em dois lugares com qualidades diferentes (violaria a regra "nao duplicar logica de dominio no frontend"). Mover de etapa via `<select>` continua inline no card (acessivel por teclado, decisao ja tomada no Marco do Pipeline).
+- **Visao mobile do funil**: adicionada faixa de abas por etapa (`.pipeline-mobile-tabs`, reaproveitando o estilo `.segmented-control` ja existente) visivel só em `max-width: 767px`; nesse breakpoint o quadro deixa de rolar horizontalmente e mostra uma coluna por vez via `data-mobile-hidden`. Fecha o gap "Pipeline/kanban sem visao mobile dedicada" da secao 10.6/Fase 0.
+- **`AuvoAdminPage`** (rota `/configuracoes/integracoes/auvo`): status + eventos + detalhe sanitizado, extraido do catch-all sem mudanca de comportamento.
+- **`CaixaAuvoPage`** (rota nova `/caixa-auvo`), **`RelatoriosPage`** (rota nova `/relatorios`) e **`AdministracaoPage`** (rota nova `/configuracoes/administracao`): cada uma carrega so os dados que o painel correspondente precisa (clientes ativos; etapas; etapas), em vez de depender do snapshot gigante carregado por `AuthenticatedApp`.
+- **Sidebar** ganhou os itens "Relatorios", "Caixa Auvo" e "Administracao", cada um condicionado a sua permissao real (`reports:read`, `auvo_inbox:read`, `users:manage`) da mesma forma que "Integracao Auvo" ja era condicionado a `integrations:read`.
+- **`AuthenticatedApp` removido inteiramente de `App.tsx`** (formularios genericos de "Registrar atividade"/"Criar proxima acao" e a "Linha do tempo" solta no fim da pagina): eram redundantes — `OportunidadePage` e `ClientePage` ja tem seus proprios formularios de atividade/proxima acao contextuais desde as Fases 2.3/2.4. `App.tsx` caiu de ~600 para ~185 linhas e agora so contem as telas de autenticacao e a tabela de rotas.
+- **`EmptyState`** ganhou suporte a `children` opcional (usado pela nova pagina 404 dentro do shell autenticado, com link de volta para a Central Comercial) — antes nao existia pagina para rotas invalidas, o catch-all sempre renderizava o dashboard inteiro.
+
+Validacao:
+
+- `npm run typecheck`, `npm run test` (69 testes) e `npm run build` passaram sem alteracao de contrato de API/backend nesta fatia (mudanca 100% frontend).
+- 4 specs E2E que assumiam o layout antigo empilhado numa unica pagina foram corrigidas para navegar pelas rotas reais novas (`customer-and-opportunity.spec.ts`, `admin.spec.ts`, `auvo-inbox.spec.ts`, `commercial-center-and-reports.spec.ts`).
+- 6 novos specs de acessibilidade automatizada (`e2e/accessibility.spec.ts`) cobrindo Pipeline, Relatorios, Administracao, Caixa Auvo e Integracao Auvo — zero violacoes WCAG 2.0/2.1 A/AA automatizadas.
+- Suite completa: `npx playwright test` — 19 specs originais + 6 novos de acessibilidade = todos passando contra o ambiente real de homologacao (mesmo Supabase da producao, criterio ja estabelecido no projeto).
+- Aviso do Vite no build (`assets/index-*.js 549 kB`) registrado como pendencia de performance para a Fase 4 (code-splitting por rota), nao um bloqueio funcional.
+
+Nao alterado nesta fatia: nenhum endpoint de backend, nenhuma migration, nenhuma regra de negocio. Commit local criado na branch `refactor/frontend-design-system`, sem push.
+
+### Proximo passo
+
+Fase 3 (responsividade formal nos breakpoints documentados + revisao manual de acessibilidade) e Fase 4 (PWA completo, code-splitting por rota, validacao final).

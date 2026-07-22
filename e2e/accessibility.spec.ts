@@ -66,4 +66,49 @@ test.describe("WCAG automated audit", () => {
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });
+
+  test("pipeline board has no automatically detectable violations", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Funil" }).click();
+    await page.waitForURL(/\/pipeline$/);
+    await page.waitForSelector(".pipeline-board");
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+
+  test("relatorios page has no automatically detectable violations", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Relatorios" }).click();
+    await page.waitForURL(/\/relatorios$/);
+    await page.waitForSelector("text=Oportunidades por etapa");
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+
+  test("administracao page has no automatically detectable violations", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Administracao" }).click();
+    await page.waitForURL(/\/configuracoes\/administracao$/);
+    await page.waitForSelector("section.admin-panel");
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+
+  test("caixa auvo page has no automatically detectable violations", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Caixa Auvo" }).click();
+    await page.waitForURL(/\/caixa-auvo$/);
+    await page.waitForSelector("section.auvo-inbox-panel");
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+
+  test("integracao auvo page has no automatically detectable violations", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Integracao Auvo" }).click();
+    await page.waitForURL(/\/configuracoes\/integracoes\/auvo$/);
+    await page.waitForSelector("section.auvo-admin");
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
 });
