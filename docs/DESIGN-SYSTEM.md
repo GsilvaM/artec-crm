@@ -1,10 +1,10 @@
 # Artec CRM — Design system e UX
 
-Atualizado em: 2026-07-22 (Fase 1 a 4 da refatoracao de frontend concluidas, `refactor/frontend-design-system`)
+Atualizado em: 2026-07-22 (Fase 6 — adocao explicita da paleta Material 3 da pasta `design-system/`)
 
 > Este documento descreve o sistema **real**, implementado e em uso. A versao anterior descrevia uma stack aspiracional (shadcn/ui, Tailwind, Radix UI, TanStack Table, dnd-kit, Sonner) que nunca foi adotada — mantida aqui como nota historica para nao repetir o erro: **confirme a stack real antes de assumir bibliotecas**.
 >
-> A pasta `design-system/` na raiz do repositorio contem tokens genericos de terceiros (kit Material 3 / Apple HIG, provavelmente base do template Figma "Woorkroom"), organizados nesta sessao como material de referencia — **nao e a paleta de marca do Artec CRM nem substitui os tokens reais abaixo**. Ver `design-system/README.md`.
+> **Mudanca de regra registrada explicitamente**: ate a Fase 5, este projeto seguia a regra do prompt mestre de refatoracao (`PROMPT-REFATORACAO-FRONTEND-ARTEC-CRM.md`, arquivo que nao existe mais no repositorio) de nao clonar identidade visual de outro produto, e a paleta era uma cor azul/navy derivada sem fonte externa. Na Fase 6, o usuario decidiu explicitamente reverter essa regra e adotar a pasta `design-system/` (kit generico de tokens Material 3 + Apple HIG, ver `design-system/README.md`) como fonte real da paleta de cor e de valores estruturais (radius, tipografia) do produto — decisao do dono do produto sobre a propria marca, nao um erro a corrigir. A cor de marca agora e o esquema **Material 3 "Blue"** (`design-system/color-schemes-material3/blue-light.tokens.json`/`blue-dark.tokens.json`), com suporte real a modo escuro via `prefers-color-scheme`.
 
 ## 1. Stack real (confirmada em codigo, nao assumida)
 
@@ -32,27 +32,28 @@ Atualizado em: 2026-07-22 (Fase 1 a 4 da refatoracao de frontend concluidas, `re
 
 Todo valor de cor, espaçamento, radius, sombra, motion, z-index e dimensão de layout vive em uma variável CSS — nenhum componente deve usar hex ou medida solta.
 
-### Cores de marca
+### Cores de marca (Material 3 "Blue", Fase 6)
 
-| Token | Valor | Uso |
-| --- | --- | --- |
-| `--color-navy-900` | `#0b1f3a` | Fundo da sidebar, estrutura |
-| `--color-navy-700` | `#16345c` | Variação de estrutura escura |
-| `--color-primary` (= `--primary`) | `#2454c7` | Ação primária (botões, links, foco de navegação) |
-| `--color-primary-hover` | `#1b3f9e` | Hover de ação primária |
-| `--color-cyan` | `#0c6f90` | Informação / climatização |
-| `--color-teal` | `#0f7a6b` | Atendimento / relacionamento (reservado, uso pontual) |
-| `--color-violet` | `#6a4aa8` | Insight / integração secundária (reservado, uso pontual) |
+| Token | Valor (claro) | Valor (escuro) | Uso |
+| --- | --- | --- | --- |
+| `--color-navy-900` | `#001946` | (igual) | Fundo da sidebar — mesmo tom nos dois modos, já escuro o bastante |
+| `--color-primary` (= `--primary`) | `#485e92` | `#b0c6ff` | Ação primária (botões, links, foco de navegação) |
+| `--color-primary-hover` | `#324574` | `#92a8e1` | Hover de ação primária |
+| `--primary-container` / `--on-primary-container` | `#adc3fe` / `#324574` | `#2e4578` / `#d9e2ff` | Superfícies com leve destaque de marca (M3 "container") |
+| `--color-secondary` (`--info`) | `#585f72` | `#c0c6dc` | Informação / tom neutro-azulado |
+| `--secondary-container` / `--on-secondary-container` | `#d9dff6` / `#404659` | `#404659` / `#dce2f9` | Superfícies secundárias |
+| `--color-tertiary` | `#735573` | `#e0bbdd` | Insight / acento secundário (reservado, uso pontual) |
+| `--color-teal` | `#006b60` | (não sobreposto) | Atendimento / relacionamento (reservado, uso pontual) |
 
-Paleta derivada dos princípios da Seção 7 do prompt de refatoração (não havia logo/assets de marca no repositório para extrair cor real da Artec — decisão de design registrada aqui, sujeita a revisão se a Artec fornecer identidade visual própria). Todas as cores foram calculadas para contraste WCAG AA (≥4.5:1) contra `--surface`/`--surface-muted` antes de entrar no token (ver `docs/ACCESSIBILITY-AUDIT.md` para o histórico de correções de contraste já aplicadas).
+Fonte: `design-system/color-schemes-material3/blue-{light,dark}.tokens.json` (esquema M3 completo, incluindo secondary/tertiary/container que o M3 gera automaticamente a partir da cor primária). Valores extraídos e verificados por contraste (ver seção 7) antes de entrar no token — não copiados às cegas.
 
 ### Cores semânticas
 
-`--success` (`#177245`), `--warning` (`#8a5306`), `--danger` (`#b0303f`), `--info` (= `--color-cyan`). Usadas em badges, alertas e indicadores — nunca como decoração sem significado.
+`--success` (`#376a3e` claro / `#9cd49f` escuro, sourced do esquema M3 "Green"), `--warning` (`#795a0c` / `#e9c16c`, esquema M3 "Yellow"), `--danger` (`#b3261e` / `#f2b8b5`, Error do próprio esquema Blue — harmonizado à cor primária, não de um esquema separado), `--info` (= `--color-secondary`). M3 não define success/warning nativamente (são extensão de app); sourced de esquemas do mesmo kit para manter família coerente, nunca inventados. Usadas em badges, alertas e indicadores — nunca como decoração sem significado.
 
 ### Superfícies, texto e borda
 
-`--background`, `--surface`, `--surface-muted`, `--surface-sunken`, `--foreground`, `--foreground-muted`, `--foreground-on-dark`, `--foreground-on-dark-muted` (para texto sobre a sidebar navy), `--border`, `--focus-ring`.
+`--background`, `--surface`, `--surface-muted`, `--surface-sunken`, `--foreground`, `--foreground-muted`, `--foreground-on-dark`, `--foreground-on-dark-muted` (para texto sobre a sidebar navy), `--border`, `--focus-ring`. Todos com override completo em `@media (prefers-color-scheme: dark)` (Fase 6) — mesmo nome de token, valor troca sozinho; nenhum componente precisou de CSS extra para suportar modo escuro.
 
 ### Tipografia
 
@@ -145,10 +146,11 @@ Campos agrupados por significado, labels sempre visíveis, validação com mensa
 
 Auditoria automatizada completa em `docs/ACCESSIBILITY-AUDIT.md` (axe-core, 0 violações WCAG 2.0/2.1 A/AA nas telas cobertas). Resumo do que já está garantido:
 
-- Contraste ≥4.5:1 em todos os tokens de texto sobre as superfícies usadas.
+- Contraste ≥4.5:1 em todos os tokens de texto sobre as superfícies usadas — recalculado e verificado (fórmula WCAG de luminância relativa) para toda a paleta M3 nova (claro e escuro) antes de entrar em produção na Fase 6; menor contraste medido foi 6.05:1 (claro) e 7.73:1 (escuro), ambos acima do mínimo AA.
 - Todo campo `<select>`/`<input>` tem label associada (visível ou `sr-only`) ou `aria-label`.
 - Foco visível global (`:focus-visible` com anel de 3px, cor `--focus-ring`).
 - `prefers-reduced-motion: reduce` respeitado globalmente.
+- `prefers-color-scheme: dark` respeitado globalmente (Fase 6) — sem toggle manual ainda.
 
 Pendente de revisão manual (Fase 3): navegação por teclado ponta a ponta, leitor de tela real, gerenciamento de foco em painéis/drawers, zoom 200%.
 

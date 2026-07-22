@@ -707,3 +707,32 @@ Apos organizar a pasta, o usuario pediu para continuar usando os tokens para "re
 Regressoes reais encontradas e corrigidas no caminho: as mudancas de acentuacao alteraram o texto exato de varios `getByRole`/`getByLabel`/`getByText` em 6 specs E2E ja existentes (labels de navegacao, campos de formulario, headings) — todos atualizados para o texto acentuado correto, nenhum teste enfraquecido ou removido.
 
 Nao alterado: nenhum endpoint de backend, nenhuma migration, nenhum dado de homologacao apagado/alterado, nenhuma cor de marca trocada. Commit local na branch `refactor/frontend-design-system`, sem push.
+
+## Fase 6: adocao explicita da paleta Material 3 e modo escuro (2026-07-22)
+
+O usuario deu instrucao explicita e inequivoca: reverter a regra do prompt mestre que proibia clonar identidade visual de outro produto, e refatorar cores e layout com base na pasta `design-system/`. Diferente da Fase 5 (onde a suposta "decisao de violeta" nao tinha evidencia real e contradizia uma regra ainda vigente), aqui a instrucao e uma decisao explicita, direta e sem ambiguidade do dono do produto sobre a propria marca — nao ha espaco para segunda-adivinhacao, e a execucao seguiu em frente.
+
+Observacao pratica registrada: o arquivo `PROMPT-REFATORACAO-FRONTEND-ARTEC-CRM.md` (o "prompt mestre" citado) nao existe mais no repositorio (removido em algum momento desta sessao, nao pela IA) — a mudanca de regra foi registrada nos documentos vivos que realmente governam o projeto (`docs/DESIGN-SYSTEM.md`, este arquivo), que sao a fonte de verdade efetiva.
+
+### Paleta adotada
+
+Esquema **Material Design 3 "Blue"** completo (`design-system/color-schemes-material3/blue-light.tokens.json` e `blue-dark.tokens.json`), nao so um hex isolado — inclui os papeis primary/secondary/tertiary/error que o M3 gera automaticamente de forma harmonizada a partir da cor-fonte, mais variantes "container" para superficies com destaque sutil. Valores extraidos e verificados por calculo real de contraste WCAG (formula de luminancia relativa) antes de entrar no token, nao copiados as cegas:
+
+- Contraste minimo medido no modo claro: 6.05:1 (Primary/Surface); modo escuro: 7.73:1 (texto compartilhado primary/destructive sobre os dois fundos). Ambos acima do minimo AA (4.5:1).
+- `--success`/`--warning` nao existem nativamente no M3 (sao extensao de app) — sourced dos esquemas "Green" e "Yellow" do mesmo kit para manter familia de cor coerente, em vez de inventar um verde/amarelo separado.
+- `--danger` usa o Error do proprio esquema Blue (harmonizado a cor primaria), nao o esquema "Red" separado do kit — evita choque de tom entre o azul primario e o vermelho de erro.
+- Tokens de container (`--primary-container`/`--on-primary-container`, `--secondary-container`/`--on-secondary-container`, `--danger-container`/`--on-danger-container`) adicionados para uso futuro em superficies com destaque de marca.
+
+### Modo escuro real (novo)
+
+Ate a Fase 5, o produto era exclusivamente claro (`color-scheme: light` fixo, nenhuma regra `prefers-color-scheme`). Como o kit ja fornece o esquema escuro completo e verificado, implementado `@media (prefers-color-scheme: dark)` sobrepondo os mesmos nomes de token com os valores escuros — nenhum componente precisou de CSS extra, porque todo componente ja consumia `var()` em vez de hex solto (disciplina mantida desde a Fase 1). Sem toggle manual de tema ainda (so segue a preferencia do sistema operacional).
+
+### Ativos de marca atualizados
+
+`public/icons/icon-source.svg` (cor de fundo do icone do app), `vite.config.ts` (manifest `theme_color`/`background_color`), `index.html` (`meta[name=theme-color]`) — todos atualizados para a nova cor primaria/fundo. Icones PNG regenerados via `scripts/generate-icons.mjs` (mesmo script da Fase 4, so a fonte SVG mudou de cor).
+
+### Validacao
+
+`npm run typecheck`, `npm run build` e `npx playwright test` (34 specs, incluindo as 12 auditorias automatizadas de acessibilidade) passaram sem nenhuma violacao WCAG nova — a troca de paleta inteira nao introduziu nenhum problema de contraste. Verificado visualmente via screenshot em modo claro e escuro (emulacao de `prefers-color-scheme` via Playwright): sidebar, cards do funil, badges e botoes renderizam corretamente nos dois modos, incluindo o badge "Ativa" e os botoes primarios com a cor nova.
+
+Nao alterado: nenhum endpoint de backend, nenhuma migration, nenhum dado de homologacao. Commit local na branch `refactor/frontend-design-system`, sem push — publicar em producao (Vercel) exige `git push` explicito, nao executado.

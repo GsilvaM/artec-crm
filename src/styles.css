@@ -12,35 +12,48 @@
 :root {
   color-scheme: light;
 
-  /* Marca */
-  --color-navy-900: #0b1f3a;
-  --color-navy-700: #16345c;
-  --color-primary: #2454c7;
-  --color-primary-hover: #1b3f9e;
-  --color-cyan: #0c6f90;
-  --color-teal: #0f7a6b;
-  --color-violet: #6a4aa8;
+  /* Marca — Material Design 3, esquema "Blue" (paleta oficial harmonizada do
+     M3, decisao explicita do usuario nesta sessao para adotar a pasta
+     design-system/ como base real de cor e layout, substituindo a paleta
+     navy/azul derivada na Fase 1). Fonte: design-system/color-schemes-
+     material3/blue-light.tokens.json e blue-dark.tokens.json (ver
+     @media prefers-color-scheme: dark abaixo). Success/warning nao existem
+     nativamente no M3 (sao extensoes de app); sourced dos esquemas Green e
+     Yellow do mesmo kit para manter familia coerente. */
+  --color-navy-900: #001946;
+  --color-navy-700: #152e60;
+  --color-primary: #485e92;
+  --color-primary-hover: #324574;
+  --color-secondary: #585f72;
+  --color-tertiary: #735573;
+  --color-teal: #006b60;
 
   /* Cores semanticas */
-  --success: #177245;
-  --warning: #8a5306;
-  --danger: #b0303f;
-  --info: var(--color-cyan);
+  --success: #376a3e;
+  --warning: #795a0c;
+  --danger: #b3261e;
+  --info: var(--color-secondary);
 
   /* Superficies, texto e borda */
-  --background: #f5f7fa;
-  --surface: #ffffff;
-  --surface-muted: #eef3f7;
-  --surface-sunken: #e7edf3;
-  --foreground: #172230;
-  --foreground-muted: #525f70;
-  --foreground-on-dark: #f8fbfc;
-  --foreground-on-dark-muted: #b8cad7;
-  --border: #d8e0e8;
+  --background: #fdf7ff;
+  --surface: #faf8ff;
+  --surface-muted: #e2e2e9;
+  --surface-sunken: #eeedf4;
+  --foreground: #1a1b21;
+  --foreground-muted: #44464f;
+  --foreground-on-dark: #e6e0e9;
+  --foreground-on-dark-muted: #c5c6d0;
+  --border: #c5c6d0;
   --primary: var(--color-primary);
   --primary-hover: var(--color-primary-hover);
   --primary-foreground: #ffffff;
-  --focus-ring: #56b6d0;
+  --primary-container: #adc3fe;
+  --on-primary-container: #324574;
+  --secondary-container: #d9dff6;
+  --on-secondary-container: #404659;
+  --danger-container: #f9dedc;
+  --on-danger-container: #8c1d18;
+  --focus-ring: #92a8e1;
 
   /* Tipografia — extremos adicionados com base no kit de referencia
      (design-system/typography/: passos de tamanho abaixo de xs e acima de
@@ -86,9 +99,9 @@
   --radius-full: 999px;
 
   /* Sombra */
-  --shadow-sm: 0 1px 2px rgba(11, 31, 58, 0.06);
-  --shadow-md: 0 12px 28px rgba(11, 31, 58, 0.14);
-  --shadow-lg: 0 18px 45px rgba(11, 31, 58, 0.18);
+  --shadow-sm: 0 1px 2px rgba(0, 25, 70, 0.06);
+  --shadow-md: 0 12px 28px rgba(0, 25, 70, 0.14);
+  --shadow-lg: 0 18px 45px rgba(0, 25, 70, 0.18);
 
   /* Z-index */
   --z-dropdown: 20;
@@ -109,6 +122,43 @@
   --control-height-lg: 48px;
 
   font-family: var(--font-sans);
+}
+
+/* Dark mode — habilitado via preferencia do sistema operacional (nao ha
+   toggle manual ainda). Valores do esquema M3 Blue Dark (design-system/
+   color-schemes-material3/blue-dark.tokens.json + green-dark/yellow-dark
+   para success/warning). Nao obrigatorio no ciclo anterior de refatoracao,
+   mas os tokens agora tornam isso de baixo custo — todo componente ja
+   consome var(), entao a troca de paleta cascata sem mudanca de CSS extra. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --color-primary: #b0c6ff;
+    --color-primary-hover: #92a8e1;
+    --color-secondary: #c0c6dc;
+    --color-tertiary: #e0bbdd;
+
+    --success: #9cd49f;
+    --warning: #e9c16c;
+    --danger: #f2b8b5;
+
+    --background: #141218;
+    --surface: #121318;
+    --surface-muted: #33343a;
+    --surface-sunken: #1e1f25;
+    --foreground: #e2e2e9;
+    --foreground-muted: #c5c6d0;
+    --border: #44464f;
+    --primary-foreground: #152e60;
+    --primary-container: #2e4578;
+    --on-primary-container: #d9e2ff;
+    --secondary-container: #404659;
+    --on-secondary-container: #dce2f9;
+    --danger-container: #8c1d18;
+    --on-danger-container: #f9dedc;
+    --focus-ring: #b0c6ff;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
