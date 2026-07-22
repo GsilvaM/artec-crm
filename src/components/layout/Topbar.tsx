@@ -1,5 +1,5 @@
 import { Bell, LogOut, Search, UserRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NotificationList } from "../ui/NotificationList";
 import { globalSearch, type GlobalSearchResult } from "../../domain/crm";
@@ -11,6 +11,23 @@ export function Topbar({ userEmail, onLogout }: { userEmail: string | null; onLo
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const notifications = useNotifications({ status: "active", limit: "5" });
   const navigate = useNavigate();
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
+  const notificationPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!notificationPanelOpen) return;
+    const panel = notificationPanelRef.current;
+    const firstFocusable = panel?.querySelector<HTMLElement>("button, a, [tabindex]");
+    firstFocusable?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setNotificationPanelOpen(false);
+      bellButtonRef.current?.focus();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [notificationPanelOpen]);
 
   useEffect(() => {
     void notifications.refresh();
@@ -82,12 +99,19 @@ export function Topbar({ userEmail, onLogout }: { userEmail: string | null; onLo
           <span>{userEmail ?? "Sem e-mail"}</span>
         </div>
         <div className="notification-shell">
-          <button className="icon-button" type="button" aria-label="Abrir notificacoes" onClick={() => setNotificationPanelOpen((open) => !open)}>
+          <button
+            ref={bellButtonRef}
+            className="icon-button"
+            type="button"
+            aria-label="Abrir notificacoes"
+            aria-expanded={notificationPanelOpen}
+            onClick={() => setNotificationPanelOpen((open) => !open)}
+          >
             <Bell aria-hidden="true" />
             {notifications.unreadCount > 0 ? <span>{notifications.unreadCount > 9 ? "9+" : notifications.unreadCount}</span> : null}
           </button>
           {notificationPanelOpen ? (
-            <div className="notification-popover" role="dialog" aria-label="Notificacoes recentes">
+            <div className="notification-popover" role="dialog" aria-label="Notificacoes recentes" ref={notificationPanelRef}>
               <header>
                 <strong>Notificacoes</strong>
                 <button className="button ghost" type="button" onClick={() => void notifications.readAll()}>Ler todas</button>

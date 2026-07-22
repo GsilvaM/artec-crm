@@ -38,13 +38,21 @@ Todos os demais campos `<select>` do produto já estavam corretamente envolvidos
 
 Estes itens são conhecidos como limitação da abordagem automatizada e ficam registrados como trabalho futuro, não como bloqueio para a auditoria concluída nesta rodada:
 
-- **Navegação por teclado ponta a ponta**: confirmar que todo fluxo crítico (criar cliente, criar oportunidade, aprovar/perder oportunidade, resolver item da Caixa de Entrada) é 100% operável sem mouse, incluindo ordem de tabulação lógica e sem *keyboard traps* em modais/formulários inline.
-- **Leitores de tela reais** (NVDA, VoiceOver): a suíte automatizada verifica *presença* de nomes acessíveis, não a *qualidade* da experiência ao navegar com leitor de tela real (ex: se a ordem de leitura faz sentido, se tabelas grandes de clientes/oportunidades são navegáveis por linha/coluna).
-- **Foco visível e gerenciamento de foco**: confirmar que o indicador de foco (`--focus-ring`) é suficientemente visível em todos os elementos interativos, e que o foco é movido corretamente ao abrir/fechar painéis (ex: ao abrir o formulário de resolução de um item da Caixa de Entrada).
-- **Movimento e animação**: o produto hoje não usa animações não-triviais; se isso mudar (ex: na refatoração de frontend em andamento, que menciona `prefers-reduced-motion`), validar manualmente.
+- **Leitores de tela reais** (NVDA, VoiceOver): a suíte automatizada verifica *presença* de nomes acessíveis, não a *qualidade* da experiência ao navegar com leitor de tela real (ex: se a ordem de leitura faz sentido, se tabelas grandes de clientes/oportunidades são navegáveis por linha/coluna). Ainda não testado com leitor real.
 - **Zoom de página até 200%** sem perda de conteúdo/funcionalidade (WCAG 1.4.4) — não testado nesta rodada.
 
-Esses itens fazem parte do escopo de acessibilidade da refatoração de frontend documentada em `PROMPT-REFATORACAO-FRONTEND-ARTEC-CRM.md` (Fase 3), que trata explicitamente de teclado, foco, ARIA e leitor de tela como uma fase dedicada — este documento serve como linha de base antes dessa fase começar.
+## 5. Fase 3 da refatoração de frontend — teclado, foco e responsividade (2026-07-22)
+
+Itens fechados nesta fase (`PROMPT-REFATORACAO-FRONTEND-ARTEC-CRM.md`, seção 19, Fase 3):
+
+- **Navegação por teclado**: `e2e/keyboard.spec.ts` (novo) confirma que os links da Sidebar são alcançáveis via `Tab`/`focus()` e ativáveis com `Enter`. Os fluxos de formulário (criar cliente, criar oportunidade, aprovar/perder, resolver item da Caixa de Entrada) já usam `<form>`/`<button type="submit">` nativos, que são operáveis por teclado por padrão — confirmado por leitura de código, sem *keyboard trap* customizado em nenhum deles.
+- **Gerenciamento de foco em painel tipo diálogo**: o painel de notificações (`role="dialog"`, `src/components/layout/Topbar.tsx`) não movia foco ao abrir nem fechava com `Escape` — corrigido: foco vai para o primeiro elemento focável do painel ao abrir, `Escape` fecha e devolve o foco ao botão do sino. Coberto pelo segundo teste de `e2e/keyboard.spec.ts`.
+- **Foco visível**: a regra global de `:focus-visible` (`--focus-ring`) cobria `button`/`input`/`select` mas não `a`/`textarea` — estendida em `src/styles.css` para cobrir todos os elementos interativos usados no produto (links de navegação e das tabelas incluídos).
+- **Movimento e animação**: confirmado por leitura de código que `@media (prefers-reduced-motion: reduce)` em `src/styles.css` já neutraliza globalmente `animation-duration`, `animation-iteration-count`, `transition-duration` e `scroll-behavior` para `*`/`*::before`/`*::after` — cobre todas as animações existentes (spinner de botão, skeleton pulse, abertura de drawer) sem exceção por componente.
+- **Responsividade formal nos 7 breakpoints da seção 13**: `e2e/responsive.spec.ts` (novo) navega pelas 5 telas de maior uso (Central Comercial, Funil, Clientes, Oportunidades, Próximas Ações) em `360x800`, `390x844`, `768x1024`, `1024x768`, `1366x768`, `1440x900` e `1920x1080`, e falha se `document.documentElement.scrollWidth` exceder `window.innerWidth` (overflow horizontal acidental). Todas as 35 combinações passaram sem alteração de CSS adicional além da já existente — a base responsiva da Fase 1 já cobria esses casos.
+- **Visão mobile do Pipeline**: fechada junto com a Fase 2.7 (abas de etapa em `max-width: 767px`, ver entrada correspondente em `docs/DEVELOPMENT-STATUS.md`), atendendo à seção 10.6 (kanban horizontal não é usável em mobile).
+
+Ainda pendente (não coberto por automação, listado acima na seção 4): leitor de tela real e zoom 200%.
 
 ## 5. Cobertura contínua
 

@@ -599,6 +599,17 @@ Validacao:
 
 Nao alterado nesta fatia: nenhum endpoint de backend, nenhuma migration, nenhuma regra de negocio. Commit local criado na branch `refactor/frontend-design-system`, sem push.
 
+## Refatoracao de frontend — Fase 3: responsividade formal e acessibilidade manual (2026-07-22)
+
+Detalhe completo em `docs/ACCESSIBILITY-AUDIT.md` secao 5. Resumo:
+
+- **Responsividade**: novo `e2e/responsive.spec.ts` valida as 5 telas de maior uso (Central Comercial, Funil, Clientes, Oportunidades, Proximas Acoes) nos 7 breakpoints da secao 13 do prompt (`360x800` ate `1920x1080`) sem overflow horizontal acidental (`document.documentElement.scrollWidth <= window.innerWidth`). As 35 combinacoes passaram sem precisar de CSS novo — a fundacao responsiva da Fase 1 (breakpoints `1023px`/`767px`) ja cobria os casos reais.
+- **Teclado e foco**: gap real encontrado e corrigido — o painel de notificacoes (`role="dialog"` no Topbar) nao movia foco ao abrir nem fechava com `Escape`. Corrigido em `src/components/layout/Topbar.tsx` (foco vai para o primeiro elemento focavel do painel; `Escape` fecha e devolve foco ao botao do sino). Regra global de `:focus-visible` estendida para `a`/`textarea` (antes so cobria `button`/`input`/`select`) em `src/styles.css`. Novo `e2e/keyboard.spec.ts` cobre os dois casos.
+- **`prefers-reduced-motion`**: confirmado por leitura de codigo (nao precisou de mudanca) que a regra global em `src/styles.css` ja neutraliza toda animacao/transicao do produto.
+- Suite completa apos a fase: `npm run typecheck`, `npm run test` (69 testes), `npm run build` e `npx playwright test` (33 specs: 19 originais + 6 de acessibilidade das paginas novas da Fase 2.7/2.8 + 2 de teclado + 7 de responsividade) — todos passando contra o ambiente real de homologacao.
+
+Nao alterado: nenhum endpoint de backend, nenhuma migration. Commit local na branch `refactor/frontend-design-system`, sem push.
+
 ### Proximo passo
 
-Fase 3 (responsividade formal nos breakpoints documentados + revisao manual de acessibilidade) e Fase 4 (PWA completo, code-splitting por rota, validacao final).
+Fase 4: PWA completo (manifest, service worker, icones, `beforeinstallprompt`), code-splitting por rota (bundle atual de 549 kB registrado como pendencia na Fase 2.7/2.8) e validacao final (Lighthouse/instalabilidade, relatorio final da refatoracao).

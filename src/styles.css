@@ -136,7 +136,9 @@ button:disabled {
 
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--focus-ring) 45%, transparent);
   outline-offset: 2px;
 }
