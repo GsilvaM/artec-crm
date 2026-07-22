@@ -98,7 +98,7 @@ export function App() {
           <div className="brand-mark">A</div>
           <p className="eyebrow">Artec CRM</p>
           <h1>Central comercial independente</h1>
-          <p>Entre com a conta Supabase. O backend validara sua membership antes de liberar o CRM.</p>
+          <p>Entre com a conta Supabase. O backend validará sua membership antes de liberar o CRM.</p>
           <LoginForm email={email} password={password} isSubmitting={isSubmitting} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={handleLogin} />
         </section>
       </main>
@@ -147,7 +147,7 @@ export function App() {
 function NotFoundPage() {
   return (
     <section className="page-heading">
-      <EmptyState title="Pagina nao encontrada" text="O link acessado nao existe ou voce nao tem permissao para esta area.">
+      <EmptyState title="Página não encontrada" text="O link acessado não existe ou você não tem permissão para esta área.">
         <Link className="button primary" to="/central-comercial">Ir para a Central Comercial</Link>
       </EmptyState>
     </section>
@@ -155,11 +155,11 @@ function NotFoundPage() {
 }
 
 function getAuthBlockedCopy(state: Exclude<AuthState, { status: "loading" | "authenticated" | "anonymous" | "error" }>) {
-  if (state.status === "not_configured") return { title: "Ambiente nao configurado", message: state.message };
-  if (state.status === "membership_missing") return { title: "Acesso nao liberado", message: state.message };
+  if (state.status === "not_configured") return { title: "Ambiente não configurado", message: state.message };
+  if (state.status === "membership_missing") return { title: "Acesso não liberado", message: state.message };
   if (state.status === "membership_inactive") return { title: "Acesso inativo", message: state.message };
   if (state.status === "access_denied") return { title: "Acesso negado", message: state.message };
-  return { title: "API temporariamente indisponivel", message: state.message };
+  return { title: "API temporariamente indisponível", message: state.message };
 }
 
 function LoginForm({ email, password, isSubmitting, onEmailChange, onPasswordChange, onSubmit }: {

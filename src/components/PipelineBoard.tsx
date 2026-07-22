@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { formatDateTime, formatMoney } from "../domain/format";
+import { formatDateTime, formatMoney, formatOpportunityStatus } from "../domain/format";
 import type { Opportunity, PipelineStage } from "../domain/crm";
 
 export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mobileActiveStageId, onMoveStage, onOpenOpportunity }: {
@@ -72,25 +72,25 @@ function PipelineCard({ opportunity, stage, movableStages, isStalled, onMoveStag
         <button className="pipeline-card-open" type="button" onClick={() => onOpenOpportunity(opportunity.id)}>
           {opportunity.clienteNome}
         </button>
-        <span className="badge">{opportunity.status}</span>
+        <span className="badge">{formatOpportunityStatus(opportunity.status)}</span>
       </header>
       <p className="pipeline-card-title">{opportunity.titulo}</p>
       <dl className="pipeline-card-facts">
         <div><dt>Tipo</dt><dd>{opportunity.tipoDemanda}</dd></div>
         {opportunity.origem ? <div><dt>Origem</dt><dd>{opportunity.origem}</dd></div> : null}
         {value !== null ? <div><dt>Valor</dt><dd>{formatMoney(value)}</dd></div> : null}
-        <div><dt>Situacao</dt><dd>{opportunity.situacao}</dd></div>
+        <div><dt>Situação</dt><dd>{opportunity.situacao}</dd></div>
       </dl>
-      {isActive && isStalled ? <span className="badge warning">parada</span> : null}
+      {isActive && isStalled ? <span className="badge badge-alert-warning">parada</span> : null}
       <p className={`pipeline-card-next-action${overdue ? " danger-text" : ""}`}>
         {opportunity.proximaAcao ? (
           <>
             <Clock aria-hidden="true" size={14} />
             {opportunity.proximaAcao} - {formatDateTime(opportunity.proximaAcaoEm)}
-            {overdue ? <span className="badge danger-badge">atrasada</span> : null}
+            {overdue ? <span className="badge badge-alert-danger">atrasada</span> : null}
           </>
         ) : (
-          <span className="badge danger-badge">sem proxima acao</span>
+          <span className="badge badge-alert-danger">sem próxima ação</span>
         )}
       </p>
       <div className="pipeline-card-actions">

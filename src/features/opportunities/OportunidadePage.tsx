@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
 import { QuotesPanel } from "../../components/QuotesPanel";
-import { formatActivityType, formatDateTime, formatMoney } from "../../domain/format";
+import { formatActivityType, formatDateTime, formatMoney, formatOpportunityStatus } from "../../domain/format";
 import {
   approveOpportunity,
   archiveOpportunity,
@@ -69,7 +69,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
       setCurrentNextAction(opportunityRecord.currentNextActionId ? await loadNextAction(opportunityRecord.currentNextActionId).catch(() => null) : null);
       if (canManageUsers) setMembers(await loadAdminUsers());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar a oportunidade.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar a oportunidade.");
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +92,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
       await updateOpportunity(opportunity!.id, { etapaId });
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel mover a oportunidade de etapa.");
+      setError(err instanceof Error ? err.message : "Não foi possível mover a oportunidade de etapa.");
     }
   }
 
@@ -102,7 +102,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
       await updateOpportunity(opportunity!.id, { responsavelId });
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel reatribuir a oportunidade.");
+      setError(err instanceof Error ? err.message : "Não foi possível reatribuir a oportunidade.");
     }
   }
 
@@ -119,7 +119,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
       setMode(null);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel aprovar a oportunidade.");
+      setError(err instanceof Error ? err.message : "Não foi possível aprovar a oportunidade.");
     }
   }
 
@@ -131,18 +131,18 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
       setMode(null);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel marcar a oportunidade como perdida.");
+      setError(err instanceof Error ? err.message : "Não foi possível marcar a oportunidade como perdida.");
     }
   }
 
   async function handleArchive() {
-    if (!window.confirm(`Arquivar ${opportunity!.titulo}? O historico sera preservado.`)) return;
+    if (!window.confirm(`Arquivar ${opportunity!.titulo}? O histórico será preservado.`)) return;
     setError(null);
     try {
       await archiveOpportunity(opportunity!.id);
       navigate("/oportunidades");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel arquivar a oportunidade.");
+      setError(err instanceof Error ? err.message : "Não foi possível arquivar a oportunidade.");
     }
   }
 
@@ -155,13 +155,13 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
       setActivityDescription("");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel registrar a atividade.");
+      setError(err instanceof Error ? err.message : "Não foi possível registrar a atividade.");
     }
   }
 
   async function handleCreateQuote(valorReais: string, resumo: string) {
     const valor = Math.round(Number(valorReais.replace(",", ".")) * 100);
-    if (!Number.isFinite(valor) || valor <= 0) throw new Error("Informe um valor valido para o orcamento.");
+    if (!Number.isFinite(valor) || valor <= 0) throw new Error("Informe um valor válido para o orçamento.");
     await createQuote(opportunity!.id, { valor, resumo: resumo.trim() || undefined });
     setQuotes(await loadOpportunityQuotes(opportunity!.id));
   }
@@ -183,7 +183,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
           </p>
           <h1>{opportunity.titulo}</h1>
         </div>
-        <span className={`badge ${opportunity.status === "perdida" ? "danger-badge" : ""}`}>{opportunity.status}</span>
+        <span className={`badge ${opportunity.status === "perdida" ? "danger-badge" : ""}`}>{formatOpportunityStatus(opportunity.status)}</span>
       </section>
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
@@ -200,36 +200,36 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
               </select>
             </dd>
           </div>
-          <div><dt>Situacao</dt><dd>{opportunity.situacao}</dd></div>
+          <div><dt>Situação</dt><dd>{opportunity.situacao}</dd></div>
           <div>
-            <dt>Responsavel</dt>
+            <dt>Responsável</dt>
             <dd>
               {canManageUsers ? (
-                <select aria-label="Responsavel pela oportunidade" value={opportunity.responsavelId} onChange={(event) => void handleReassign(event.target.value)}>
+                <select aria-label="Responsável pela oportunidade" value={opportunity.responsavelId} onChange={(event) => void handleReassign(event.target.value)}>
                   {members.map((member) => <option key={member.userId} value={member.userId}>{member.email ?? member.userId.slice(0, 8)}</option>)}
                 </select>
               ) : (
-                `Usuario ${opportunity.responsavelId.slice(0, 8)}`
+                `Usuário ${opportunity.responsavelId.slice(0, 8)}`
               )}
             </dd>
           </div>
           <div>
-            <dt>Proxima acao</dt>
+            <dt>Próxima ação</dt>
             <dd>
               {currentNextAction ? (
                 <>
                   {currentNextAction.title} - {formatDateTime(currentNextAction.dueAt)}
-                  {isOverdueAction ? <span className="badge danger-badge">vencida</span> : null}
+                  {isOverdueAction ? <span className="badge badge-alert-danger">vencida</span> : null}
                 </>
               ) : opportunity.proximaAcao ? (
                 `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}`
               ) : (
-                <span className="badge danger-badge">sem proxima acao</span>
+                <span className="badge badge-alert-danger">sem próxima ação</span>
               )}
             </dd>
           </div>
           <div><dt>Valor estimado</dt><dd>{opportunity.valorEstimado ? formatMoney(opportunity.valorEstimado) : "-"}</dd></div>
-          <div><dt>Valor orcamento</dt><dd>{opportunity.valorOrcamento ? formatMoney(opportunity.valorOrcamento) : "-"}</dd></div>
+          <div><dt>Valor orçamento</dt><dd>{opportunity.valorOrcamento ? formatMoney(opportunity.valorOrcamento) : "-"}</dd></div>
           {opportunity.status === "ganha" ? <div><dt>Valor aprovado</dt><dd>{formatMoney(opportunity.valorAprovado ?? 0)}</dd></div> : null}
           {opportunity.status === "perdida" ? <div><dt>Motivo da perda</dt><dd>{opportunity.motivoPerdaNome ?? "-"}</dd></div> : null}
         </dl>
@@ -237,13 +237,13 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
         <div className="quick-actions">
           {currentNextAction ? (
             <>
-              <button className="button secondary" type="button" onClick={() => void actionOperation.open({ id: currentNextAction.id, customerId: currentNextAction.customerId, customerName: currentNextAction.customerName, opportunityId: currentNextAction.opportunityId, category: currentNextAction.category, dueAt: currentNextAction.dueAt }, "complete")}>Concluir acao</button>
+              <button className="button secondary" type="button" onClick={() => void actionOperation.open({ id: currentNextAction.id, customerId: currentNextAction.customerId, customerName: currentNextAction.customerName, opportunityId: currentNextAction.opportunityId, category: currentNextAction.category, dueAt: currentNextAction.dueAt }, "complete")}>Concluir ação</button>
               <button className="button secondary" type="button" onClick={() => void actionOperation.open({ id: currentNextAction.id, customerId: currentNextAction.customerId, customerName: currentNextAction.customerName, opportunityId: currentNextAction.opportunityId, category: currentNextAction.category, dueAt: currentNextAction.dueAt }, "postpone")}>Reagendar</button>
             </>
           ) : null}
           {isActive ? (
             <>
-              <button className="button primary" type="button" onClick={() => setMode("approve")}>Aprovar orcamento</button>
+              <button className="button primary" type="button" onClick={() => setMode("approve")}>Aprovar orçamento</button>
               <button className="button destructive" type="button" onClick={() => setMode("lose")}>Marcar como perdido</button>
             </>
           ) : null}
@@ -263,23 +263,23 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
 
       {mode === "approve" ? (
         <form className="panel compact-form" onSubmit={handleApproveSubmit}>
-          <h3>Aprovar orcamento</h3>
+          <h3>Aprovar orçamento</h3>
           <label>Valor aprovado (R$)<input required type="number" min="0.01" step="0.01" value={approveForm.valorAprovado} onChange={(event) => setApproveForm({ ...approveForm, valorAprovado: event.target.value })} /></label>
           <label>Forma de pagamento
             <select value={approveForm.formaPagamento} onChange={(event) => {
               const formaPagamento = event.target.value;
               setApproveForm({ ...approveForm, formaPagamento, quantidadeParcelas: formaPagamento === "a vista" ? "1" : approveForm.quantidadeParcelas });
             }}>
-              <option value="a vista">A vista</option>
+              <option value="a vista">À vista</option>
               <option value="parcelado">Parcelado</option>
             </select>
           </label>
           {approveForm.formaPagamento !== "a vista" ? (
             <label>Quantidade de parcelas<input required type="number" min="1" step="1" value={approveForm.quantidadeParcelas} onChange={(event) => setApproveForm({ ...approveForm, quantidadeParcelas: event.target.value })} /></label>
           ) : null}
-          <label>Previsao de execucao<input required type="date" value={approveForm.previsaoExecucao} onChange={(event) => setApproveForm({ ...approveForm, previsaoExecucao: event.target.value })} /></label>
+          <label>Previsão de execução<input required type="date" value={approveForm.previsaoExecucao} onChange={(event) => setApproveForm({ ...approveForm, previsaoExecucao: event.target.value })} /></label>
           <div className="form-actions">
-            <button className="button primary" type="submit">Confirmar aprovacao</button>
+            <button className="button primary" type="submit">Confirmar aprovação</button>
             <button className="button secondary" type="button" onClick={() => setMode(null)}>Cancelar</button>
           </div>
         </form>
@@ -319,7 +319,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
             ))}
           </ol>
         ) : (
-          <EmptyState title="Nenhuma atividade registrada" text="Registre a primeira interacao com esta oportunidade." />
+          <EmptyState title="Nenhuma atividade registrada" text="Registre a primeira interação com esta oportunidade." />
         )}
       </section>
     </>

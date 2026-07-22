@@ -12,7 +12,7 @@ export function RelatoriosPage() {
       try {
         setStages(await loadPipelineStages());
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Nao foi possivel carregar as etapas do funil.");
+        setError(err instanceof Error ? err.message : "Não foi possível carregar as etapas do funil.");
       }
     })();
   }, []);
@@ -21,8 +21,8 @@ export function RelatoriosPage() {
     <>
       <section className="page-heading">
         <div>
-          <p className="eyebrow">Gestao</p>
-          <h1>Relatorios comerciais</h1>
+          <p className="eyebrow">Gestão</p>
+          <h1>Relatórios comerciais</h1>
         </div>
       </section>
 

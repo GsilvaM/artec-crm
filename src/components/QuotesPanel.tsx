@@ -42,12 +42,12 @@ export function QuotesPanel({ opportunity, quotes, onCreate, onUpdateStatus }: {
 
   if (!opportunity) {
     return (
-      <section className="panel quotes-panel" aria-label="Orcamentos">
+      <section className="panel quotes-panel" aria-label="Orçamentos">
         <header>
-          <p className="eyebrow">Orcamentos</p>
+          <p className="eyebrow">Orçamentos</p>
           <h2>Nenhuma oportunidade selecionada</h2>
         </header>
-        <p className="quotes-empty">Abra o historico de uma oportunidade para ver e gerenciar seus orcamentos.</p>
+        <p className="quotes-empty">Abra o histórico de uma oportunidade para ver e gerenciar seus orçamentos.</p>
       </section>
     );
   }
@@ -60,15 +60,15 @@ export function QuotesPanel({ opportunity, quotes, onCreate, onUpdateStatus }: {
       setValorReais("");
       setResumo("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel salvar o orcamento.");
+      setError(err instanceof Error ? err.message : "Não foi possível salvar o orçamento.");
     }
   }
 
   return (
-    <section className="panel quotes-panel" aria-label="Orcamentos">
+    <section className="panel quotes-panel" aria-label="Orçamentos">
       <header>
         <div>
-          <p className="eyebrow">Orcamentos</p>
+          <p className="eyebrow">Orçamentos</p>
           <h2>{opportunity.titulo}</h2>
         </div>
       </header>
@@ -80,7 +80,7 @@ export function QuotesPanel({ opportunity, quotes, onCreate, onUpdateStatus }: {
           {quotes.map((quote) => (
             <li key={quote.id} className="quote-item">
               <div className="quote-item-header">
-                <strong>Versao {quote.versao}</strong>
+                <strong>Versão {quote.versao}</strong>
                 <span className="badge">{STATUS_LABELS[quote.status]}</span>
               </div>
               <p className="quote-value">{formatMoney(quote.valor)}</p>
@@ -102,13 +102,13 @@ export function QuotesPanel({ opportunity, quotes, onCreate, onUpdateStatus }: {
           ))}
         </ul>
       ) : (
-        <p className="quotes-empty">Nenhum orcamento registrado para esta oportunidade.</p>
+        <p className="quotes-empty">Nenhum orçamento registrado para esta oportunidade.</p>
       )}
 
       <form className="admin-inline-form" onSubmit={handleSubmit}>
         <label>Valor (R$)<input required type="number" min="0.01" step="0.01" value={valorReais} onChange={(event) => setValorReais(event.target.value)} /></label>
         <label>Resumo<input value={resumo} onChange={(event) => setResumo(event.target.value)} /></label>
-        <button className="button primary" type="submit"><FileText aria-hidden="true" />Novo orcamento</button>
+        <button className="button primary" type="submit"><FileText aria-hidden="true" />Novo orçamento</button>
       </form>
     </section>
   );

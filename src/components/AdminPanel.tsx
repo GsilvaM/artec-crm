@@ -36,7 +36,7 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
       setLossReasons(reasons);
       setUsers(memberList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar dados de administracao.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar dados de administração.");
     }
   }
 
@@ -48,7 +48,7 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
       setNewStage({ nome: "", ordem: "" });
       await onStagesChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel criar a etapa.");
+      setError(err instanceof Error ? err.message : "Não foi possível criar a etapa.");
     }
   }
 
@@ -61,7 +61,7 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
       await updatePipelineStage(stage.id, { nome });
       await onStagesChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel renomear a etapa.");
+      setError(err instanceof Error ? err.message : "Não foi possível renomear a etapa.");
     }
   }
 
@@ -73,7 +73,7 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
       await updatePipelineStage(stage.id, { ordem: Number(ordem) });
       await onStagesChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel reordenar a etapa.");
+      setError(err instanceof Error ? err.message : "Não foi possível reordenar a etapa.");
     }
   }
 
@@ -85,7 +85,7 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
       setNewLossReason("");
       await refreshAdminData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel criar o motivo de perda.");
+      setError(err instanceof Error ? err.message : "Não foi possível criar o motivo de perda.");
     }
   }
 
@@ -95,7 +95,7 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
       await setLossReasonActive(reason.id, !reason.isActive);
       await refreshAdminData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel atualizar o motivo de perda.");
+      setError(err instanceof Error ? err.message : "Não foi possível atualizar o motivo de perda.");
     }
   }
 
@@ -105,18 +105,18 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
       await upsertMembership(user.userId, { role, isActive });
       await refreshAdminData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel atualizar o acesso do usuario.");
+      setError(err instanceof Error ? err.message : "Não foi possível atualizar o acesso do usuário.");
     }
   }
 
   const orderedStages = [...stages].sort((a, b) => a.ordem - b.ordem);
 
   return (
-    <section className="panel admin-panel" aria-label="Administracao">
+    <section className="panel admin-panel" aria-label="Administração">
       <header>
         <div>
-          <p className="eyebrow">Administracao</p>
-          <h2>Etapas, motivos de perda e usuarios</h2>
+          <p className="eyebrow">Administração</p>
+          <h2>Etapas, motivos de perda e usuários</h2>
         </div>
       </header>
 
@@ -127,7 +127,7 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
           <h3>Etapas do funil</h3>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Nome</th><th>Ordem</th><th>Tipo</th><th>Acoes</th></tr></thead>
+              <thead><tr><th>Nome</th><th>Ordem</th><th>Tipo</th><th>Ações</th></tr></thead>
               <tbody>
                 {orderedStages.map((stage) => (
                   <tr key={stage.id}>
@@ -154,7 +154,7 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
           <h3>Motivos de perda</h3>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Nome</th><th>Status</th><th>Acoes</th></tr></thead>
+              <thead><tr><th>Nome</th><th>Status</th><th>Ações</th></tr></thead>
               <tbody>
                 {lossReasons.map((reason) => (
                   <tr key={reason.id}>
@@ -177,15 +177,15 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
         </article>
 
         <article className="admin-block">
-          <h3>Usuarios e acesso ao CRM</h3>
+          <h3>Usuários e acesso ao CRM</h3>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>E-mail</th><th>Papel</th><th>Ativo</th><th>Acoes</th></tr></thead>
+              <thead><tr><th>E-mail</th><th>Papel</th><th>Ativo</th><th>Ações</th></tr></thead>
               <tbody>
                 {users.map((user) => (
                   <UserMembershipRow key={user.userId} user={user} isSelf={user.userId === currentUserId} onSave={handleUpdateMembership} />
                 ))}
-                {!users.length ? <tr><td colSpan={4}>Nenhum usuario encontrado no Supabase Auth.</td></tr> : null}
+                {!users.length ? <tr><td colSpan={4}>Nenhum usuário encontrado no Supabase Auth.</td></tr> : null}
               </tbody>
             </table>
           </div>
@@ -205,7 +205,7 @@ function UserMembershipRow({ user, isSelf, onSave }: {
 
   return (
     <tr>
-      <td>{user.email ?? user.userId.slice(0, 8)}{isSelf ? <span className="badge">voce</span> : null}</td>
+      <td>{user.email ?? user.userId.slice(0, 8)}{isSelf ? <span className="badge">você</span> : null}</td>
       <td>
         <select aria-label={`Papel de ${user.email ?? user.userId}`} value={role} onChange={(event) => setRole(event.target.value as CrmRole)}>
           <option value="gestor">Gestor</option>
@@ -214,7 +214,7 @@ function UserMembershipRow({ user, isSelf, onSave }: {
         </select>
       </td>
       <td>
-        <label className="sr-only" htmlFor={`active-${user.userId}`}>Usuario ativo no CRM</label>
+        <label className="sr-only" htmlFor={`active-${user.userId}`}>Usuário ativo no CRM</label>
         <input id={`active-${user.userId}`} type="checkbox" checked={isActive} disabled={isSelf} onChange={(event) => setIsActive(event.target.checked)} />
       </td>
       <td className="actions-cell">

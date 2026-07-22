@@ -11,7 +11,7 @@ test("opens a customer detail page from the list and sees related opportunities 
   await firstRow.getByRole("link", { name: "Abrir" }).click();
   await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
 
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(name.replace(/possivel duplicidade/i, "").trim());
-  await expect(page.getByText("Garantia, suporte e pos-venda")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(name.replace(/poss[ií]vel duplicidade/i, "").trim());
+  await expect(page.getByText("Garantia, suporte e pós-venda")).toBeVisible();
   await expect(page.getByText("Linha do tempo comercial")).toBeVisible();
 });

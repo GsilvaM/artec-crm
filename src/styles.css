@@ -42,8 +42,12 @@
   --primary-foreground: #ffffff;
   --focus-ring: #56b6d0;
 
-  /* Tipografia */
+  /* Tipografia — extremos adicionados com base no kit de referencia
+     (design-system/typography/: passos de tamanho abaixo de xs e acima de
+     2xl que a escala anterior nao cobria, ex. "Large Title"=41 -> 3xl=40,
+     ja usado em metricas de destaque mas antes como valor solto). */
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --text-2xs: 11px;
   --text-xs: 12px;
   --text-sm: 13px;
   --text-base: 15px;
@@ -51,6 +55,7 @@
   --text-lg: 18px;
   --text-xl: 22px;
   --text-2xl: 28px;
+  --text-3xl: 40px;
   --leading-tight: 1.2;
   --leading-normal: 1.5;
   --weight-normal: 400;
@@ -69,10 +74,15 @@
   --space-10: 40px;
   --space-12: 48px;
 
-  /* Radius */
+  /* Radius — escala estendida com base nos valores reais de "Corner" do kit
+     de referencia (design-system/spacing-shape/corner-radius-scale.tokens.json:
+     Small=8, Medium=12, Large=16, Extra-large=28), usados para superficies
+     maiores (sheets/modais mobile) que a escala anterior nao cobria. */
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 28px;
   --radius-full: 999px;
 
   /* Sombra */
@@ -141,6 +151,16 @@ textarea:focus-visible,
 a:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--focus-ring) 45%, transparent);
   outline-offset: 2px;
+}
+
+/* Placeholder precisa ter contraste claramente mais fraco que valor
+   preenchido — sem isso, texto de exemplo e valor real ficam
+   indistinguiveis (achado real de diagnostico visual). */
+input::placeholder,
+textarea::placeholder {
+  color: var(--foreground-muted);
+  opacity: 0.75;
+  font-weight: var(--weight-normal);
 }
 
 .button,
@@ -356,7 +376,7 @@ a:focus-visible {
 .eyebrow {
   margin: 0 0 6px;
   color: var(--primary);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -408,7 +428,7 @@ a:focus-visible {
   margin: var(--space-3) 0 var(--space-1);
   padding: 0 var(--space-3);
   color: var(--foreground-on-dark-muted);
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: var(--weight-black);
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -492,7 +512,7 @@ a:focus-visible {
 .search-dropdown-label {
   padding: 2px 8px;
   color: var(--foreground-muted);
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -516,7 +536,7 @@ a:focus-visible {
 
 .search-dropdown-item span {
   color: var(--foreground-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .search-box svg {
@@ -585,7 +605,7 @@ a:focus-visible {
 
 .notifications-page h2 {
   margin: 2px 0 0;
-  font-size: 18px;
+  font-size: var(--text-lg);
   letter-spacing: 0;
 }
 
@@ -646,7 +666,7 @@ a:focus-visible {
 .auvo-admin h2,
 .auvo-detail h3 {
   margin: 2px 0 0;
-  font-size: 18px;
+  font-size: var(--text-lg);
   letter-spacing: 0;
 }
 
@@ -668,13 +688,31 @@ a:focus-visible {
 
 .metric-card span {
   color: var(--foreground-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 800;
 }
 
 .metric-card strong {
-  font-size: 18px;
+  font-size: var(--text-lg);
   line-height: 1.2;
+}
+
+.metric-card-warning {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+}
+
+.metric-card-warning strong {
+  color: var(--warning);
+}
+
+.metric-card-danger {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+
+.metric-card-danger strong {
+  color: var(--danger);
 }
 
 .auvo-layout {
@@ -703,7 +741,7 @@ a:focus-visible {
 
 .detail-list dt {
   color: var(--foreground-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 800;
 }
 
@@ -721,7 +759,7 @@ a:focus-visible {
   border-radius: var(--radius-md);
   background: var(--surface-muted);
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.45;
   white-space: pre-wrap;
 }
@@ -734,7 +772,7 @@ a:focus-visible {
   margin-bottom: 6px;
   border-radius: var(--radius-full);
   padding: 0 9px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 800;
   line-height: 1;
 }
@@ -796,6 +834,13 @@ a:focus-visible {
   font-weight: 700;
 }
 
+.field-hint {
+  color: var(--foreground-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-normal);
+  font-style: italic;
+}
+
 .compact-form input,
 .compact-form select {
   width: 100%;
@@ -851,6 +896,10 @@ a:focus-visible {
   margin: 0;
 }
 
+.action-operation-backdrop {
+  display: none;
+}
+
 .replacement-fields {
   display: grid;
   gap: 12px;
@@ -890,7 +939,7 @@ a:focus-visible {
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--warning) 10%, var(--surface));
   color: var(--warning);
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -904,7 +953,7 @@ a:focus-visible {
   border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--primary) 8%, var(--surface));
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -925,7 +974,7 @@ a:focus-visible {
 
 .commercial-filters h2 {
   margin: 2px 0 0;
-  font-size: 18px;
+  font-size: var(--text-lg);
   letter-spacing: 0;
 }
 
@@ -939,7 +988,7 @@ a:focus-visible {
   display: grid;
   gap: 6px;
   color: var(--foreground);
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -958,6 +1007,30 @@ a:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.active-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.active-filter-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  color: var(--primary);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .commercial-center {
@@ -982,7 +1055,7 @@ a:focus-visible {
 
 .commercial-card h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--text-lg);
   letter-spacing: 0;
 }
 
@@ -1048,7 +1121,7 @@ a:focus-visible {
 
 .summary-card dt {
   color: var(--foreground-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 800;
 }
 
@@ -1081,7 +1154,7 @@ td {
 
 th {
   color: var(--foreground-muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 tr:last-child td {
@@ -1097,7 +1170,7 @@ tr:last-child td {
   border-radius: var(--radius-full);
   background: var(--surface-muted);
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 800;
 }
 
@@ -1107,6 +1180,22 @@ tr:last-child td {
 
 .danger-badge {
   color: var(--danger);
+}
+
+/* Badges de alerta forte — para sinais que exigem acao imediata (vencida,
+   atrasada, sem proxima acao, prioridade alta). Fundo preenchido, nao so
+   texto colorido: achado real de diagnostico visual (peso insuficiente
+   para o quanto a informacao importa operacionalmente). */
+.badge-alert-danger {
+  border: 1px solid color-mix(in srgb, var(--danger) 60%, black);
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.badge-alert-warning {
+  border: 1px solid color-mix(in srgb, var(--warning) 55%, black);
+  background: var(--warning);
+  color: #ffffff;
 }
 
 .actions-cell {
@@ -1183,7 +1272,7 @@ tr:last-child td {
   margin: 0;
   padding: 8px;
   color: var(--foreground-muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .pipeline-card {
@@ -1226,7 +1315,7 @@ tr:last-child td {
 .pipeline-card-title {
   margin: 0;
   color: var(--foreground-muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .pipeline-card-facts {
@@ -1238,13 +1327,13 @@ tr:last-child td {
 
 .pipeline-card-facts dt {
   color: var(--foreground-muted);
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 800;
 }
 
 .pipeline-card-facts dd {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 
@@ -1253,7 +1342,7 @@ tr:last-child td {
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--foreground-muted);
 }
 
@@ -1294,11 +1383,83 @@ tr:last-child td {
   gap: 12px;
 }
 
+.auvo-inbox-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.auvo-inbox-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.auvo-inbox-dismiss-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.muted-action {
+  color: var(--foreground-muted);
+  font-size: var(--text-xs);
+}
+
+.dropdown-menu-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.dropdown-menu-wrapper .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: var(--z-dropdown);
+  display: grid;
+  gap: 2px;
+  min-width: 220px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  list-style: none;
+}
+
+.dropdown-menu button {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dropdown-menu button:hover,
+.dropdown-menu button:focus-visible {
+  background: var(--surface-muted);
+}
+
 .auvo-inbox-item-header span {
   display: block;
   margin-top: 2px;
   color: var(--foreground-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .auvo-inbox-facts {
@@ -1310,13 +1471,13 @@ tr:last-child td {
 
 .auvo-inbox-facts dt {
   color: var(--foreground-muted);
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 800;
 }
 
 .auvo-inbox-facts dd {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .auvo-inbox-form {
@@ -1329,13 +1490,13 @@ tr:last-child td {
 
 .auvo-inbox-form h4 {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .auvo-inbox-form label {
   display: grid;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--foreground-muted);
 }
@@ -1388,21 +1549,21 @@ tr:last-child td {
 
 .quote-value {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--text-lg);
   font-weight: 900;
 }
 
 .quote-summary {
   margin: 0;
   color: var(--foreground-muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .quote-dates {
   display: grid;
   gap: 4px;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .quote-dates div {
@@ -1421,7 +1582,7 @@ tr:last-child td {
 
 .admin-block h3 {
   margin: 0 0 6px;
-  font-size: 15px;
+  font-size: var(--text-base);
   letter-spacing: 0;
 }
 
@@ -1436,7 +1597,7 @@ tr:last-child td {
 .admin-inline-form label {
   display: grid;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--foreground-muted);
 }
@@ -1457,7 +1618,7 @@ tr:last-child td {
   padding: 0 6px;
   background: var(--surface);
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .empty-state {
@@ -1502,7 +1663,7 @@ tr:last-child td {
 
 .timeline-list span {
   color: var(--foreground-muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .timeline-list p {
@@ -1539,7 +1700,7 @@ tr:last-child td {
 }
 
 .metric strong {
-  font-size: 40px;
+  font-size: var(--text-3xl);
   letter-spacing: 0;
 }
 
@@ -1573,7 +1734,7 @@ tr:last-child td {
 }
 
 .foundation-panel strong {
-  font-size: 28px;
+  font-size: var(--text-2xl);
   letter-spacing: 0;
 }
 
@@ -1786,7 +1947,7 @@ tr:last-child td {
     content: attr(data-label);
     flex: 0 0 auto;
     color: var(--foreground-muted);
-    font-size: 11px;
+    font-size: var(--text-2xs);
     font-weight: 800;
     text-transform: uppercase;
   }
@@ -1817,6 +1978,49 @@ tr:last-child td {
 
   .pipeline-column[data-mobile-hidden="true"] {
     display: none;
+  }
+
+  /* Bottom sheet: ActionOperationForm (concluir/reagendar/cancelar proxima
+     acao), o formulario mais reusado do produto, ganha tratamento de folha
+     inferior no mobile em vez de painel solto na pagina — canto superior
+     arredondado + grabber, inspirados nos tokens de forma de dispositivo do
+     kit de referencia (ver design-system/README.md). */
+  .action-operation-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    background: rgba(11, 31, 58, 0.4);
+  }
+
+  .action-operation {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-modal);
+    max-height: 85vh;
+    overflow-y: auto;
+    margin: 0;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    box-shadow: var(--shadow-lg);
+    animation: sheet-slide-up var(--duration-base) var(--easing-standard);
+  }
+
+  .action-operation::before {
+    content: "";
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 0 auto 12px;
+    border-radius: var(--radius-full);
+    background: var(--border);
+  }
+}
+
+@keyframes sheet-slide-up {
+  from {
+    transform: translateY(100%);
   }
 }
 

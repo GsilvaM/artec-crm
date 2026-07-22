@@ -7,7 +7,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   commercial: "Comercial",
   warranty: "Garantia",
   support: "Suporte",
-  after_sales: "Pos-venda",
+  after_sales: "Pós-venda",
 };
 
 export function CommercialActionBlock({ title, emptyText, items, onAction }: {
@@ -29,7 +29,11 @@ export function CommercialActionBlock({ title, emptyText, items, onAction }: {
               <div>
                 <strong>{item.title}</strong>
                 <span>{item.customerName}{item.opportunityTitle ? ` - ${item.opportunityTitle}` : ""}</span>
-                <small>{CATEGORY_LABELS[item.category] ?? item.category} - {formatDateTime(item.dueAt)}{item.overdueHours ? ` - ${item.overdueHours}h em atraso` : ""}</small>
+                <small>
+                  {CATEGORY_LABELS[item.category] ?? item.category} - {formatDateTime(item.dueAt)}
+                  {item.overdueHours ? <span className="badge badge-alert-danger">{item.overdueHours}h em atraso</span> : null}
+                  {item.priority === "high" ? <span className="badge badge-alert-warning">prioridade alta</span> : null}
+                </small>
               </div>
               <div className="quick-actions">
                 <button className="button secondary" type="button" onClick={() => onAction(item, "complete")}>Concluir</button>
@@ -38,7 +42,7 @@ export function CommercialActionBlock({ title, emptyText, items, onAction }: {
             </li>
           ))}
         </ul>
-      ) : <EmptyState title={emptyText} text="Nada exige acao imediata neste bloco." />}
+      ) : <EmptyState title={emptyText} text="Nada exige ação imediata neste bloco." />}
     </article>
   );
 }

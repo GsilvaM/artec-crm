@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
-import { formatDateTime } from "../../domain/format";
+import { formatDateTime, formatOpportunityStatus } from "../../domain/format";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
 import { createOpportunity, loadCustomersPage, loadOpportunitiesPage, type Customer, type Opportunity } from "../../domain/crm";
@@ -26,7 +26,7 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
       setCustomers(customersPage.customers);
       setForm((current) => ({ ...current, clienteId: current.clienteId || customersPage.customers[0]?.id || "" }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar as oportunidades.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar as oportunidades.");
     } finally {
       setIsLoading(false);
     }
@@ -45,7 +45,7 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
       setOpportunities((current) => [...current, ...page.opportunities]);
       setNextCursor(page.nextCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar mais oportunidades.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar mais oportunidades.");
     } finally {
       setIsLoadingMore(false);
     }
@@ -59,7 +59,7 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
       setForm((current) => ({ ...current, titulo: "", proximaAcao: "", proximaAcaoEm: "" }));
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel salvar a oportunidade.");
+      setError(err instanceof Error ? err.message : "Não foi possível salvar a oportunidade.");
     }
   }
 
@@ -82,14 +82,22 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
             {customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.nome}</option>)}
           </select>
         </label>
-        <label>Titulo<input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
-        <label>Tipo de demanda<input required list="demand-types" value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })} /></label>
+        <label>Título<input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
+        <label>
+          Tipo de demanda
+          <input required list="demand-types" value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })} />
+          <span className="field-hint">Valor padrão preenchido — ajuste se necessário</span>
+        </label>
         <datalist id="demand-types">
           {demandTypeSample.map((type) => <option value={type} key={type} />)}
         </datalist>
-        <label>Situacao<input required value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} /></label>
-        <label>Proxima acao<input required value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
-        <label>Data da proxima acao<input required type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
+        <label>
+          Situação
+          <input required value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} />
+          <span className="field-hint">Valor padrão preenchido — ajuste se necessário</span>
+        </label>
+        <label>Próxima ação<input required value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
+        <label>Data da próxima ação<input required type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
         <button className="button primary" type="submit" disabled={!customers.length}><Plus aria-hidden="true" />Salvar oportunidade</button>
       </form>
 
@@ -102,7 +110,7 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
             <Search aria-hidden="true" />
             <input
               type="search"
-              placeholder="Filtrar por titulo ou cliente"
+              placeholder="Filtrar por título ou cliente"
               aria-label="Filtrar oportunidades"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -118,16 +126,16 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
         ) : opportunities.length ? (
           <div className="table-wrap mobile-cards">
             <table>
-              <thead><tr><th>Titulo</th><th>Cliente</th><th>Etapa</th><th>Situacao</th><th>Proxima acao</th><th>Status</th><th>Acoes</th></tr></thead>
+              <thead><tr><th>Título</th><th>Cliente</th><th>Etapa</th><th>Situação</th><th>Próxima ação</th><th>Status</th><th>Ações</th></tr></thead>
               <tbody>
                 {opportunities.map((opportunity) => (
                   <tr key={opportunity.id}>
-                    <td data-label="Titulo">{opportunity.titulo}</td>
+                    <td data-label="Título">{opportunity.titulo}</td>
                     <td data-label="Cliente">{opportunity.clienteNome}</td>
                     <td data-label="Etapa">{opportunity.etapaNome}</td>
-                    <td data-label="Situacao">{opportunity.situacao}</td>
-                    <td data-label="Proxima acao">{opportunity.proximaAcao ? `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}` : <span className="badge danger-badge">sem proxima acao</span>}</td>
-                    <td data-label="Status"><span className="badge">{opportunity.status}</span></td>
+                    <td data-label="Situação">{opportunity.situacao}</td>
+                    <td data-label="Próxima ação">{opportunity.proximaAcao ? `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}` : <span className="badge badge-alert-danger">sem próxima ação</span>}</td>
+                    <td data-label="Status"><span className="badge">{formatOpportunityStatus(opportunity.status)}</span></td>
                     <td className="actions-cell"><Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir</Link></td>
                   </tr>
                 ))}
@@ -135,7 +143,7 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
             </table>
           </div>
         ) : (
-          <EmptyState title="Nenhuma oportunidade cadastrada" text="Crie uma oportunidade com responsavel, proxima acao e data." />
+          <EmptyState title="Nenhuma oportunidade cadastrada" text="Crie uma oportunidade com responsável, próxima ação e data." />
         )}
         {nextCursor ? (
           <button className="button secondary" type="button" disabled={isLoadingMore} onClick={() => void handleLoadMore()}>

@@ -23,16 +23,16 @@ export function InstallPrompt() {
       {showAndroidPrompt ? (
         <>
           <Download aria-hidden="true" size={18} />
-          <span>Instale o Artec CRM no seu aparelho para abrir mais rapido, mesmo em campo.</span>
+          <span>Instale o Artec CRM no seu aparelho para abrir mais rápido, mesmo em campo.</span>
           <button className="button primary" type="button" onClick={() => void promptInstall()}>Instalar</button>
         </>
       ) : (
         <>
           <Share aria-hidden="true" size={18} />
-          <span>Para instalar: toque em Compartilhar no Safari e escolha "Adicionar a Tela de Inicio".</span>
+          <span>Para instalar: toque em Compartilhar no Safari e escolha "Adicionar à Tela de Início".</span>
         </>
       )}
-      <button className="icon-button" type="button" aria-label="Dispensar convite de instalacao" onClick={dismiss}>
+      <button className="icon-button" type="button" aria-label="Dispensar convite de instalação" onClick={dismiss}>
         <X aria-hidden="true" />
       </button>
     </div>

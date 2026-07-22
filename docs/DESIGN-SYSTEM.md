@@ -3,6 +3,8 @@
 Atualizado em: 2026-07-22 (Fase 1 a 4 da refatoracao de frontend concluidas, `refactor/frontend-design-system`)
 
 > Este documento descreve o sistema **real**, implementado e em uso. A versao anterior descrevia uma stack aspiracional (shadcn/ui, Tailwind, Radix UI, TanStack Table, dnd-kit, Sonner) que nunca foi adotada — mantida aqui como nota historica para nao repetir o erro: **confirme a stack real antes de assumir bibliotecas**.
+>
+> A pasta `design-system/` na raiz do repositorio contem tokens genericos de terceiros (kit Material 3 / Apple HIG, provavelmente base do template Figma "Woorkroom"), organizados nesta sessao como material de referencia — **nao e a paleta de marca do Artec CRM nem substitui os tokens reais abaixo**. Ver `design-system/README.md`.
 
 ## 1. Stack real (confirmada em codigo, nao assumida)
 
@@ -54,7 +56,7 @@ Paleta derivada dos princípios da Seção 7 do prompt de refatoração (não ha
 
 ### Tipografia
 
-`--font-sans` (Inter com fallback de sistema), escala `--text-xs` (12px) a `--text-2xl` (28px), `--leading-tight`/`--leading-normal`, pesos `--weight-normal` (400) a `--weight-black` (800).
+`--font-sans` (Inter com fallback de sistema), escala `--text-2xs` (11px) a `--text-3xl` (40px, títulos/métricas de destaque), `--leading-tight`/`--leading-normal`, pesos `--weight-normal` (400) a `--weight-black` (800). Os extremos (`2xs`/`3xl`) foram adicionados na Fase 5 com base nos valores reais de `design-system/typography/` (kit de referência de terceiros — ver seção 1); todos os 42 valores de `font-size` que antes eram números soltos em `src/styles.css` agora referenciam esta escala (duas exceções aceitas: `14px` nos headers de coluna do Pipeline, sem par exato na escala e usadas em só 2 lugares).
 
 ### Espaçamento — escala 4/8
 
@@ -62,7 +64,7 @@ Paleta derivada dos princípios da Seção 7 do prompt de refatoração (não ha
 
 ### Radius
 
-`--radius-sm` (6px), `--radius-md` (8px, o mais usado), `--radius-lg` (12px), `--radius-full` (999px, badges/avatares).
+`--radius-sm` (6px), `--radius-md` (8px, o mais usado), `--radius-lg` (12px), `--radius-xl` (16px), `--radius-2xl` (28px, sheets/modais mobile), `--radius-full` (999px, badges/avatares). `xl`/`2xl` adicionados na Fase 5 com base em `design-system/spacing-shape/corner-radius-scale.tokens.json` (Corner/Large=16, Corner/Extra-large=28).
 
 ### Sombra
 
@@ -88,53 +90,56 @@ Paleta derivada dos princípios da Seção 7 do prompt de refatoração (não ha
 
 ## 4. Navegação
 
-A aplicação passou a ter roteamento real na Fase 1 (antes: SPA de URL única, sidebar com um item decorativo — ver `docs/DEVELOPMENT-STATUS.md`, seção "Fase 0"). Rotas atuais:
+Roteamento real desde a Fase 1, com code-splitting por rota (`React.lazy` + `Suspense`) desde a Fase 4. Rotas atuais, cada uma montando só o componente da sua superfície (não mais um monólito único — ver histórico em `docs/DEVELOPMENT-STATUS.md`, Fases 0/2.1–2.8):
 
 - `/central-comercial` (padrão/`/`)
 - `/pipeline`
-- `/clientes`
-- `/oportunidades`
+- `/clientes`, `/clientes/:id`
+- `/oportunidades`, `/oportunidades/:id`
 - `/proximas-acoes`
 - `/notificacoes`
-- `/configuracoes/integracoes/auvo` (somente `gestor`/`integrations:read`)
+- `/relatorios` (`reports:read`)
+- `/caixa-auvo` (`auvo_inbox:read`)
+- `/configuracoes/administracao` (`users:manage`)
+- `/configuracoes/integracoes/auvo` (`integrations:read`)
 
-**Estado transicional, registrado explicitamente**: todas as rotas acima hoje renderizam o mesmo conteúdo (o antigo componente monolítico `AuthenticatedApp`), com a navegação da Sidebar rolando até a seção correspondente (`scrollIntoView`) em vez de montar uma página isolada por rota. Isso dá URLs reais, navegáveis e com estado de "ativo" correto na Sidebar, sem exigir ainda a separação de estado/dados por rota — que é o trabalho da Fase 2 (extrair cada superfície com sua própria carga de dados). Ao final da Fase 2, cada rota deve montar apenas o componente da sua superfície, não a página inteira.
+`vercel.json` tem rewrite catch-all (`/(.*) -> /index.html`, exceto `/api/*`) para reload direto em produção.
 
-`vercel.json` recebeu um rewrite catch-all (`/(.*) -> /index.html`, exceto `/api/*`) para que essas rotas funcionem em produção com reload direto — sem isso, o roteamento client-side quebra em qualquer acesso direto a uma URL que não seja `/`.
-
-Itens de navegação incluem: busca global central, badge de notificação, avatar/e-mail do usuário, indicador de integração Auvo restrito a gestor.
+Itens de navegação: busca global central, badge de notificação, avatar/e-mail do usuário, hamburger de menu mobile (Sidebar vira drawer real abaixo de 767px, Fase 4), itens condicionados a permissão real do usuário.
 
 ## 5. Padrões de tela
 
 ### Central Comercial
 
-Resumo acionável, sem mural de gráficos. Prioriza listas curtas com botões diretos (ações vencidas, ações de hoje, orçamentos aguardando retorno, oportunidades sem próxima ação, oportunidades paradas, resumo comercial).
+Resumo acionável, sem mural de gráficos. Blocos de ação (vencidas, hoje, visitas), blocos de oportunidade (sem próxima ação, paradas, orçamentos aguardando retorno), notificações relevantes, resumo comercial. Filtros com chips removíveis individualmente (`.active-filter-chips`, Fase 5) além do "Limpar filtros" geral.
 
-### Listas (Clientes, Oportunidades)
+### Listas (Clientes, Oportunidades, Próximas Ações)
 
-Hoje são tabelas HTML densas com ações por linha e paginação por cursor ("Carregar mais"). Ainda sem alternativa em cards para mobile — pendência registrada para a Fase 2/3.
+Tabelas HTML densas com ações por linha e paginação por cursor ("Carregar mais"). Abaixo de 767px, `.table-wrap.mobile-cards` + `data-label` por célula transforma cada linha em um cartão (Fase 4) — aplicado em Clientes, Oportunidades e Próximas Ações; as demais tabelas do produto (motivos de perda, usuários, relatórios) mantêm rolagem horizontal interna segura.
 
 ### Pipeline/Funil
 
-Kanban por etapa (`PipelineBoard`), com seletor de etapa acessível (`<select>` com rótulo `sr-only`) como alternativa ao drag-and-drop.
+Kanban por etapa (`PipelineBoard`), com seletor de etapa acessível (`<select>` com rótulo `sr-only`) como alternativa ao drag-and-drop — decisão de escopo mantida na Fase 5 (drag-and-drop com paridade real de teclado/leitor de tela é escopo maior, registrado como próximo passo). Badge de "parada" (deal rotting) e badges de alerta forte (`.badge-alert-danger`) para "sem próxima ação"/"atrasada".
 
-### Formulários rápidos
+### Formulários rápidos e bottom sheet mobile
 
-Campos agrupados por significado, labels sempre visíveis (nunca só placeholder), validação com mensagem específica do domínio (ex.: "Defina a próxima ação e a data antes de manter esta oportunidade ativa.").
+Campos agrupados por significado, labels sempre visíveis, validação com mensagem específica do domínio. Placeholders têm contraste explícito mais fraco que valor preenchido (`input::placeholder`); campos com valor padrão pré-preenchido (não placeholder) mostram `.field-hint` explicando isso.
+
+`ActionOperationForm` (concluir/reagendar/cancelar próxima ação — o formulário mais reutilizado do produto) vira uma folha inferior (bottom sheet) abaixo de 767px: canto superior `--radius-2xl`, indicador "grabber", backdrop, foco automático no primeiro campo, fecha com Escape ou clique no backdrop (Fase 5, inspirado nos tokens de forma de dispositivo de `design-system/spacing-shape/`).
 
 ## 6. Componentes
 
 ### Componentes React reais (`src/components/`)
 
-- `layout/Sidebar.tsx` — navegação principal, itens reais por rota, permissão-consciente (item de Auvo só para quem tem `integrations:read`).
-- `ui/EmptyState.tsx`, `ui/Skeleton.tsx` (`LoadingPanels`) — feedback de vazio/carregamento, extraídos e reutilizáveis.
-- `PipelineBoard.tsx`, `AdminPanel.tsx`, `QuotesPanel.tsx`, `ReportsPanel.tsx`, `AuvoInboxPanel.tsx` — superfícies já componentizadas antes desta refatoração.
+- `layout/Sidebar.tsx`, `layout/Topbar.tsx`, `layout/AppLayout.tsx` — shell, navegação, drawer mobile.
+- `ui/EmptyState.tsx`, `ui/Skeleton.tsx` (`LoadingPanels`), `ui/NotificationList.tsx` — feedback reutilizável.
+- `ui/Button.tsx`, `ui/Badge.tsx` (Fase 5) — primeiros componentes-base reais com props de variante (`<Button variant="destructive">`, `<Badge tone="alert-danger">`), mapeando para as mesmas classes CSS já existentes (zero mudança visual). **Não é uma migração completa**: as ~40 ocorrências existentes de `<button className="button ...">`/`<span className="badge ...">` no resto do app ainda não foram convertidas para os novos componentes — trabalho mecânico registrado como próximo passo, de baixo risco por não alterar a saída visual (mesmas classes CSS por trás).
+- `feedback/OfflineBanner.tsx`, `feedback/InstallPrompt.tsx` — estado de rede e convite de instalação PWA (Fase 4).
+- `PipelineBoard.tsx`, `AdminPanel.tsx`, `QuotesPanel.tsx`, `ReportsPanel.tsx`, `AuvoInboxPanel.tsx` — superfícies de domínio.
 
-### Padrões CSS reutilizáveis (classe, não componente React ainda)
+### Padrões CSS reutilizáveis (classe, ainda não 100% convertidos para componente React)
 
-`.button` (`primary`/`secondary`/`ghost`/`destructive`, com estado `.loading` — spinner via `::after`, sem alterar largura), `.icon-button` (com badge de contagem), `.badge` (+ `.warning`/`.danger-badge`), `.panel`/`.state-panel` (card base, com `--shadow-sm`), `.empty-state`, `.skeleton`/`.skeleton-title`/`.skeleton-line`, `.alert`/`.danger-alert`, campos de formulário (`.compact-form input/select`, `.filter-grid input/select`), `.segmented-control` (filtros tipo abas).
-
-Extrair esses padrões CSS para componentes React com props de variante (`<Button variant="destructive" />` etc.) é trabalho natural da Fase 2, conforme cada superfície for reconstruída — não foi feito em bloco na Fase 1 para não introduzir uma camada de abstração nova sem que as telas que a usariam já tenham sido revisadas.
+`.button` (`primary`/`secondary`/`ghost`/`destructive`, `.loading`), `.icon-button`, `.badge` (+ `.warning`/`.danger-badge` para contextos de menor urgência, `.badge-alert-danger`/`.badge-alert-warning` para alertas fortes — Fase 5), `.panel`, `.empty-state`, `.skeleton`, `.alert`/`.danger-alert`, `.field-hint` (Fase 5), campos de formulário, `.segmented-control`, `.active-filter-chips` (Fase 5), `.dropdown-menu`/`.dropdown-menu-wrapper` (menu "Mais ações", Fase 5), `.action-operation`/`.action-operation-backdrop` (bottom sheet, Fase 5).
 
 ## 7. Acessibilidade
 
@@ -159,14 +164,16 @@ Não usar: confete, parallax, pulso contínuo, sino piscando, bounce.
 
 Português do Brasil, direto e humano. Preferir "Próxima ação", "Nova oportunidade", "Registrar follow-up", "Concluir ação", "Marcar como perdido", "Arquivar". Evitar jargão técnico, "workflow", "ticket", "deal". Nunca chamar valor aprovado de "receita" ou "faturamento".
 
-## 10. Pendências reais ao final da Fase 4 (refatoração concluída)
+## 10. Pendências reais após a Fase 5 (diagnóstico visual + refatoração drástica)
 
-Resolvidas ao longo das Fases 2–4 (não repetir aqui como pendência): o componente monolítico foi extraído por rota (Fase 2.1–2.8); Clientes/Oportunidades ganharam alternativa de cards no mobile (Fase 4); a Sidebar virou drawer real no mobile (Fase 4); PWA completo com manifest, ícones e service worker (Fase 4); code-splitting por rota (Fase 4).
+Resolvidas ao longo das Fases 2–5 (não repetir aqui como pendência): componente monolítico extraído por rota; Clientes/Oportunidades/Próximas Ações com cards no mobile; Sidebar em drawer real no mobile; PWA completo; code-splitting por rota; acentuação em praticamente 100% das strings de UI; vazamento de enum bruto (status/papel) traduzido; cor semântica forte em urgência/atraso/prioridade; hierarquia de botões da Caixa Auvo; ambiguidade de "sem dados" vs 0; contraste de placeholder; severidade no contador de pendentes do Auvo; filtros com chips removíveis; escala de radius/tipografia estendida e 42 valores de `font-size` soltos tokenizados; bottom sheet mobile no formulário mais reutilizado do produto.
 
 Pendências reais que continuam em aberto, por escopo ou por exigirem decisão/ação externa:
 
-- Sem componente `Toast`/`Dialog`/`ConfirmAction` dedicado — feedback ainda via `alert`/`window.confirm`; funcionou em todos os fluxos reconstruídos, sem necessidade comprovada de trocar.
-- Tabelas fora de Clientes/Oportunidades (motivos de perda, usuários, relatórios) ainda usam rolagem horizontal interna no mobile em vez de cards — seguro (não gera overflow de página), mas não é o padrão ideal da seção 10.5.
-- Bloqueio proativo de ação de escrita quando offline (hoje reativo: a ação falha e o erro aparece, não é bloqueada preventivamente antes do clique).
+- Migração completa de `<button className="button ...">`/`<span className="badge ...">` para os componentes `Button`/`Badge` reais (Fase 5 criou os componentes mas não migrou todas as ~40 ocorrências existentes — mudança mecânica, sem risco visual, registrada como próximo passo).
+- Drag-and-drop no kanban do Funil — mantido o `<select>` acessível como decisão de escopo; implementar arrastar-e-soltar com paridade real de teclado/leitor de tela (padrão WAI-ARIA APG) é trabalho maior que o resto desta fase.
+- Sem componente `Toast`/`Dialog`/`ConfirmAction` dedicado — feedback ainda via `alert`/`window.confirm`.
+- Tabelas fora de Clientes/Oportunidades/Próximas Ações (motivos de perda, usuários, relatórios) ainda usam rolagem horizontal interna no mobile em vez de cards — seguro, mas não é o padrão ideal da seção 10.5.
+- Bloqueio proativo de ação de escrita quando offline (hoje reativo).
 - Revisão manual com leitor de tela real e zoom 200% (`docs/ACCESSIBILITY-AUDIT.md`, seção 4).
-- Sem PWA (manifest, service worker, ícones) — Fase 4.
+- Limite de severidade do contador "Pendentes" do Auvo (50) é provisório, a confirmar com a Artec.

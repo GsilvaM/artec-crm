@@ -4,13 +4,13 @@ import type { Notification } from "../../domain/crm";
 
 function formatNotificationSeverity(severity: Notification["severity"]): string {
   if (severity === "urgent") return "Urgente";
-  if (severity === "attention") return "Atencao";
+  if (severity === "attention") return "Atenção";
   return "Informativa";
 }
 
 export function formatNotificationStatus(status: Notification["status"] | "active"): string {
   if (status === "active") return "Pendentes";
-  if (status === "unread") return "Nao lida";
+  if (status === "unread") return "Não lida";
   if (status === "read") return "Lida";
   if (status === "archived") return "Arquivada";
   return "Resolvida";
@@ -23,7 +23,7 @@ export function NotificationList({ items, onRead, onArchive, onSnooze }: {
   onSnooze: (id: string) => void | Promise<void>;
 }) {
   if (items.length === 0) {
-    return <EmptyState title="Nenhuma notificacao pendente" text="Voce esta em dia." />;
+    return <EmptyState title="Nenhuma notificação pendente" text="Você está em dia." />;
   }
 
   return (

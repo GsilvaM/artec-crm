@@ -13,14 +13,14 @@ const BASE_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Funil", path: "/pipeline", icon: Workflow },
   { label: "Clientes", path: "/clientes", icon: Users },
   { label: "Oportunidades", path: "/oportunidades", icon: Briefcase },
-  { label: "Proximas acoes", path: "/proximas-acoes", icon: ListChecks },
-  { label: "Notificacoes", path: "/notificacoes", icon: Bell },
+  { label: "Próximas ações", path: "/proximas-acoes", icon: ListChecks },
+  { label: "Notificações", path: "/notificacoes", icon: Bell },
 ];
 
-const REPORTS_NAV_ITEM: SidebarNavItem = { label: "Relatorios", path: "/relatorios", icon: BarChart3 };
+const REPORTS_NAV_ITEM: SidebarNavItem = { label: "Relatórios", path: "/relatorios", icon: BarChart3 };
 const AUVO_INBOX_NAV_ITEM: SidebarNavItem = { label: "Caixa Auvo", path: "/caixa-auvo", icon: Inbox };
-const ADMIN_NAV_ITEM: SidebarNavItem = { label: "Administracao", path: "/configuracoes/administracao", icon: ShieldCheck };
-const INTEGRATIONS_NAV_ITEM: SidebarNavItem = { label: "Integracao Auvo", path: "/configuracoes/integracoes/auvo", icon: Settings2 };
+const ADMIN_NAV_ITEM: SidebarNavItem = { label: "Administração", path: "/configuracoes/administracao", icon: ShieldCheck };
+const INTEGRATIONS_NAV_ITEM: SidebarNavItem = { label: "Integração Auvo", path: "/configuracoes/integracoes/auvo", icon: Settings2 };
 
 export function Sidebar({ canViewReports, canManageAuvoInbox, canManageUsers, canManageIntegrations, isMobileOpen, onCloseMobile }: {
   canViewReports: boolean;
@@ -55,7 +55,7 @@ export function Sidebar({ canViewReports, canManageAuvoInbox, canManageUsers, ca
   return (
     <>
       {isMobileOpen ? <div className="sidebar-backdrop" role="presentation" onClick={onCloseMobile} /> : null}
-      <aside className={isMobileOpen ? "sidebar is-open" : "sidebar"} aria-label="Navegacao principal">
+      <aside className={isMobileOpen ? "sidebar is-open" : "sidebar"} aria-label="Navegação principal">
         <div className="brand-row">
           <div className="brand-mark">A</div>
           <div>

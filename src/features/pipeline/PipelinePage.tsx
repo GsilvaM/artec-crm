@@ -21,7 +21,7 @@ export function PipelinePage() {
       setSnapshot(data);
       setMobileStageId((current) => current ?? data.stages.slice().sort((a, b) => a.ordem - b.ordem)[0]?.id ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar o funil.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar o funil.");
     } finally {
       setIsLoading(false);
     }
@@ -37,7 +37,7 @@ export function PipelinePage() {
       await updateOpportunity(opportunityId, { etapaId });
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel mover a oportunidade de etapa.");
+      setError(err instanceof Error ? err.message : "Não foi possível mover a oportunidade de etapa.");
     }
   }
 

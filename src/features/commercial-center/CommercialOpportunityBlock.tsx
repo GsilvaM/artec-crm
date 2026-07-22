@@ -27,7 +27,7 @@ export function CommercialOpportunityBlock({ title, emptyText, items, onOpen }: 
             </li>
           ))}
         </ul>
-      ) : <EmptyState title={emptyText} text="A Central nao encontrou pendencias neste bloco." />}
+      ) : <EmptyState title={emptyText} text="A Central não encontrou pendências neste bloco." />}
     </article>
   );
 }

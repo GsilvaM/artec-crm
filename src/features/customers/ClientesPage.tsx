@@ -22,7 +22,7 @@ export function ClientesPage() {
       setCustomers(page.customers);
       setNextCursor(page.nextCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar os clientes.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar os clientes.");
     } finally {
       setIsLoading(false);
     }
@@ -41,14 +41,14 @@ export function ClientesPage() {
       setCustomers((current) => [...current, ...page.customers]);
       setNextCursor(page.nextCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar mais clientes.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar mais clientes.");
     } finally {
       setIsLoadingMore(false);
     }
   }
 
   async function handleArchive(customer: Customer) {
-    if (!window.confirm(`Arquivar ${customer.nome}? O historico sera preservado.`)) return;
+    if (!window.confirm(`Arquivar ${customer.nome}? O histórico será preservado.`)) return;
     await archiveCustomer(customer.id);
     await refresh();
   }
@@ -61,7 +61,7 @@ export function ClientesPage() {
       setForm({ nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" });
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel salvar o cliente.");
+      setError(err instanceof Error ? err.message : "Não foi possível salvar o cliente.");
     }
   }
 
@@ -114,11 +114,11 @@ export function ClientesPage() {
         ) : activeCustomers.length ? (
           <div className="table-wrap mobile-cards">
             <table>
-              <thead><tr><th>Nome</th><th>Telefone</th><th>Empresa</th><th>Oportunidades</th><th>Acoes</th></tr></thead>
+              <thead><tr><th>Nome</th><th>Telefone</th><th>Empresa</th><th>Oportunidades</th><th>Ações</th></tr></thead>
               <tbody>
                 {activeCustomers.map((customer) => (
                   <tr key={customer.id}>
-                    <td data-label="Nome">{customer.nome}{customer.duplicatePhoneCustomerIds.length ? <span className="badge warning">possivel duplicidade</span> : null}</td>
+                    <td data-label="Nome">{customer.nome}{customer.duplicatePhoneCustomerIds.length ? <span className="badge warning">possível duplicidade</span> : null}</td>
                     <td data-label="Telefone">{customer.telefone ?? "-"}</td>
                     <td data-label="Empresa">{customer.empresa ?? "-"}</td>
                     <td data-label="Oportunidades">{customer.opportunitiesCount}</td>

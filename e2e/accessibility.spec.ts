@@ -31,7 +31,7 @@ test.describe("WCAG automated audit", () => {
 
   test("proximas acoes page has no automatically detectable violations", async ({ page }) => {
     await loginAsHomologationGestor(page);
-    await page.getByRole("link", { name: "Proximas acoes" }).click();
+    await page.getByRole("link", { name: "Próximas ações" }).click();
     await page.waitForURL(/\/proximas-acoes$/);
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
@@ -61,7 +61,7 @@ test.describe("WCAG automated audit", () => {
 
   test("notificacoes page has no automatically detectable violations", async ({ page }) => {
     await loginAsHomologationGestor(page);
-    await page.getByRole("link", { name: "Notificacoes" }).click();
+    await page.getByRole("link", { name: "Notificações" }).click();
     await page.waitForURL(/\/notificacoes$/);
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
@@ -78,7 +78,7 @@ test.describe("WCAG automated audit", () => {
 
   test("relatorios page has no automatically detectable violations", async ({ page }) => {
     await loginAsHomologationGestor(page);
-    await page.getByRole("link", { name: "Relatorios" }).click();
+    await page.getByRole("link", { name: "Relatórios" }).click();
     await page.waitForURL(/\/relatorios$/);
     await page.waitForSelector("text=Oportunidades por etapa");
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
@@ -87,7 +87,7 @@ test.describe("WCAG automated audit", () => {
 
   test("administracao page has no automatically detectable violations", async ({ page }) => {
     await loginAsHomologationGestor(page);
-    await page.getByRole("link", { name: "Administracao" }).click();
+    await page.getByRole("link", { name: "Administração" }).click();
     await page.waitForURL(/\/configuracoes\/administracao$/);
     await page.waitForSelector("section.admin-panel");
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
@@ -105,7 +105,7 @@ test.describe("WCAG automated audit", () => {
 
   test("integracao auvo page has no automatically detectable violations", async ({ page }) => {
     await loginAsHomologationGestor(page);
-    await page.getByRole("link", { name: "Integracao Auvo" }).click();
+    await page.getByRole("link", { name: "Integração Auvo" }).click();
     await page.waitForURL(/\/configuracoes\/integracoes\/auvo$/);
     await page.waitForSelector("section.auvo-admin");
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();

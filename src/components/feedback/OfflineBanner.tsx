@@ -8,7 +8,7 @@ export function OfflineBanner() {
   return (
     <div className="offline-banner" role="status">
       <WifiOff aria-hidden="true" size={16} />
-      Sem conexao. Consultas mostram o ultimo dado carregado; acoes como aprovar, perder ou concluir follow-up podem falhar ate a conexao voltar.
+      Sem conexão. Consultas mostram o último dado carregado; ações como aprovar, perder ou concluir follow-up podem falhar até a conexão voltar.
     </div>
   );
 }

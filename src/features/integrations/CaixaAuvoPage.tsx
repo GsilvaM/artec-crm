@@ -13,7 +13,7 @@ export function CaixaAuvoPage({ currentUserId }: { currentUserId: string }) {
         const snapshot = await loadCrmSnapshot();
         setCustomers(snapshot.customers.filter((customer) => !customer.archivedAt));
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Nao foi possivel carregar os clientes para triagem.");
+        setError(err instanceof Error ? err.message : "Não foi possível carregar os clientes para triagem.");
       }
     })();
   }, []);
@@ -22,7 +22,7 @@ export function CaixaAuvoPage({ currentUserId }: { currentUserId: string }) {
     <>
       <section className="page-heading">
         <div>
-          <p className="eyebrow">Integracao Auvo</p>
+          <p className="eyebrow">Integração Auvo</p>
           <h1>Caixa de Entrada</h1>
         </div>
       </section>

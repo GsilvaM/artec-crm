@@ -23,11 +23,11 @@ test("creates a customer, creates an opportunity for it, and sees it on the pipe
 
   const opportunityForm = page.locator("form", { has: page.getByRole("heading", { name: "Nova oportunidade" }) });
   await opportunityForm.getByLabel("Cliente").selectOption({ label: customerName });
-  await opportunityForm.getByLabel("Titulo").fill(opportunityTitle);
+  await opportunityForm.getByLabel("Título").fill(opportunityTitle);
   await opportunityForm.getByLabel("Tipo de demanda").fill("instalacao");
-  await opportunityForm.getByLabel("Situacao").fill("em andamento");
-  await opportunityForm.getByLabel("Proxima acao", { exact: true }).fill("Ligar para o cliente");
-  await opportunityForm.getByLabel("Data da proxima acao").fill("2026-08-01T10:00");
+  await opportunityForm.getByLabel("Situação").fill("em andamento");
+  await opportunityForm.getByLabel("Próxima ação", { exact: true }).fill("Ligar para o cliente");
+  await opportunityForm.getByLabel("Data da próxima ação").fill("2026-08-01T10:00");
   await opportunityForm.getByRole("button", { name: /Salvar oportunidade/i }).click();
   await expect(page.locator("#oportunidades-section").getByText(opportunityTitle)).toBeVisible({ timeout: 15_000 });
 

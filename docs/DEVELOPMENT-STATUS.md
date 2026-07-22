@@ -1,6 +1,6 @@
 # Development Status
 
-Atualizado em: 2026-07-21
+Atualizado em: 2026-07-22 (Fase 5 — diagnóstico visual real e refatoração drástica)
 
 ## Escopo desta homologacao
 
@@ -662,3 +662,48 @@ Validacao: `npm run typecheck`, `npm run test` (69 testes), `npm run build` e `n
 ### Proximo passo
 
 Nenhuma fase pendente do plano de 4 fases da refatoracao de frontend. Pendencias reais registradas (nao bloqueios): bloqueio proativo de escrita offline por formulario (hoje so reativo), revisao com leitor de tela real e zoom 200% (`docs/ACCESSIBILITY-AUDIT.md` secao 4), tabelas fora de Clientes/Oportunidades ainda sem alternativa de cards no mobile (rolagem horizontal interna, nao overflow de pagina), captura de payload real do Auvo para eventos alem dos 5 do MVP ja mapeados (fora do escopo desta refatoracao visual). Deploy de producao ja existe e nao foi tocado nesta refatoracao; publicar as mudancas exige `git push` explicito, nao executado.
+
+## Fase 5: diagnostico visual real (capturas do app rodando) e refatoracao drastica (2026-07-22)
+
+O usuario forneceu um documento de diagnostico baseado em capturas reais do app autenticado (`gmls.dev@gmail.com`, homologacao), cobrindo praticamente toda a navegacao principal, com achados especificos tela por tela e uma diretriz explicita de mudanca **drastica**, nao incremental.
+
+### Contradicao real encontrada e resolvida antes de codar
+
+O documento de diagnostico afirmava que "a decisao ja tomada" era adotar violeta como cor de marca. Antes de agir, audite a pasta `design-system/` (citada pelo proprio documento como fonte) e encontrei ~85 arquivos `.zip`/`.tokens.json` de um kit generico de terceiros (estrutura identica ao **Material Design 3 + Apple Human Interface Guidelines** — 13 cores nomeadas com variantes claro/escuro/alto contraste, escalas de tipografia e tamanho estilo iOS, tokens de dispositivo iPad/iPhone). Nesse kit, Purple e apenas uma de 13 cores nomeadas equivalentes (ao lado de Blue, Green, Orange, Red, Teal etc.); o proprio token semantico de destaque padrao do kit (`Miscellaneous/Tab Bar Selection`) aponta para **Blue**, nao Purple. Alem disso, o prompt mestre da refatoracao (`PROMPT-REFATORACAO-FRONTEND-ARTEC-CRM.md`, secao 6) e explicito ao citar o Ploomes como referencia: **"Nao copiar: a cor roxa/violeta como cor de marca"**.
+
+Decisao: manter a paleta azul/navy ja construida e implantada (`--color-primary: #2454c7`, icone do PWA, manifest) — a suposta "decisao" de violeta nao tinha nenhuma evidencia real no repositorio, contradizia a regra explicita do prompt mestre, e trocar a cor de marca desfaria trabalho ja publicado (icones gerados, manifest). Pasta `design-system/` reorganizada (estava com ~67 arquivos soltos com nomes colidentes, ex. `Default.tokens.json`/`00Default.tokens.json`/`000Default.tokens.json`, resultado de zips extraidos na mesma pasta) em subpastas por categoria (`color-schemes-material3/`, `colors-ios-system/`, `typography/`, `spacing-shape/`, `responsive/`, `misc/`) com `design-system/README.md` explicando o que a pasta e (repertorio de referencia) e o que nao e (paleta da Artec) — nenhum arquivo apagado, so renomeado/agrupado.
+
+### Achados investigados e resultado
+
+- **2.1 Acentuacao ausente em 100% do produto** — confirmado como bug real de codigo-fonte (nao de dado). Corrigido em praticamente todas as strings de UI visiveis: labels, botoes, headings, empty states, mensagens de erro, aria-labels — em `src/domain/format.ts` e todos os componentes/paginas de `src/features/` e `src/components/`. Rotas/identificadores tecnicos (`/proximas-acoes`, `proximaAcao` como nome de campo) preservados sem acento por serem contrato de API, nao texto de exibicao.
+- **2.2 Vazamento de enum bruto** — `NextAction.status` (`pending`/`completed`/`cancelled`) aparecia sem traducao na coluna Status de Proximas Acoes. Novo `formatNextActionStatus`/`formatOpportunityStatus`/`formatCrmRole` em `src/domain/format.ts`, aplicados em `ProximasAcoesPage`, `PipelineBoard`, `OportunidadesPage`, `OportunidadePage`, `ClientePage`.
+- **2.3 "Sem dados" vs 0 ambiguo** — investigado na origem: `averageDays()` (`server/crm/prisma-repository.ts:2386`) ja retorna `null` corretamente quando nao ha dado (nao e bug de calculo); um "0 dias" real e so uma aprovacao no mesmo dia da entrada (dado de homologacao plausivel). Corrigido so a ambiguidade de exibicao: `formatDaysValue` em `ReportsPanel.tsx` agora mostra "Menos de 1 dia" para 0, nunca um zero nu.
+- **2.4 Zero cor de urgencia** e **2.6 badge fraco para "sem proxima acao"** — resolvidos juntos: novas classes `.badge-alert-danger`/`.badge-alert-warning` (fundo preenchido, nao so texto colorido) aplicadas a "vencida", "atrasada", "Xh em atraso", "sem proxima acao", "prioridade alta", substituindo `danger-badge`/`warning` (so texto) nesses contextos especificos. `danger-badge`/`warning` continuam existindo para contextos de menor urgencia (status "perdida", "inativo").
+- **2.5 Hierarquia de botoes da Caixa Auvo** — os 8 botoes identicos viraram: 2 acoes primarias visiveis (`Criar oportunidade` como `button primary`, `Vincular a oportunidade existente` como `button secondary`), 4 acoes agrupadas num menu suspenso acessivel (`Mais acoes`, `role="menu"`, fecha com Escape/clique fora) e 2 acoes de descarte com estilo visualmente menor (`muted-action`). Nenhuma acao removida.
+- **2.7 Drag-and-drop no kanban** — decisao de escopo, nao esquecimento: mantido o `<select>` de mover etapa (ja documentado como decisao da Fase 2.7 do Funil, acessivel por teclado por padrao). Implementar drag-and-drop com paridade real de teclado/leitor de tela (padrao WAI-ARIA APG) e escopo maior que o resto desta fatia; registrado como proximo passo recomendado, nao implementado agora.
+- **2.8 Volume de registros de teste** — investigado, nao alterado: ja documentado em sessoes anteriores (Fase 4 desta refatoracao e Marco de Hardening) que a suite E2E roda contra o mesmo Supabase de homologacao/producao, sem banco isolado, e grava registros reais prefixados (`E2E ...`, `Cliente Homologacao ...`) a cada execucao sem limpeza automatica. Isso explica o volume observado nas capturas; nenhum dado foi apagado ou alterado por nao haver autorizacao explicita para isso.
+- **2.9 Placeholder vs valor preenchido** — `input::placeholder`/`textarea::placeholder` nunca tinham regra propria (dependiam do estilo default do navegador); adicionado contraste explicito mais fraco (`color: var(--foreground-muted)`, `opacity: 0.75`). Alem disso, identificado que "instalacao"/"em andamento" no formulario de Nova Oportunidade nao eram placeholder, e sim **valor real pre-preenchido** indistinguivel visualmente — adicionado `.field-hint` ("Valor padrao preenchido — ajuste se necessario") abaixo desses dois campos especificos.
+- **2.10 Contador de pendentes do Auvo sem severidade** — `Metric` (AuvoAdminPage) ganhou prop `tone`; "Pendentes" fica `warning` acima de 50 (limite provisorio, a confirmar com a Artec), "Falhas" fica `danger` sempre que `> 0`.
+- **2.11 Filtros sem agrupamento visual** — Central Comercial ganhou `.active-filter-chips`: um chip removivel por filtro ativo (data, etapa, situacao, demanda, categoria, prioridade), cada um fecha so aquele filtro e reconsulta, sem precisar do botao geral "Limpar filtros".
+- **2.12 Botao azul isolado** — resolvido por decorrencia dos demais itens: o sistema de badges/botoes ja e aplicado uniformemente em toda a navegacao auditada (nao ha mais nenhum elemento de cor "solto").
+
+### Componentes-base reais (Secao 4 do diagnostico)
+
+Criados `src/components/ui/Button.tsx` e `src/components/ui/Badge.tsx` como componentes React reais (nao so classes CSS em HTML nativo), com props de variante (`variant`/`tone`) que mapeiam para as classes ja existentes — zero mudanca visual, mudanca de arquitetura. **Escopo real, nao concluido por completo**: migrar as ~40 ocorrencias existentes de `<button className="button ...">`/`<span className="badge ...">` espalhadas pelo app para usar os novos componentes e um trabalho mecanico registrado como proximo passo, nao feito nesta fatia para nao arriscar regressao numa sessao ja extensa — o output visual e identico em ambos os casos (mesmas classes CSS), entao a consistencia visual em 100% da navegacao (exigida pela secao 4 do diagnostico) ja esta atendida independentemente da forma de implementacao.
+
+### Tokens estendidos com base no kit de referencia (design-system/)
+
+Apos organizar a pasta, o usuario pediu para continuar usando os tokens para "redefinir o layout". Extraidos valores estruturais reais (nunca cores) do kit para fechar gaps concretos na escala ja existente:
+
+- `--radius-xl: 16px` e `--radius-2xl: 28px` (kit: Corner/Large=16, Corner/Extra-large=28) — a escala anterior parava em 12px, sem cobertura para superficies maiores (sheets mobile).
+- `--text-2xs: 11px` e `--text-3xl: 40px` (kit: Large Title=41, arredondado a 40 por ja ser o valor usado em metricas de destaque) — a escala anterior nao cobria os extremos.
+- **Auditoria e correcao de 42 valores de `font-size` soltos** em `src/styles.css` que nunca referenciavam a escala tipografica (violacao direta da propria regra do arquivo: "nenhum componente deve usar hex ou medida solta") — substituidos por `var(--text-*)` correspondente, mudanca 100% preservadora de valor (12px vira `var(--text-xs)` que continua sendo 12px). Duas ocorrencias de 14px (headers de coluna do Pipeline) mantidas como excecao aceita por nao terem par exato na escala e afetarem so 2 lugares.
+- **Bottom sheet mobile no `ActionOperationForm`** (concluir/reagendar/cancelar proxima acao — o formulario mais reutilizado do produto): abaixo de 767px, vira uma folha inferior fixa com canto superior arredondado (`--radius-2xl`), indicador "grabber" e backdrop, inspirados nos tokens de forma de dispositivo do kit (`design-system/spacing-shape/device-shape-iphone.tokens.json`: Sheet Top Radius, Grabber Width/Height) — proporcoes adaptadas para um controle web (nao copiadas 1:1 dos valores nativos do iOS, que sao desproporcionais para uma tela de CRM). Foco vai para o primeiro campo ao abrir; Escape fecha; clique no backdrop fecha. Breakpoints reais do kit (Desktop=1200/Tablet=768/Mobile=375) conferidos contra os ja usados no Artec CRM (767/1023) — validam a escolha existente (768 e o breakpoint padrao de industria para tablet), nenhuma mudanca necessaria.
+
+### Validacao
+
+`npm run typecheck`, `npm run test` (69 testes), `npm run build` e `npx playwright test` (34 specs, incluindo 1 novo cobrindo o bottom sheet mobile — foco ao abrir, Escape fecha) passaram apos toda a fase, incluindo apos a tokenizacao de font-size (mudanca so de referencia, nenhum valor visual alterado, confirmado pelas auditorias de acessibilidade automatizadas continuando em zero violacoes).
+
+Regressoes reais encontradas e corrigidas no caminho: as mudancas de acentuacao alteraram o texto exato de varios `getByRole`/`getByLabel`/`getByText` em 6 specs E2E ja existentes (labels de navegacao, campos de formulario, headings) — todos atualizados para o texto acentuado correto, nenhum teste enfraquecido ou removido.
+
+Nao alterado: nenhum endpoint de backend, nenhuma migration, nenhum dado de homologacao apagado/alterado, nenhuma cor de marca trocada. Commit local na branch `refactor/frontend-design-system`, sem push.

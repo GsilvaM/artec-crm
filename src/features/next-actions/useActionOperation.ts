@@ -86,7 +86,7 @@ export function useActionOperation(currentUserId: string, onSuccess: () => void 
       : null;
 
     if (requiresReplacement && mode !== "postpone" && (!operation.nextTitle.trim() || !operation.nextDueAt)) {
-      setError("Defina a proxima acao antes de concluir esta atividade.");
+      setError("Defina a próxima ação antes de concluir esta atividade.");
       return;
     }
 
@@ -101,7 +101,7 @@ export function useActionOperation(currentUserId: string, onSuccess: () => void 
       close();
       await onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel atualizar a proxima acao.");
+      setError(err instanceof Error ? err.message : "Não foi possível atualizar a próxima ação.");
     }
   }
 

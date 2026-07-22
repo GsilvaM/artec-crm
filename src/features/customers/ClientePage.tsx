@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
-import { formatActivityType, formatDateTime } from "../../domain/format";
+import { formatActivityType, formatDateTime, formatOpportunityStatus } from "../../domain/format";
 import {
   archiveCustomer,
   createActivity,
@@ -47,7 +47,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       setNextActions(actionList);
       setActivities(activityList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar o cliente.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar o cliente.");
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +63,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
   }
 
   async function handleArchive() {
-    if (!window.confirm(`Arquivar ${customer!.nome}? O historico sera preservado.`)) return;
+    if (!window.confirm(`Arquivar ${customer!.nome}? O histórico será preservado.`)) return;
     await archiveCustomer(customer!.id);
     navigate("/clientes");
   }
@@ -77,7 +77,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       setActivityForm({ ...activityForm, description: "" });
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel registrar a atividade.");
+      setError(err instanceof Error ? err.message : "Não foi possível registrar a atividade.");
     }
   }
 
@@ -90,7 +90,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       setActionForm({ title: "", dueAt: "" });
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel criar a proxima acao.");
+      setError(err instanceof Error ? err.message : "Não foi possível criar a próxima ação.");
     }
   }
 
@@ -110,12 +110,12 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
 
       {customer.duplicatePhoneCustomerIds.length ? (
-        <div className="alert" role="status">Este telefone tambem aparece em {customer.duplicatePhoneCustomerIds.length} outro(s) cadastro(s) — verifique possivel duplicidade.</div>
+        <div className="alert" role="status">Este telefone também aparece em {customer.duplicatePhoneCustomerIds.length} outro(s) cadastro(s) — verifique possível duplicidade.</div>
       ) : null}
 
-      <section className="panel" aria-label="Identificacao">
+      <section className="panel" aria-label="Identificação">
         <dl className="detail-list">
-          <div><dt>Tipo</dt><dd>{customer.tipoPessoa === "fisica" ? "Pessoa fisica" : "Pessoa juridica"}</dd></div>
+          <div><dt>Tipo</dt><dd>{customer.tipoPessoa === "fisica" ? "Pessoa física" : "Pessoa jurídica"}</dd></div>
           <div><dt>Telefone</dt><dd>{customer.telefone ?? "-"}</dd></div>
           <div><dt>E-mail</dt><dd>{customer.email ?? "-"}</dd></div>
           <div><dt>Empresa</dt><dd>{customer.empresa ?? "-"}</dd></div>
@@ -127,16 +127,16 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       <section className="data-section" aria-label="Oportunidades relacionadas">
         <h2>Oportunidades ({opportunities.length})</h2>
         {opportunities.length ? (
-          <div className="table-wrap">
+          <div className="table-wrap mobile-cards">
             <table>
-              <thead><tr><th>Titulo</th><th>Etapa</th><th>Situacao</th><th>Status</th><th>Acoes</th></tr></thead>
+              <thead><tr><th>Título</th><th>Etapa</th><th>Situação</th><th>Status</th><th>Ações</th></tr></thead>
               <tbody>
                 {opportunities.map((opportunity) => (
                   <tr key={opportunity.id}>
-                    <td>{opportunity.titulo}</td>
-                    <td>{opportunity.etapaNome}</td>
-                    <td>{opportunity.situacao}</td>
-                    <td><span className="badge">{opportunity.status}</span></td>
+                    <td data-label="Título">{opportunity.titulo}</td>
+                    <td data-label="Etapa">{opportunity.etapaNome}</td>
+                    <td data-label="Situação">{opportunity.situacao}</td>
+                    <td data-label="Status"><span className="badge">{formatOpportunityStatus(opportunity.status)}</span></td>
                     <td className="actions-cell"><Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir</Link></td>
                   </tr>
                 ))}
@@ -144,14 +144,14 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
             </table>
           </div>
         ) : (
-          <EmptyState title="Nenhuma oportunidade" text="Este cliente ainda nao tem oportunidades comerciais registradas." />
+          <EmptyState title="Nenhuma oportunidade" text="Este cliente ainda não tem oportunidades comerciais registradas." />
         )}
       </section>
 
-      <section className="data-section" aria-label="Proximas acoes">
-        <h2>Proximas acoes pendentes ({nextActions.length})</h2>
+      <section className="data-section" aria-label="Próximas ações">
+        <h2>Próximas ações pendentes ({nextActions.length})</h2>
         <form className="admin-inline-form" onSubmit={handleCreateAction}>
-          <label>Nova acao de atendimento<input value={actionForm.title} onChange={(event) => setActionForm({ ...actionForm, title: event.target.value })} placeholder="ex: retornar sobre garantia" /></label>
+          <label>Nova ação de atendimento<input value={actionForm.title} onChange={(event) => setActionForm({ ...actionForm, title: event.target.value })} placeholder="ex: retornar sobre garantia" /></label>
           <label>Data<input type="datetime-local" value={actionForm.dueAt} onChange={(event) => setActionForm({ ...actionForm, dueAt: event.target.value })} /></label>
           <button className="button secondary" type="submit">Criar</button>
         </form>
@@ -168,21 +168,21 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
             ))}
           </ul>
         ) : (
-          <EmptyState title="Nenhuma acao pendente" text="Crie uma acao para acompanhar este cliente." />
+          <EmptyState title="Nenhuma ação pendente" text="Crie uma ação para acompanhar este cliente." />
         )}
       </section>
 
-      <section className="data-section" aria-label="Garantia, suporte e pos-venda">
-        <h2>Garantia, suporte e pos-venda</h2>
+      <section className="data-section" aria-label="Garantia, suporte e pós-venda">
+        <h2>Garantia, suporte e pós-venda</h2>
         <form className="admin-inline-form" onSubmit={handleRegisterActivity}>
           <label>Tipo
             <select value={activityForm.type} onChange={(event) => setActivityForm({ ...activityForm, type: event.target.value as Activity["type"] })}>
               <option value="warranty">Garantia</option>
               <option value="support">Suporte</option>
-              <option value="after_sales">Pos-venda</option>
+              <option value="after_sales">Pós-venda</option>
             </select>
           </label>
-          <label>Descricao<input value={activityForm.description} onChange={(event) => setActivityForm({ ...activityForm, description: event.target.value })} placeholder="Descreva o atendimento" /></label>
+          <label>Descrição<input value={activityForm.description} onChange={(event) => setActivityForm({ ...activityForm, description: event.target.value })} placeholder="Descreva o atendimento" /></label>
           <button className="button secondary" type="submit">Registrar</button>
         </form>
         {supportActivities.length ? (
@@ -196,7 +196,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
             ))}
           </ol>
         ) : (
-          <EmptyState title="Nenhum registro de garantia, suporte ou pos-venda" text="Registre um atendimento tecnico quando ocorrer." />
+          <EmptyState title="Nenhum registro de garantia, suporte ou pós-venda" text="Registre um atendimento técnico quando ocorrer." />
         )}
       </section>
 
@@ -213,7 +213,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
             ))}
           </ol>
         ) : (
-          <EmptyState title="Nenhuma atividade comercial" text="O historico comercial aparece aqui conforme as oportunidades avancam." />
+          <EmptyState title="Nenhuma atividade comercial" text="O histórico comercial aparece aqui conforme as oportunidades avançam." />
         )}
       </section>
     </>

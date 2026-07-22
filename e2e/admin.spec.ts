@@ -3,11 +3,11 @@ import { loginAsHomologationGestor } from "./support/auth";
 
 test("gestor sees the administration panel with stages, loss reasons and users", async ({ page }) => {
   await loginAsHomologationGestor(page);
-  await page.getByRole("link", { name: "Administracao" }).click();
+  await page.getByRole("link", { name: "Administração" }).click();
   await page.waitForURL(/\/configuracoes\/administracao$/);
   const admin = page.locator("section.admin-panel");
   await expect(admin).toBeVisible();
   await expect(admin.getByRole("heading", { name: "Etapas do funil" })).toBeVisible();
   await expect(admin.getByRole("heading", { name: "Motivos de perda", exact: true })).toBeVisible();
-  await expect(admin.getByRole("heading", { name: "Usuarios e acesso ao CRM" })).toBeVisible();
+  await expect(admin.getByRole("heading", { name: "Usuários e acesso ao CRM" })).toBeVisible();
 });

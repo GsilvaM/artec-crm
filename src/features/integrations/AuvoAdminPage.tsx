@@ -14,6 +14,11 @@ import {
   type AuvoWebhookStatus,
 } from "../../domain/crm";
 
+// Limite provisorio para sinalizar fila de pendentes fora do normal — achado
+// real de diagnostico visual (contador sem nenhuma indicacao de severidade).
+// Ajustar quando a Artec definir um limite operacional real.
+const PENDING_COUNT_WARNING_THRESHOLD = 50;
+
 export function AuvoAdminPage() {
   const [status, setStatus] = useState<AuvoIntegrationStatus | null>(null);
   const [events, setEvents] = useState<AuvoWebhookEvent[]>([]);
@@ -34,7 +39,7 @@ export function AuvoAdminPage() {
       setEvents(list.events);
       setSelectedEvent((current) => (current ? list.events.find((event) => event.id === current.id) ?? current : current));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar a integracao Auvo.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar a integração Auvo.");
     } finally {
       setIsLoading(false);
     }
@@ -64,12 +69,15 @@ export function AuvoAdminPage() {
     await refresh();
   }
 
+  const pendingCount = status?.pendingCount ?? 0;
+  const failedCount = status?.failedCount ?? 0;
+
   return (
     <>
       <section className="page-heading">
         <div>
-          <p className="eyebrow">Configuracoes</p>
-          <h1>Integracao Auvo</h1>
+          <p className="eyebrow">Configurações</p>
+          <h1>Integração Auvo</h1>
         </div>
         <button className="button secondary" type="button" onClick={() => void refresh()} disabled={isLoading}>
           <RefreshCw aria-hidden="true" />
@@ -82,10 +90,10 @@ export function AuvoAdminPage() {
       {isLoading && !status ? (
         <LoadingPanels />
       ) : (
-        <section className="panel auvo-admin" aria-label="Integracao Auvo">
+        <section className="panel auvo-admin" aria-label="Integração Auvo">
           <header>
             <div>
-              <p className="eyebrow">Homologacao</p>
+              <p className="eyebrow">Homologação</p>
               <h2>Status e eventos recebidos</h2>
             </div>
             <div className="filter-actions">
@@ -101,19 +109,23 @@ export function AuvoAdminPage() {
           </header>
           <div className="auvo-status-grid">
             <Metric label="Webhook" value={status?.configured ? "Configurado" : "Pendente"} />
-            <Metric label="Pendentes" value={status?.pendingCount ?? 0} />
-            <Metric label="Falhas" value={status?.failedCount ?? 0} />
-            <Metric label="Ultimo evento" value={formatShortDate(status?.lastReceivedAt)} />
+            <Metric
+              label="Pendentes"
+              value={pendingCount}
+              tone={pendingCount > PENDING_COUNT_WARNING_THRESHOLD ? "warning" : "neutral"}
+            />
+            <Metric label="Falhas" value={failedCount} tone={failedCount > 0 ? "danger" : "neutral"} />
+            <Metric label="Último evento" value={formatShortDate(status?.lastReceivedAt)} />
           </div>
           <div className="auvo-layout">
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Recebido</th><th>Tipo</th><th>Status</th><th>Tentativas</th><th>Acoes</th></tr></thead>
+                <thead><tr><th>Recebido</th><th>Tipo</th><th>Status</th><th>Tentativas</th><th>Ações</th></tr></thead>
                 <tbody>
                   {events.map((event) => (
                     <tr key={event.id}>
                       <td>{formatShortDate(event.receivedAt)}</td>
-                      <td>{event.eventType ?? "Nao informado"}</td>
+                      <td>{event.eventType ?? "Não informado"}</td>
                       <td>{formatAuvoStatus(event.status)}</td>
                       <td>{event.attemptCount}</td>
                       <td>
@@ -126,7 +138,7 @@ export function AuvoAdminPage() {
                       </td>
                     </tr>
                   ))}
-                  {!events.length ? <tr><td colSpan={5}>Nenhum evento recebido nesta homologacao.</td></tr> : null}
+                  {!events.length ? <tr><td colSpan={5}>Nenhum evento recebido nesta homologação.</td></tr> : null}
                 </tbody>
               </table>
             </div>
@@ -138,9 +150,9 @@ export function AuvoAdminPage() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string | number }) {
+function Metric({ label, value, tone = "neutral" }: { label: string; value: string | number; tone?: "neutral" | "warning" | "danger" }) {
   return (
-    <article className="metric-card">
+    <article className={`metric-card${tone !== "neutral" ? ` metric-card-${tone}` : ""}`}>
       <span>{label}</span>
       <strong>{value}</strong>
     </article>
@@ -155,7 +167,7 @@ function AuvoEventDetail({ event, onReprocess, onIgnore }: {
   if (!event) {
     return (
       <aside className="auvo-detail">
-        <EmptyState title="Selecione um evento" text="O payload exibido aqui sempre passa por sanitizacao." />
+        <EmptyState title="Selecione um evento" text="O payload exibido aqui sempre passa por sanitização." />
       </aside>
     );
   }
@@ -174,7 +186,7 @@ function AuvoEventDetail({ event, onReprocess, onIgnore }: {
       <dl className="detail-list">
         <div><dt>Recebido</dt><dd>{formatDateTime(event.receivedAt)}</dd></div>
         <div><dt>Hash</dt><dd>{event.payloadHash.slice(0, 16)}</dd></div>
-        <div><dt>Tamanho</dt><dd>{event.contentLength ?? "Nao informado"}</dd></div>
+        <div><dt>Tamanho</dt><dd>{event.contentLength ?? "Não informado"}</dd></div>
         <div><dt>Erro</dt><dd>{event.lastError ?? "Nenhum"}</dd></div>
       </dl>
       <div className="quick-actions">

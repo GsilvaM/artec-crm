@@ -21,7 +21,7 @@ const PAGES = [
   { label: "Funil", linkName: "Funil", urlPattern: /\/pipeline$/ },
   { label: "Clientes", linkName: "Clientes", urlPattern: /\/clientes$/ },
   { label: "Oportunidades", linkName: "Oportunidades", urlPattern: /\/oportunidades$/ },
-  { label: "Proximas acoes", linkName: "Proximas acoes", urlPattern: /\/proximas-acoes$/ },
+  { label: "Próximas ações", linkName: "Próximas ações", urlPattern: /\/proximas-acoes$/ },
 ];
 
 for (const viewport of VIEWPORTS) {
@@ -45,7 +45,7 @@ for (const viewport of VIEWPORTS) {
 
       for (const target of PAGES) {
         if (isMobileLayout) {
-          await page.getByRole("button", { name: "Abrir menu de navegacao" }).click();
+          await page.getByRole("button", { name: "Abrir menu de navegação" }).click();
           await expect(page.getByRole("link", { name: target.linkName })).toBeVisible();
         }
 

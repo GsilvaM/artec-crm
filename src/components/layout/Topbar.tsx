@@ -57,7 +57,7 @@ export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
   return (
     <>
       <header className="topbar">
-        <button className="icon-button mobile-nav-toggle" type="button" aria-label="Abrir menu de navegacao" onClick={onOpenMobileNav}>
+        <button className="icon-button mobile-nav-toggle" type="button" aria-label="Abrir menu de navegação" onClick={onOpenMobileNav}>
           <Menu aria-hidden="true" />
         </button>
         <div className="search-shell">
@@ -110,7 +110,7 @@ export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
             ref={bellButtonRef}
             className="icon-button"
             type="button"
-            aria-label="Abrir notificacoes"
+            aria-label="Abrir notificações"
             aria-expanded={notificationPanelOpen}
             onClick={() => setNotificationPanelOpen((open) => !open)}
           >
@@ -118,9 +118,9 @@ export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
             {notifications.unreadCount > 0 ? <span>{notifications.unreadCount > 9 ? "9+" : notifications.unreadCount}</span> : null}
           </button>
           {notificationPanelOpen ? (
-            <div className="notification-popover" role="dialog" aria-label="Notificacoes recentes" ref={notificationPanelRef}>
+            <div className="notification-popover" role="dialog" aria-label="Notificações recentes" ref={notificationPanelRef}>
               <header>
-                <strong>Notificacoes</strong>
+                <strong>Notificações</strong>
                 <button className="button ghost" type="button" onClick={() => void notifications.readAll()}>Ler todas</button>
               </header>
               <NotificationList items={notifications.notifications} onRead={notifications.read} onArchive={notifications.archive} onSnooze={notifications.snooze} />

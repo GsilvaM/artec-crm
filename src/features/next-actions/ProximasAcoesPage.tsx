@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
-import { formatDateTime } from "../../domain/format";
+import { formatDateTime, formatNextActionStatus } from "../../domain/format";
 import { loadNextActions, type NextAction } from "../../domain/crm";
 import { useActionOperation } from "./useActionOperation";
 import { ActionOperationForm } from "./ActionOperationForm";
@@ -12,8 +12,8 @@ type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled"
 const FILTER_LABELS: Record<ActionFilter, string> = {
   overdue: "Vencidas",
   today: "Hoje",
-  upcoming: "Proximas",
-  completed: "Concluidas",
+  upcoming: "Próximas",
+  completed: "Concluídas",
   cancelled: "Canceladas",
 };
 
@@ -21,7 +21,7 @@ const CATEGORY_LABELS: Record<NextAction["category"], string> = {
   commercial: "Comercial",
   warranty: "Garantia",
   support: "Suporte",
-  after_sales: "Pos-venda",
+  after_sales: "Pós-venda",
 };
 
 const PRIORITY_LABELS: Record<NextAction["priority"], string> = {
@@ -63,7 +63,7 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
     try {
       setActions(await loadNextActions());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar as proximas acoes.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar as próximas ações.");
     } finally {
       setIsLoading(false);
     }
@@ -82,12 +82,12 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
       <section id="proximas-acoes" className="page-heading">
         <div>
           <p className="eyebrow">Follow-up e agenda comercial</p>
-          <h1>Proximas acoes</h1>
+          <h1>Próximas ações</h1>
         </div>
       </section>
 
       <section className="data-section">
-        <div className="segmented-control" aria-label="Filtros de proximas acoes">
+        <div className="segmented-control" aria-label="Filtros de próximas ações">
           {(Object.keys(FILTER_LABELS) as ActionFilter[]).map((key) => (
             <button className={filter === key ? "active" : ""} type="button" key={key} onClick={() => setFilter(key)}>
               {FILTER_LABELS[key]}
@@ -110,29 +110,29 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
         {isLoading ? (
           <LoadingPanels />
         ) : visibleActions.length ? (
-          <div className="table-wrap">
+          <div className="table-wrap mobile-cards">
             <table>
-              <thead><tr><th>Acao</th><th>Cliente</th><th>Contexto</th><th>Categoria</th><th>Vencimento</th><th>Prioridade</th><th>Status</th><th>Acoes</th></tr></thead>
+              <thead><tr><th>Ação</th><th>Cliente</th><th>Contexto</th><th>Categoria</th><th>Vencimento</th><th>Prioridade</th><th>Status</th><th>Ações</th></tr></thead>
               <tbody>
                 {visibleActions.map((action) => (
                   <tr key={action.id}>
-                    <td>{action.title}{isOverdue(action) ? <span className="badge danger-badge">vencida</span> : null}</td>
-                    <td>
+                    <td data-label="Ação">{action.title}{isOverdue(action) ? <span className="badge badge-alert-danger">vencida</span> : null}</td>
+                    <td data-label="Cliente">
                       <button className="search-dropdown-item" type="button" onClick={() => navigate(`/clientes/${action.customerId}`)}>
                         {action.customerName}
                       </button>
                     </td>
-                    <td>
+                    <td data-label="Contexto">
                       {action.opportunityId ? (
                         <button className="search-dropdown-item" type="button" onClick={() => navigate(`/oportunidades/${action.opportunityId}`)}>
                           {action.opportunityTitle}
                         </button>
                       ) : "Atendimento"}
                     </td>
-                    <td><span className="badge">{CATEGORY_LABELS[action.category]}</span></td>
-                    <td>{formatDateTime(action.dueAt)}</td>
-                    <td><span className="badge">{PRIORITY_LABELS[action.priority]}</span></td>
-                    <td><span className="badge">{action.status}</span></td>
+                    <td data-label="Categoria"><span className="badge">{CATEGORY_LABELS[action.category]}</span></td>
+                    <td data-label="Vencimento">{formatDateTime(action.dueAt)}</td>
+                    <td data-label="Prioridade"><span className={`badge${action.priority === "high" ? " badge-alert-warning" : ""}`}>{PRIORITY_LABELS[action.priority]}</span></td>
+                    <td data-label="Status"><span className="badge">{formatNextActionStatus(action.status)}</span></td>
                     <td className="actions-cell">
                       <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => void actionOperation.open(action, "complete")}>Concluir</button>
                       <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => void actionOperation.open(action, "postpone")}>Reagendar</button>
@@ -144,7 +144,7 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
             </table>
           </div>
         ) : (
-          <EmptyState title="Nenhuma proxima acao neste filtro" text="Crie uma acao pendente para acompanhar cliente, garantia, suporte ou oportunidade." />
+          <EmptyState title="Nenhuma próxima ação neste filtro" text="Crie uma ação pendente para acompanhar cliente, garantia, suporte ou oportunidade." />
         )}
       </section>
 

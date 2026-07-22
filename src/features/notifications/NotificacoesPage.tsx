@@ -20,14 +20,14 @@ export function NotificacoesPage() {
       <section id="notificacoes" className="page-heading">
         <div>
           <p className="eyebrow">Acompanhamento</p>
-          <h1>Notificacoes</h1>
+          <h1>Notificações</h1>
         </div>
       </section>
 
-      <section className="panel notifications-page" aria-label="Notificacoes internas">
+      <section className="panel notifications-page" aria-label="Notificações internas">
         <header>
           <div>
-            <h2>Todas as notificacoes</h2>
+            <h2>Todas as notificações</h2>
           </div>
           <div className="filter-actions">
             {(["active", "read", "archived"] as const).map((option) => (

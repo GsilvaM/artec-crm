@@ -135,11 +135,11 @@ async function readBackendIdentity(accessToken: string): Promise<AuthState> {
     const message = "error" in payload ? payload.error?.message : undefined;
 
     if (errorCode === "membership_missing") {
-      return { status: "membership_missing", message: message ?? "Usuario autenticado sem acesso liberado ao CRM." };
+      return { status: "membership_missing", message: message ?? "Usuário autenticado sem acesso liberado ao CRM." };
     }
 
     if (errorCode === "membership_inactive") {
-      return { status: "membership_inactive", message: message ?? "Seu acesso ao CRM esta inativo." };
+      return { status: "membership_inactive", message: message ?? "Seu acesso ao CRM está inativo." };
     }
 
     if (errorCode === "forbidden") {
@@ -154,7 +154,7 @@ async function readBackendIdentity(accessToken: string): Promise<AuthState> {
   } catch {
     return {
       status: "api_error",
-      message: "Nao foi possivel conectar ao backend do CRM. Verifique se o servidor esta ativo.",
+      message: "Não foi possível conectar ao backend do CRM. Verifique se o servidor está ativo.",
     };
   }
 }
