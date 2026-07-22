@@ -2,6 +2,8 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { useToast } from "../../components/ui/Toast";
 import { formatActivityType, formatDateTime, formatOpportunityStatus } from "../../domain/format";
 import {
   archiveCustomer,
@@ -22,6 +24,7 @@ const SUPPORT_ACTIVITY_TYPES: Activity["type"][] = ["warranty", "support", "afte
 export function ClientePage({ currentUserId }: { currentUserId: string }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [nextActions, setNextActions] = useState<NextAction[]>([]);
@@ -30,6 +33,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [activityForm, setActivityForm] = useState<{ type: Activity["type"]; description: string }>({ type: "warranty", description: "" });
   const [actionForm, setActionForm] = useState({ title: "", dueAt: "" });
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   async function refresh() {
     if (!id) return;
@@ -62,10 +66,15 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
     return <LoadingPanels />;
   }
 
-  async function handleArchive() {
-    if (!window.confirm(`Arquivar ${customer!.nome}? O histórico será preservado.`)) return;
-    await archiveCustomer(customer!.id);
-    navigate("/clientes");
+  async function handleConfirmArchive() {
+    try {
+      await archiveCustomer(customer!.id);
+      showToast(`${customer!.nome} arquivado.`);
+      navigate("/clientes");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Não foi possível arquivar o cliente.", "error");
+      setConfirmArchive(false);
+    }
   }
 
   async function handleRegisterActivity(event: FormEvent<HTMLFormElement>) {
@@ -75,6 +84,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
     try {
       await createActivity({ customerId: customer!.id, opportunityId: null, type: activityForm.type, description: activityForm.description.trim() });
       setActivityForm({ ...activityForm, description: "" });
+      showToast("Atendimento registrado.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível registrar a atividade.");
@@ -88,6 +98,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
     try {
       await createNextAction({ customerId: customer!.id, responsibleUserId: currentUserId, category: "support", title: actionForm.title.trim(), dueAt: actionForm.dueAt });
       setActionForm({ title: "", dueAt: "" });
+      showToast("Próxima ação criada.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível criar a próxima ação.");
@@ -104,7 +115,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
           <p className="eyebrow"><Link to="/clientes">Clientes</Link> / {customer.nome}</p>
           <h1>{customer.nome}</h1>
         </div>
-        <button className="button ghost" type="button" onClick={() => void handleArchive()}>Arquivar</button>
+        <button className="button ghost" type="button" onClick={() => setConfirmArchive(true)}>Arquivar</button>
       </section>
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
@@ -216,6 +227,16 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
           <EmptyState title="Nenhuma atividade comercial" text="O histórico comercial aparece aqui conforme as oportunidades avançam." />
         )}
       </section>
+
+      {confirmArchive ? (
+        <ConfirmDialog
+          title="Arquivar cliente"
+          message={`Arquivar ${customer.nome}? O histórico será preservado.`}
+          confirmLabel="Arquivar"
+          onConfirm={() => void handleConfirmArchive()}
+          onCancel={() => setConfirmArchive(false)}
+        />
+      ) : null}
     </>
   );
 }

@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { useToast } from "../../components/ui/Toast";
 import { archiveCustomer, createCustomer, loadCustomersPage, type Customer } from "../../domain/crm";
 
 export function ClientesPage() {
@@ -13,6 +15,8 @@ export function ClientesPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" });
+  const [customerToArchive, setCustomerToArchive] = useState<Customer | null>(null);
+  const { showToast } = useToast();
 
   async function refresh() {
     setIsLoading(true);
@@ -47,10 +51,16 @@ export function ClientesPage() {
     }
   }
 
-  async function handleArchive(customer: Customer) {
-    if (!window.confirm(`Arquivar ${customer.nome}? O histórico será preservado.`)) return;
-    await archiveCustomer(customer.id);
-    await refresh();
+  async function handleConfirmArchive() {
+    if (!customerToArchive) return;
+    try {
+      await archiveCustomer(customerToArchive.id);
+      showToast(`${customerToArchive.nome} arquivado.`);
+      setCustomerToArchive(null);
+      await refresh();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Não foi possível arquivar o cliente.", "error");
+    }
   }
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
@@ -59,6 +69,7 @@ export function ClientesPage() {
     try {
       await createCustomer({ tipoPessoa: "fisica", ...form });
       setForm({ nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" });
+      showToast("Cliente salvo.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível salvar o cliente.");
@@ -124,7 +135,7 @@ export function ClientesPage() {
                     <td data-label="Oportunidades">{customer.opportunitiesCount}</td>
                     <td className="actions-cell">
                       <Link className="button secondary" to={`/clientes/${customer.id}`}>Abrir</Link>
-                      <button className="button ghost" type="button" onClick={() => void handleArchive(customer)}>Arquivar</button>
+                      <button className="button ghost" type="button" onClick={() => setCustomerToArchive(customer)}>Arquivar</button>
                     </td>
                   </tr>
                 ))}
@@ -140,6 +151,16 @@ export function ClientesPage() {
           </button>
         ) : null}
       </section>
+
+      {customerToArchive ? (
+        <ConfirmDialog
+          title="Arquivar cliente"
+          message={`Arquivar ${customerToArchive.nome}? O histórico será preservado.`}
+          confirmLabel="Arquivar"
+          onConfirm={() => void handleConfirmArchive()}
+          onCancel={() => setCustomerToArchive(null)}
+        />
+      ) : null}
     </>
   );
 }

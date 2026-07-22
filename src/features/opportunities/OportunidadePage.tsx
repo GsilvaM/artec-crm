@@ -2,6 +2,8 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { useToast } from "../../components/ui/Toast";
 import { QuotesPanel } from "../../components/QuotesPanel";
 import { formatActivityType, formatDateTime, formatMoney, formatOpportunityStatus } from "../../domain/format";
 import {
@@ -34,6 +36,7 @@ import { ActionOperationForm } from "../next-actions/ActionOperationForm";
 export function OportunidadePage({ currentUserId, canManageUsers }: { currentUserId: string; canManageUsers: boolean }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
   const [currentNextAction, setCurrentNextAction] = useState<NextAction | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -47,6 +50,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
   const [approveForm, setApproveForm] = useState({ valorAprovado: "", formaPagamento: "a vista", quantidadeParcelas: "1", previsaoExecucao: "" });
   const [lossReasonId, setLossReasonId] = useState("");
   const [activityDescription, setActivityDescription] = useState("");
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   async function refresh() {
     if (!id) return;
@@ -117,6 +121,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
         previsaoExecucao: approveForm.previsaoExecucao,
       });
       setMode(null);
+      showToast("Orçamento aprovado.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível aprovar a oportunidade.");
@@ -129,20 +134,21 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
     try {
       await loseOpportunity(opportunity!.id, lossReasonId);
       setMode(null);
+      showToast("Oportunidade marcada como perdida.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível marcar a oportunidade como perdida.");
     }
   }
 
-  async function handleArchive() {
-    if (!window.confirm(`Arquivar ${opportunity!.titulo}? O histórico será preservado.`)) return;
-    setError(null);
+  async function handleConfirmArchive() {
     try {
       await archiveOpportunity(opportunity!.id);
+      showToast(`${opportunity!.titulo} arquivada.`);
       navigate("/oportunidades");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível arquivar a oportunidade.");
+      showToast(err instanceof Error ? err.message : "Não foi possível arquivar a oportunidade.", "error");
+      setConfirmArchive(false);
     }
   }
 
@@ -153,6 +159,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
     try {
       await createActivity({ customerId: opportunity!.clienteId, opportunityId: opportunity!.id, type: "note", description: activityDescription.trim() });
       setActivityDescription("");
+      showToast("Atividade registrada.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível registrar a atividade.");
@@ -247,7 +254,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
               <button className="button destructive" type="button" onClick={() => setMode("lose")}>Marcar como perdido</button>
             </>
           ) : null}
-          <button className="button ghost" type="button" onClick={() => void handleArchive()}>Arquivar</button>
+          <button className="button ghost" type="button" onClick={() => setConfirmArchive(true)}>Arquivar</button>
         </div>
       </section>
 
@@ -322,6 +329,16 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
           <EmptyState title="Nenhuma atividade registrada" text="Registre a primeira interação com esta oportunidade." />
         )}
       </section>
+
+      {confirmArchive ? (
+        <ConfirmDialog
+          title="Arquivar oportunidade"
+          message={`Arquivar ${opportunity.titulo}? O histórico será preservado.`}
+          confirmLabel="Arquivar"
+          onConfirm={() => void handleConfirmArchive()}
+          onCancel={() => setConfirmArchive(false)}
+        />
+      ) : null}
     </>
   );
 }

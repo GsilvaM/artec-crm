@@ -4,7 +4,7 @@ Atualizado em: 2026-07-22 (Fase 6 — adocao explicita da paleta Material 3 da p
 
 > Este documento descreve o sistema **real**, implementado e em uso. A versao anterior descrevia uma stack aspiracional (shadcn/ui, Tailwind, Radix UI, TanStack Table, dnd-kit, Sonner) que nunca foi adotada — mantida aqui como nota historica para nao repetir o erro: **confirme a stack real antes de assumir bibliotecas**.
 >
-> **Mudanca de regra registrada explicitamente**: ate a Fase 5, este projeto seguia a regra do prompt mestre de refatoracao (`PROMPT-REFATORACAO-FRONTEND-ARTEC-CRM.md`, arquivo que nao existe mais no repositorio) de nao clonar identidade visual de outro produto, e a paleta era uma cor azul/navy derivada sem fonte externa. Na Fase 6, o usuario decidiu explicitamente reverter essa regra e adotar a pasta `design-system/` (kit generico de tokens Material 3 + Apple HIG, ver `design-system/README.md`) como fonte real da paleta de cor e de valores estruturais (radius, tipografia) do produto — decisao do dono do produto sobre a propria marca, nao um erro a corrigir. A cor de marca agora e o esquema **Material 3 "Blue"** (`design-system/color-schemes-material3/blue-light.tokens.json`/`blue-dark.tokens.json`), com suporte real a modo escuro via `prefers-color-scheme`.
+> **Mudanca de regra registrada explicitamente**: ate a Fase 5, este projeto seguia a regra do prompt mestre de refatoracao (`PROMPT-REFATORACAO-FRONTEND-ARTEC-CRM.md`, arquivo que nao existe mais no repositorio) de nao clonar identidade visual de outro produto, e a paleta era uma cor azul/navy derivada sem fonte externa. Na Fase 6, o usuario decidiu explicitamente reverter essa regra e adotar a pasta `design-system/` (kit generico de tokens Material 3 + Apple HIG, sem README proprio — ver `color-schemes-material3/`, `spacing-shape/`, `typography/`) como fonte real da paleta de cor e de valores estruturais (radius, tipografia) do produto — decisao do dono do produto sobre a propria marca, nao um erro a corrigir. A cor de marca agora e o esquema **Material 3 "Blue"** (`design-system/color-schemes-material3/blue-light.tokens.json`/`blue-dark.tokens.json`), com suporte real a modo escuro via `prefers-color-scheme`.
 
 ## 1. Stack real (confirmada em codigo, nao assumida)
 
@@ -136,11 +136,14 @@ Campos agrupados por significado, labels sempre visíveis, validação com mensa
 - `ui/EmptyState.tsx`, `ui/Skeleton.tsx` (`LoadingPanels`), `ui/NotificationList.tsx` — feedback reutilizável.
 - `ui/Button.tsx`, `ui/Badge.tsx` (Fase 5) — primeiros componentes-base reais com props de variante (`<Button variant="destructive">`, `<Badge tone="alert-danger">`), mapeando para as mesmas classes CSS já existentes (zero mudança visual). **Não é uma migração completa**: as ~40 ocorrências existentes de `<button className="button ...">`/`<span className="badge ...">` no resto do app ainda não foram convertidas para os novos componentes — trabalho mecânico registrado como próximo passo, de baixo risco por não alterar a saída visual (mesmas classes CSS por trás).
 - `feedback/OfflineBanner.tsx`, `feedback/InstallPrompt.tsx` — estado de rede e convite de instalação PWA (Fase 4).
+- `ui/ConfirmDialog.tsx` (Fase 7) — modal de confirmação acessível (foco automático no botão de confirmar, `Escape` fecha, `role="alertdialog"`), substitui `window.confirm` nas três ações destrutivas do produto (arquivar cliente, arquivar oportunidade). Renderizado localmente por página (estado de confirmação é local, não global).
+- `ui/PromptDialog.tsx` (Fase 7) — modal de entrada de texto (label + input, foco e seleção automáticos no campo, `Escape` fecha), substitui `window.prompt` nas duas ações administrativas do Funil (renomear etapa, reordenar etapa).
+- `ui/Toast.tsx` (Fase 7) — `ToastProvider`/`useToast()` global (montado em `main.tsx`, acima de `<App />`), fila de notificações transitórias (4s), variantes `success`/`error`, `role="status"`/`aria-live="polite"`. Usado para confirmar toda ação de escrita relevante (salvar cliente, arquivar, aprovar orçamento, marcar como perdida, registrar atividade, renomear/reordenar etapa).
 - `PipelineBoard.tsx`, `AdminPanel.tsx`, `QuotesPanel.tsx`, `ReportsPanel.tsx`, `AuvoInboxPanel.tsx` — superfícies de domínio.
 
 ### Padrões CSS reutilizáveis (classe, ainda não 100% convertidos para componente React)
 
-`.button` (`primary`/`secondary`/`ghost`/`destructive`, `.loading`), `.icon-button`, `.badge` (+ `.warning`/`.danger-badge` para contextos de menor urgência, `.badge-alert-danger`/`.badge-alert-warning` para alertas fortes — Fase 5), `.panel`, `.empty-state`, `.skeleton`, `.alert`/`.danger-alert`, `.field-hint` (Fase 5), campos de formulário, `.segmented-control`, `.active-filter-chips` (Fase 5), `.dropdown-menu`/`.dropdown-menu-wrapper` (menu "Mais ações", Fase 5), `.action-operation`/`.action-operation-backdrop` (bottom sheet, Fase 5).
+`.button` (`primary`/`secondary`/`ghost`/`destructive`, `.loading`), `.icon-button`, `.badge` (+ `.warning`/`.danger-badge` para contextos de menor urgência, `.badge-alert-danger`/`.badge-alert-warning` para alertas fortes — Fase 5), `.panel`, `.empty-state`, `.skeleton`, `.alert`/`.danger-alert`, `.field-hint` (Fase 5), campos de formulário, `.segmented-control`, `.active-filter-chips` (Fase 5), `.dropdown-menu`/`.dropdown-menu-wrapper` (menu "Mais ações", Fase 5), `.action-operation`/`.action-operation-backdrop` (bottom sheet, Fase 5), `.confirm-dialog`/`.confirm-dialog-backdrop`, `.toast-stack`/`.toast`/`.toast-success`/`.toast-error` (Fase 7).
 
 ## 7. Acessibilidade
 
@@ -151,6 +154,7 @@ Auditoria automatizada completa em `docs/ACCESSIBILITY-AUDIT.md` (axe-core, 0 vi
 - Foco visível global (`:focus-visible` com anel de 3px, cor `--focus-ring`).
 - `prefers-reduced-motion: reduce` respeitado globalmente.
 - `prefers-color-scheme: dark` respeitado globalmente (Fase 6) — sem toggle manual ainda.
+- Sem `window.confirm`/`window.prompt` nativos no app (Fase 7) — todos substituídos por `ConfirmDialog`/`PromptDialog`, que herdam foco/`Escape`/contraste do design system em vez do diálogo não estilizável do navegador.
 
 Pendente de revisão manual (Fase 3): navegação por teclado ponta a ponta, leitor de tela real, gerenciamento de foco em painéis/drawers, zoom 200%.
 
@@ -166,15 +170,18 @@ Não usar: confete, parallax, pulso contínuo, sino piscando, bounce.
 
 Português do Brasil, direto e humano. Preferir "Próxima ação", "Nova oportunidade", "Registrar follow-up", "Concluir ação", "Marcar como perdido", "Arquivar". Evitar jargão técnico, "workflow", "ticket", "deal". Nunca chamar valor aprovado de "receita" ou "faturamento".
 
-## 10. Pendências reais após a Fase 5 (diagnóstico visual + refatoração drástica)
+## 10. Pendências reais após a Fase 7
 
 Resolvidas ao longo das Fases 2–5 (não repetir aqui como pendência): componente monolítico extraído por rota; Clientes/Oportunidades/Próximas Ações com cards no mobile; Sidebar em drawer real no mobile; PWA completo; code-splitting por rota; acentuação em praticamente 100% das strings de UI; vazamento de enum bruto (status/papel) traduzido; cor semântica forte em urgência/atraso/prioridade; hierarquia de botões da Caixa Auvo; ambiguidade de "sem dados" vs 0; contraste de placeholder; severidade no contador de pendentes do Auvo; filtros com chips removíveis; escala de radius/tipografia estendida e 42 valores de `font-size` soltos tokenizados; bottom sheet mobile no formulário mais reutilizado do produto.
+
+Resolvidas na Fase 7 (feedback e diálogos nativos do navegador): `ConfirmDialog`/`PromptDialog`/`Toast` criados e adotados nos 5 pontos de escrita destrutiva/relevante do app (arquivar cliente, arquivar oportunidade, aprovar orçamento, marcar como perdida, renomear/reordenar etapa do Funil) — zero `window.confirm`/`window.prompt` restante no código-fonte.
 
 Pendências reais que continuam em aberto, por escopo ou por exigirem decisão/ação externa:
 
 - Migração completa de `<button className="button ...">`/`<span className="badge ...">` para os componentes `Button`/`Badge` reais (Fase 5 criou os componentes mas não migrou todas as ~40 ocorrências existentes — mudança mecânica, sem risco visual, registrada como próximo passo).
 - Drag-and-drop no kanban do Funil — mantido o `<select>` acessível como decisão de escopo; implementar arrastar-e-soltar com paridade real de teclado/leitor de tela (padrão WAI-ARIA APG) é trabalho maior que o resto desta fase.
-- Sem componente `Toast`/`Dialog`/`ConfirmAction` dedicado — feedback ainda via `alert`/`window.confirm`.
+- Biblioteca de componentes de dados mais ampla (`DataTable` com ordenação/paginação numerada, `Combobox`, `DatePicker`, `MultiSelect`, `CurrencyInput`, `PhoneInput`) ainda não existe como componente reutilizável — cada tela resolve isso com HTML nativo (`<table>`, `<input type="date">` etc.), funcional e acessível, mas não abstraído.
+- `Tabs` para reduzir a rolagem da Ficha de Cliente (5 seções empilhadas: Identificação, Oportunidades, Próximas ações, Garantia/Suporte/Pós-venda, Linha do tempo) — identificado, não implementado.
 - Tabelas fora de Clientes/Oportunidades/Próximas Ações (motivos de perda, usuários, relatórios) ainda usam rolagem horizontal interna no mobile em vez de cards — seguro, mas não é o padrão ideal da seção 10.5.
 - Bloqueio proativo de ação de escrita quando offline (hoje reativo).
 - Revisão manual com leitor de tela real e zoom 200% (`docs/ACCESSIBILITY-AUDIT.md`, seção 4).

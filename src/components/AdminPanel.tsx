@@ -1,5 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
+import { PromptDialog } from "./ui/PromptDialog";
+import { useToast } from "./ui/Toast";
 import {
   createLossReason,
   createPipelineStage,
@@ -19,11 +21,14 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
   onStagesChanged: () => void | Promise<void>;
   currentUserId: string;
 }) {
+  const { showToast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [lossReasons, setLossReasons] = useState<LossReasonAdmin[]>([]);
   const [users, setUsers] = useState<MembershipCandidate[]>([]);
   const [newStage, setNewStage] = useState({ nome: "", ordem: "" });
   const [newLossReason, setNewLossReason] = useState("");
+  const [stageToRename, setStageToRename] = useState<PipelineStage | null>(null);
+  const [stageToReorder, setStageToReorder] = useState<PipelineStage | null>(null);
 
   useEffect(() => {
     void refreshAdminData();
@@ -52,28 +57,37 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
     }
   }
 
-  async function handleRenameStage(stage: PipelineStage) {
-    if (stage.isTerminal) return;
-    const nome = window.prompt("Novo nome da etapa", stage.nome);
-    if (!nome || nome === stage.nome) return;
+  async function handleConfirmRenameStage(nome: string) {
+    if (!stageToRename || nome === stageToRename.nome) {
+      setStageToRename(null);
+      return;
+    }
     setError(null);
     try {
-      await updatePipelineStage(stage.id, { nome });
+      await updatePipelineStage(stageToRename.id, { nome });
+      showToast("Etapa renomeada.");
+      setStageToRename(null);
       await onStagesChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível renomear a etapa.");
+      setStageToRename(null);
     }
   }
 
-  async function handleReorderStage(stage: PipelineStage) {
-    const ordem = window.prompt("Nova ordem da etapa", String(stage.ordem));
-    if (!ordem || Number(ordem) === stage.ordem) return;
+  async function handleConfirmReorderStage(ordem: string) {
+    if (!stageToReorder || !Number.isFinite(Number(ordem)) || Number(ordem) === stageToReorder.ordem) {
+      setStageToReorder(null);
+      return;
+    }
     setError(null);
     try {
-      await updatePipelineStage(stage.id, { ordem: Number(ordem) });
+      await updatePipelineStage(stageToReorder.id, { ordem: Number(ordem) });
+      showToast("Ordem da etapa atualizada.");
+      setStageToReorder(null);
       await onStagesChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível reordenar a etapa.");
+      setStageToReorder(null);
     }
   }
 
@@ -135,8 +149,8 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
                     <td>{stage.ordem}</td>
                     <td>{stage.isTerminal ? <span className="badge">terminal</span> : null}</td>
                     <td className="actions-cell">
-                      <button className="button ghost" type="button" onClick={() => void handleReorderStage(stage)}>Reordenar</button>
-                      <button className="button ghost" type="button" disabled={stage.isTerminal} onClick={() => void handleRenameStage(stage)}>Renomear</button>
+                      <button className="button ghost" type="button" onClick={() => setStageToReorder(stage)}>Reordenar</button>
+                      <button className="button ghost" type="button" disabled={stage.isTerminal} onClick={() => setStageToRename(stage)}>Renomear</button>
                     </td>
                   </tr>
                 ))}
@@ -191,6 +205,26 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
           </div>
         </article>
       </div>
+
+      {stageToRename ? (
+        <PromptDialog
+          title="Renomear etapa"
+          label="Novo nome da etapa"
+          defaultValue={stageToRename.nome}
+          onConfirm={(value) => void handleConfirmRenameStage(value)}
+          onCancel={() => setStageToRename(null)}
+        />
+      ) : null}
+
+      {stageToReorder ? (
+        <PromptDialog
+          title="Reordenar etapa"
+          label="Nova ordem da etapa"
+          defaultValue={String(stageToReorder.ordem)}
+          onConfirm={(value) => void handleConfirmReorderStage(value)}
+          onCancel={() => setStageToReorder(null)}
+        />
+      ) : null}
     </section>
   );
 }

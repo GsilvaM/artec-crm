@@ -2074,6 +2074,97 @@ tr:last-child td {
   }
 }
 
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  background: rgba(11, 31, 58, 0.45);
+  animation: drawer-fade var(--duration-base) var(--easing-standard);
+}
+
+.confirm-dialog {
+  display: grid;
+  gap: var(--space-3);
+  width: min(420px, 100%);
+}
+
+.confirm-dialog h3 {
+  margin: 0;
+}
+
+.confirm-dialog p {
+  margin: 0;
+  color: var(--foreground-muted);
+}
+
+.confirm-dialog label {
+  display: grid;
+  gap: 6px;
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.toast-stack {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: var(--z-toast);
+  display: grid;
+  gap: var(--space-2);
+  max-width: min(360px, calc(100vw - 2 * var(--space-5)));
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+  animation: drawer-fade var(--duration-base) var(--easing-standard);
+}
+
+.toast span {
+  flex: 1;
+}
+
+.toast-success {
+  background: var(--success);
+  color: #ffffff;
+}
+
+.toast-error {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.toast .icon-button {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.toast .icon-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 767px) {
+  .toast-stack {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+    max-width: none;
+  }
+}
+
 .drawer-overlay {
   position: fixed;
   inset: 0;

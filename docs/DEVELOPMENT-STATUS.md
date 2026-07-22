@@ -736,3 +736,27 @@ Ate a Fase 5, o produto era exclusivamente claro (`color-scheme: light` fixo, ne
 `npm run typecheck`, `npm run build` e `npx playwright test` (34 specs, incluindo as 12 auditorias automatizadas de acessibilidade) passaram sem nenhuma violacao WCAG nova — a troca de paleta inteira nao introduziu nenhum problema de contraste. Verificado visualmente via screenshot em modo claro e escuro (emulacao de `prefers-color-scheme` via Playwright): sidebar, cards do funil, badges e botoes renderizam corretamente nos dois modos, incluindo o badge "Ativa" e os botoes primarios com a cor nova.
 
 Nao alterado: nenhum endpoint de backend, nenhuma migration, nenhum dado de homologacao. Commit local na branch `refactor/frontend-design-system`, sem push — publicar em producao (Vercel) exige `git push` explicito, nao executado.
+
+## Fase 7: ConfirmDialog, PromptDialog e Toast — fim dos dialogos nativos do navegador (2026-07-22)
+
+Contexto: um novo prompt do usuario (persona Product Designer/UX/Frontend/Design-Systems/A11y) pediu pesquisa competitiva formal, uma biblioteca extensa de ~50 componentes reutilizaveis e uma estrategia de execucao em 7 fases, seguido de autorizacao explicita para "ir ate o final do que o prompt pede" sem mais confirmacoes. Como boa parte do pedido ja tinha sido coberta nas Fases 1–6, o esforco desta fase foi mapear honestamente o que faltava e fechar a lacuna mais citada nos diagnosticos anteriores (Fase 5, secao 10 desta mesma pendencia): a ausencia de `Toast`/`Dialog`/`ConfirmAction` dedicados, com feedback ainda dependente de `alert`/`window.confirm`/`window.prompt` nativos do navegador — que quebram a linguagem visual do design system (sem estilo, sem foco gerenciado, sem dark mode).
+
+### Componentes criados
+
+- `src/components/ui/ConfirmDialog.tsx` — modal de confirmacao (`role="alertdialog"`), foco automatico no botao de confirmar ao abrir, `Escape` fecha, clique no backdrop cancela. Suporta variante `destructive`.
+- `src/components/ui/PromptDialog.tsx` — modal de entrada de texto de linha unica (label + input), foco e selecao automaticos no campo ao abrir, mesmo padrao de `Escape`/backdrop do `ConfirmDialog`.
+- `src/components/ui/Toast.tsx` — `ToastProvider`/`useToast()` via Context, fila de ate N notificacoes transitorias (auto-dispensa em 4s ou fechamento manual), variantes `success`/`error`, `role="status"`/`aria-live="polite"`. Montado uma unica vez em `main.tsx`, envolvendo `<App />` dentro do `<BrowserRouter>`.
+
+### Pontos de adocao (todos os `window.confirm`/`window.prompt` do codigo-fonte, sem excecao)
+
+- `ClientesPage.tsx`/`ClientePage.tsx` — arquivar cliente (`ConfirmDialog`) + toast de sucesso em salvar/registrar atendimento/criar proxima acao/arquivar.
+- `OportunidadePage.tsx` — arquivar oportunidade (`ConfirmDialog`, substituindo o `window.confirm` que restava) + toast em aprovar orcamento, marcar como perdida e registrar atividade.
+- `AdminPanel.tsx` — renomear etapa e reordenar etapa do Funil (`PromptDialog`, substituindo os dois `window.prompt` que restavam) + toast de sucesso em ambos.
+
+Verificado por busca no codigo-fonte (`grep -rn "window.confirm\|window.prompt" src/`) que nao resta nenhuma ocorrencia.
+
+### Validacao
+
+`npm run typecheck`, `npm run test` (69 testes), `npm run build` e `npx playwright test` (34 specs, incluindo as 12 auditorias de acessibilidade) passaram sem regressao. Nenhum spec de E2E existente clicava em botoes "Arquivar" (confirmado por busca), entao a troca do dialogo nativo pelo customizado nao quebrou nenhum teste existente.
+
+Nao alterado: nenhum endpoint de backend, nenhuma migration, nenhum dado de homologacao. Trabalho ainda pendente do prompt mais recente (pesquisa competitiva formal documentada, componente `Tabs`, biblioteca de dados `DataTable`/`Combobox`/`DatePicker` etc.) permanece registrado como pendencia real na secao 10 de `docs/DESIGN-SYSTEM.md`, nao escondido.
