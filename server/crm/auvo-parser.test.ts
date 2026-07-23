@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAuvoSessionEventType, parseAuvoSessionPayload } from "./auvo-parser.js";
+import { isAuvoContactEventType, isAuvoSessionEventType, parseAuvoContactPayload, parseAuvoSessionPayload } from "./auvo-parser.js";
 
 describe("isAuvoSessionEventType", () => {
   it("matches SESSION_* case-insensitively", () => {
@@ -62,5 +62,57 @@ describe("parseAuvoSessionPayload", () => {
     expect(parseAuvoSessionPayload({})).toBeNull();
     expect(parseAuvoSessionPayload(null)).toBeNull();
     expect(parseAuvoSessionPayload("not an object")).toBeNull();
+  });
+});
+
+describe("isAuvoContactEventType", () => {
+  it("matches CONTACT_* case-insensitively", () => {
+    expect(isAuvoContactEventType("CONTACT_NEW")).toBe(true);
+    expect(isAuvoContactEventType("contact_update")).toBe(true);
+    expect(isAuvoContactEventType("SESSION_NEW")).toBe(false);
+    expect(isAuvoContactEventType(null)).toBe(false);
+  });
+});
+
+describe("parseAuvoContactPayload", () => {
+  it("extracts identification fields from a real-shaped CONTACT_NEW/CONTACT_UPDATE payload", () => {
+    const parsed = parseAuvoContactPayload({
+      date: "2026-07-23T00:07:10.019Z",
+      eventType: "CONTACT_NEW",
+      content: {
+        id: "contact-456",
+        name: "Fulano de Tal",
+        nameWhatsapp: "Fulano",
+        email: "fulano@example.com",
+        phonenumber: "+55|11999990000",
+        phonenumberFormatted: "(11) 99999-0000",
+      },
+    });
+
+    expect(parsed).toEqual({
+      auvoContactId: "contact-456",
+      contactName: "Fulano de Tal",
+      phoneRaw: "(11) 99999-0000",
+      email: "fulano@example.com",
+    });
+  });
+
+  it("falls back to nameWhatsapp and raw phonenumber when the primary fields are absent", () => {
+    const parsed = parseAuvoContactPayload({
+      content: { id: "contact-789", nameWhatsapp: "Fulano WhatsApp", phonenumber: "+55|11988880000" },
+    });
+
+    expect(parsed).toEqual({
+      auvoContactId: "contact-789",
+      contactName: "Fulano WhatsApp",
+      phoneRaw: "+55|11988880000",
+      email: null,
+    });
+  });
+
+  it("returns null when the payload does not have a usable content.id", () => {
+    expect(parseAuvoContactPayload({ content: {} })).toBeNull();
+    expect(parseAuvoContactPayload({})).toBeNull();
+    expect(parseAuvoContactPayload(null)).toBeNull();
   });
 });

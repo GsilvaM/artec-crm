@@ -197,7 +197,7 @@ export type CommercialCenterRecord = {
   upcomingVisits: CommercialCenterActionItem[];
   stalledOpportunities: CommercialCenterOpportunityItem[];
   auvoInbox: {
-    status: "homologation";
+    status: "pending" | "empty";
     pending: number;
     message: string;
   };
@@ -556,14 +556,14 @@ export type LoseOpportunityInput = {
 };
 
 export type CrmDataRepository = {
-  listCustomers(actor: Actor, filters: { search?: string; archived?: boolean; cursor?: string; limit?: number }): Promise<CustomerListRecord>;
+  listCustomers(actor: Actor, filters: { search?: string; archived?: boolean; cursor?: string; limit?: number; includeTestFixtures?: boolean }): Promise<CustomerListRecord>;
   getCustomer(actor: Actor, id: string): Promise<CustomerRecord | null>;
   createCustomer(actor: Actor, input: CreateCustomerInput): Promise<CustomerRecord>;
   updateCustomer(actor: Actor, id: string, input: UpdateCustomerInput): Promise<CustomerRecord | null>;
   setCustomerArchived(actor: Actor, id: string, archived: boolean): Promise<CustomerRecord | null>;
   listOpportunities(
     actor: Actor,
-    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; cursor?: string; limit?: number },
+    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; cursor?: string; limit?: number; includeTestFixtures?: boolean },
   ): Promise<OpportunityListRecord>;
   getOpportunity(actor: Actor, id: string): Promise<OpportunityRecord | null>;
   createOpportunity(actor: Actor, input: CreateOpportunityInput): Promise<OpportunityRecord>;
@@ -621,7 +621,7 @@ export type CrmDataRepository = {
   listMembershipCandidates(actor: Actor): Promise<MembershipCandidateRecord[]>;
   upsertMembership(actor: Actor, userId: string, input: UpsertMembershipInput): Promise<MembershipCandidateRecord>;
   getCommercialReport(actor: Actor, filters: CommercialReportFilters): Promise<CommercialReportRecord>;
-  globalSearch(actor: Actor, query: string): Promise<GlobalSearchResult>;
+  globalSearch(actor: Actor, query: string, includeTestFixtures?: boolean): Promise<GlobalSearchResult>;
   listAuvoInboxItems(actor: Actor, filters: { status?: AuvoInboxStatus }): Promise<AuvoInboxItemRecord[]>;
   getAuvoInboxItem(actor: Actor, id: string): Promise<AuvoInboxItemRecord | null>;
   resolveAuvoInboxItem(actor: Actor, id: string, input: ResolveAuvoInboxItemInput): Promise<AuvoInboxItemRecord | null>;

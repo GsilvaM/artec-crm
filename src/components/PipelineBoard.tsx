@@ -1,7 +1,10 @@
+import { useState, type DragEvent } from "react";
 import { Clock } from "lucide-react";
 import { Avatar } from "./ui/Avatar";
 import { formatDateTime, formatMoney, formatOpportunityStatus, opportunityStatusBadgeClass } from "../domain/format";
 import type { Opportunity, PipelineStage } from "../domain/crm";
+
+const DRAG_DATA_TYPE = "application/x-artec-opportunity-id";
 
 export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mobileActiveStageId, onMoveStage, onOpenOpportunity }: {
   stages: PipelineStage[];
@@ -13,12 +16,15 @@ export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mo
 }) {
   const orderedStages = [...stages].sort((a, b) => a.ordem - b.ordem);
   const movableStages = orderedStages.filter((stage) => !stage.isTerminal);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+  const [draggingOpportunityId, setDraggingOpportunityId] = useState<string | null>(null);
 
   return (
     <div className="pipeline-board" role="list" aria-label="Funil comercial por etapa">
       {orderedStages.map((stage) => {
         const stageOpportunities = opportunities.filter((opportunity) => opportunity.etapaId === stage.id);
         const isMobileHidden = mobileActiveStageId !== null && stage.id !== mobileActiveStageId;
+        const acceptsDrop = !stage.isTerminal;
         return (
           <section
             className="pipeline-column"
@@ -31,7 +37,23 @@ export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mo
               <h3>{stage.nome}</h3>
               <span className="badge">{stageOpportunities.length}</span>
             </header>
-            <div className="pipeline-column-body">
+            <div
+              className={`pipeline-column-body${dragOverStageId === stage.id ? " pipeline-column-body-drop-target" : ""}`}
+              onDragOver={(event) => {
+                if (!acceptsDrop) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                if (dragOverStageId !== stage.id) setDragOverStageId(stage.id);
+              }}
+              onDragLeave={() => setDragOverStageId((current) => (current === stage.id ? null : current))}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragOverStageId(null);
+                if (!acceptsDrop) return;
+                const opportunityId = event.dataTransfer.getData(DRAG_DATA_TYPE);
+                if (opportunityId) void onMoveStage(opportunityId, stage.id);
+              }}
+            >
               {stageOpportunities.length ? (
                 stageOpportunities.map((opportunity) => (
                   <PipelineCard
@@ -40,6 +62,9 @@ export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mo
                     stage={stage}
                     movableStages={movableStages}
                     isStalled={stalledOpportunityIds.has(opportunity.id)}
+                    isDragging={draggingOpportunityId === opportunity.id}
+                    onDragStart={() => setDraggingOpportunityId(opportunity.id)}
+                    onDragEnd={() => setDraggingOpportunityId(null)}
                     onMoveStage={onMoveStage}
                     onOpenOpportunity={onOpenOpportunity}
                   />
@@ -55,11 +80,14 @@ export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mo
   );
 }
 
-function PipelineCard({ opportunity, stage, movableStages, isStalled, onMoveStage, onOpenOpportunity }: {
+function PipelineCard({ opportunity, stage, movableStages, isStalled, isDragging, onDragStart, onDragEnd, onMoveStage, onOpenOpportunity }: {
   opportunity: Opportunity;
   stage: PipelineStage;
   movableStages: PipelineStage[];
   isStalled: boolean;
+  isDragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
   onMoveStage: (opportunityId: string, stageId: string) => void | Promise<void>;
   onOpenOpportunity: (id: string) => void;
 }) {
@@ -68,7 +96,20 @@ function PipelineCard({ opportunity, stage, movableStages, isStalled, onMoveStag
   const overdue = isOpportunityOverdue(opportunity);
 
   return (
-    <article className="pipeline-card">
+    <article
+      className={`pipeline-card${isActive ? " pipeline-card-draggable" : ""}${isDragging ? " pipeline-card-dragging" : ""}`}
+      draggable={isActive}
+      onDragStart={(event: DragEvent<HTMLElement>) => {
+        if (!isActive) {
+          event.preventDefault();
+          return;
+        }
+        event.dataTransfer.setData(DRAG_DATA_TYPE, opportunity.id);
+        event.dataTransfer.effectAllowed = "move";
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+    >
       <header>
         <Avatar name={opportunity.clienteNome} size="sm" />
         <button className="pipeline-card-open" type="button" onClick={() => onOpenOpportunity(opportunity.id)}>

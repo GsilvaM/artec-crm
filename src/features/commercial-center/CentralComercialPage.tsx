@@ -7,6 +7,7 @@ import { formatMoney } from "../../domain/format";
 import {
   loadCommercialCenter,
   loadPipelineStages,
+  TIPO_DEMANDA_OPTIONS,
   type CommercialCenter,
   type CommercialCenterFilters,
   type PipelineStage,
@@ -84,7 +85,9 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
     filters.to ? { key: "to", label: `Até ${formatShortDate(filters.to)}` } : null,
     filters.stageId ? { key: "stageId", label: `Etapa: ${stageName ?? filters.stageId}` } : null,
     filters.situation ? { key: "situation", label: `Situação: ${filters.situation}` } : null,
-    filters.demandType ? { key: "demandType", label: `Demanda: ${filters.demandType}` } : null,
+    filters.demandType
+      ? { key: "demandType", label: `Demanda: ${TIPO_DEMANDA_OPTIONS.find((option) => option.value === filters.demandType)?.label ?? filters.demandType}` }
+      : null,
     filters.category ? { key: "category", label: `Categoria: ${CATEGORY_FILTER_LABELS[filters.category] ?? filters.category}` } : null,
     filters.priority ? { key: "priority", label: `Prioridade: ${PRIORITY_FILTER_LABELS[filters.priority] ?? filters.priority}` } : null,
   ];
@@ -120,7 +123,13 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
             </select>
           </label>
           <label>Situação<input value={filters.situation ?? ""} onChange={(event) => setFilters({ ...filters, situation: event.target.value || undefined })} placeholder="ex: aguardando cliente" /></label>
-          <label>Tipo de demanda<input value={filters.demandType ?? ""} onChange={(event) => setFilters({ ...filters, demandType: event.target.value || undefined })} placeholder="ex: instalação" /></label>
+          <label>
+            Tipo de demanda
+            <select value={filters.demandType ?? ""} onChange={(event) => setFilters({ ...filters, demandType: event.target.value || undefined })}>
+              <option value="">Todos</option>
+              {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+            </select>
+          </label>
           <label>Categoria
             <select value={filters.category ?? ""} onChange={(event) => setFilters({ ...filters, category: (event.target.value || undefined) as CommercialCenterFilters["category"] })}>
               <option value="">Todas</option>

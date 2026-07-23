@@ -4,7 +4,7 @@ import { Plus, Search } from "lucide-react";
 import { formatDateTime, formatOpportunityStatus, opportunityStatusBadgeClass } from "../../domain/format";
 import { Avatar } from "../../components/ui/Avatar";
 import { DataTable, type DataTableColumn } from "../../components/ui/DataTable";
-import { createOpportunity, loadCustomersPage, loadOpportunitiesPage, type Customer, type Opportunity } from "../../domain/crm";
+import { createOpportunity, loadCustomersPage, loadOpportunitiesPage, TIPO_DEMANDA_OPTIONS, SITUACAO_SUGGESTIONS, type Customer, type Opportunity } from "../../domain/crm";
 
 export function OportunidadesPage({ currentUserId }: { currentUserId: string }) {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -63,8 +63,6 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
     }
   }
 
-  const demandTypeSample = ["instalacao", "manutencao_corretiva", "manutencao_preventiva", "higienizacao", "visita_tecnica_consultiva", "garantia", "suporte", "pos_venda"];
-
   return (
     <>
       <section id="oportunidades" className="page-heading">
@@ -85,17 +83,17 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
         <label>Título<input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
         <label>
           Tipo de demanda
-          <input required list="demand-types" value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })} />
-          <span className="field-hint">Valor padrão preenchido — ajuste se necessário</span>
+          <select required value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
+            {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+          </select>
         </label>
-        <datalist id="demand-types">
-          {demandTypeSample.map((type) => <option value={type} key={type} />)}
-        </datalist>
         <label>
           Situação
-          <input required value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} />
-          <span className="field-hint">Valor padrão preenchido — ajuste se necessário</span>
+          <input required list="situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} />
         </label>
+        <datalist id="situacao-suggestions">
+          {SITUACAO_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
+        </datalist>
         <label>Próxima ação<input required value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
         <label>Data da próxima ação<input required type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
         <button className="button primary" type="submit" disabled={!customers.length}><Plus aria-hidden="true" />Salvar oportunidade</button>

@@ -1,5 +1,33 @@
 import { getSupabaseClient } from "./auth";
 
+// Mantido em sincronia com server/crm/validation.ts (TIPO_DEMANDA_OPTIONS). Categorias reais de
+// demanda comercial da Artec (CONTEXTO-ROTINA-ATENDIMENTO-ARTEC-CRM.md secao 6.1-6.5 e 6.7 —
+// garantia/suporte/pos-venda, secao 6.6, nao entram: viram atividade do cliente, nao oportunidade).
+export const TIPO_DEMANDA_OPTIONS = [
+  { value: "instalacao", label: "Instalação ou compra de equipamento" },
+  { value: "manutencao_corretiva", label: "Manutenção corretiva" },
+  { value: "higienizacao", label: "Higienização e limpeza" },
+  { value: "acj", label: "Ar-condicionado de janela (ACJ)" },
+  { value: "remocao_reinstalacao", label: "Remoção, reinstalação ou mudança de endereço" },
+  { value: "corporativo_b2b_pmoc", label: "Atendimento corporativo / B2B / PMOC" },
+] as const;
+
+// Situacao continua texto livre por decisao de produto (CONTEXTO-ROTINA-ATENDIMENTO-ARTEC-CRM.md
+// secao 10 lista estes como "Exemplos", nao um vocabulario fechado) — aqui apenas como sugestoes.
+export const SITUACAO_SUGGESTIONS = [
+  "Em andamento",
+  "Aguardando cliente",
+  "Aguardando visita",
+  "Aguardando orçamento",
+  "Aguardando fornecedor",
+  "Aguardando condomínio",
+  "Aguardando obra",
+  "Aguardando área técnica",
+  "Sem retorno",
+  "Agendado",
+  "Pausado",
+];
+
 export type Customer = {
   id: string;
   tipoPessoa: "fisica" | "juridica";
@@ -231,7 +259,7 @@ export type CommercialCenter = {
   quotesAwaitingReturn: CommercialCenterOpportunityItem[];
   upcomingVisits: CommercialCenterActionItem[];
   stalledOpportunities: CommercialCenterOpportunityItem[];
-  auvoInbox: { status: "homologation"; pending: number; message: string };
+  auvoInbox: { status: "pending" | "empty"; pending: number; message: string };
   summary: {
     newCustomers: number;
     newOpportunities: number;

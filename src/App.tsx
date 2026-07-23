@@ -97,8 +97,8 @@ export function App() {
         <section className="auth-panel">
           <div className="brand-mark">A</div>
           <p className="eyebrow">Artec CRM</p>
-          <h1>Central comercial independente</h1>
-          <p>Entre com a conta Supabase. O backend validará sua membership antes de liberar o CRM.</p>
+          <h1>Acesse o Artec CRM</h1>
+          <p>Organize clientes, oportunidades e follow-up comercial em um só lugar.</p>
           <LoginForm email={email} password={password} isSubmitting={isSubmitting} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={handleLogin} />
         </section>
       </main>

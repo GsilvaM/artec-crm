@@ -5,6 +5,8 @@ import { formatDateTime } from "../domain/format";
 import {
   loadAuvoInboxItems,
   resolveAuvoInboxItem,
+  SITUACAO_SUGGESTIONS,
+  TIPO_DEMANDA_OPTIONS,
   type AuvoInboxItem,
   type AuvoInboxStatus,
   type Customer,
@@ -255,8 +257,19 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
                     {mode === "create_opportunity" ? (
                       <>
                         <label>Título<input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
-                        <label>Tipo de demanda<input required value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })} /></label>
-                        <label>Situação<input required value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} /></label>
+                        <label>
+                          Tipo de demanda
+                          <select required value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
+                            {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          Situação
+                          <input required list="auvo-situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} />
+                        </label>
+                        <datalist id="auvo-situacao-suggestions">
+                          {SITUACAO_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
+                        </datalist>
                         <label>Próxima ação<input required value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
                         <label>Data da próxima ação<input required type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
                       </>

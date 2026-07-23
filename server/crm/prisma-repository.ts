@@ -57,7 +57,7 @@ import type {
 } from "./types.js";
 import type { CrmRole } from "../auth/rbac.js";
 import { createWebhookPayloadHash, normalizeAuvoWebhookStatus, sanitizeWebhookPayload } from "./auvo-webhook.js";
-import { isAuvoSessionEventType, parseAuvoSessionPayload } from "./auvo-parser.js";
+import { isAuvoContactEventType, isAuvoSessionEventType, parseAuvoContactPayload, parseAuvoSessionPayload } from "./auvo-parser.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./validation.js";
 
 const DEFAULT_LIST_LIMIT = 100;
@@ -172,12 +172,13 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
 
   async listCustomers(
     _actor: Actor,
-    filters: { search?: string; archived?: boolean; cursor?: string; limit?: number },
+    filters: { search?: string; archived?: boolean; cursor?: string; limit?: number; includeTestFixtures?: boolean },
   ): Promise<CustomerListRecord> {
     const limit = clampLimit(filters.limit);
     const customers = await this.prisma.customer.findMany({
       where: {
         archivedAt: filters.archived ? { not: null } : null,
+        ...(filters.includeTestFixtures ? {} : { isTestFixture: false }),
         ...(filters.search
           ? {
               OR: [
@@ -226,6 +227,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         estado: input.estado ?? null,
         observacoes: input.observacoes ?? null,
         auvoContactId: input.auvoContactId ?? null,
+        isTestFixture: isTestFixtureName(input.nome),
         createdBy: actor.id,
         updatedBy: actor.id,
       },
@@ -275,12 +277,13 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
 
   async listOpportunities(
     actor: Actor,
-    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; cursor?: string; limit?: number },
+    filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; cursor?: string; limit?: number; includeTestFixtures?: boolean },
   ): Promise<OpportunityListRecord> {
     const limit = clampLimit(filters.limit);
     const opportunities = await this.prisma.opportunity.findMany({
       where: {
         archivedAt: null,
+        ...(filters.includeTestFixtures ? {} : { isTestFixture: false }),
         ...(actor.role === "vendedor" ? { responsavelId: actor.id } : {}),
         ...(filters.search
           ? {
@@ -343,6 +346,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           proximaAcao: input.proximaAcao ?? null,
           proximaAcaoEm: input.proximaAcaoEm ? new Date(input.proximaAcaoEm) : null,
           status,
+          isTestFixture: isTestFixtureName(input.titulo),
           createdBy: actor.id,
           updatedBy: actor.id,
         },
@@ -678,8 +682,8 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     },
   ): Promise<NextActionRecord[]> {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const startOfToday = startOfLocalDay(now);
+    const startOfTomorrow = addDays(startOfToday, 1);
     const actions = await this.prisma.nextAction.findMany({
       where: {
         ...(actor.role === "vendedor" ? { responsibleUserId: actor.id } : {}),
@@ -728,13 +732,14 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           : {};
     const opportunityFilters = {
       archivedAt: null,
+      isTestFixture: false,
       ...responsibleScope,
       ...(filters.stageId ? { etapaId: filters.stageId } : {}),
       ...(filters.situation ? { situacao: filters.situation } : {}),
       ...(filters.demandType ? { tipoDemanda: filters.demandType } : {}),
     };
 
-    const [pendingActions, activeOpportunities, periodOpportunities, newCustomers] = await Promise.all([
+    const [pendingActions, activeOpportunities, periodOpportunities, newCustomers, auvoInboxPendingCount] = await Promise.all([
       this.prisma.nextAction.findMany({
         where: {
           archivedAt: null,
@@ -756,6 +761,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       this.prisma.opportunity.findMany({
         where: {
           archivedAt: null,
+          isTestFixture: false,
           ...responsibleScope,
           createdAt: { gte: from, lte: to },
         },
@@ -765,9 +771,11 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       this.prisma.customer.count({
         where: {
           archivedAt: null,
+          isTestFixture: false,
           createdAt: { gte: from, lte: to },
         },
       }),
+      this.prisma.auvoInboxItem.count({ where: { status: { in: ["novo", "em_analise", "aguardando_dados"] } } }),
     ]);
 
     const actionItems = pendingActions.map((action) => mapCommercialAction(action, now));
@@ -800,11 +808,18 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           return true;
         })
         .map((opportunity) => mapCommercialOpportunity(opportunity, now)),
-      auvoInbox: {
-        status: "homologation",
-        pending: 0,
-        message: "Nenhum atendimento recebido do Auvo. A integracao ainda esta em homologacao.",
-      },
+      auvoInbox:
+        auvoInboxPendingCount > 0
+          ? {
+              status: "pending",
+              pending: auvoInboxPendingCount,
+              message: `${auvoInboxPendingCount} atendimento(s) do Auvo aguardando triagem.`,
+            }
+          : {
+              status: "empty",
+              pending: 0,
+              message: "Nenhum atendimento do Auvo aguardando triagem.",
+            },
       summary: {
         newCustomers,
         newOpportunities: periodOpportunities.length,
@@ -821,7 +836,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
   async getCommercialReport(actor: Actor, filters: CommercialReportFilters): Promise<CommercialReportRecord> {
     const now = new Date();
     const from = filters.from ? toDateOnly(filters.from) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const to = filters.to ? new Date(`${filters.to}T23:59:59.999Z`) : now;
+    const to = filters.to ? toEndOfDateOnly(filters.to) : now;
     const responsibleScope =
       actor.role === "vendedor"
         ? { responsavelId: actor.id }
@@ -829,7 +844,8 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           ? { responsavelId: filters.responsibleUserId }
           : {};
     const opportunityWhere = {
-      createdAt: { gte: from, lte: to },
+      createdAt: { gte: from, lt: to },
+      isTestFixture: false,
       ...responsibleScope,
       ...(filters.origem ? { origem: filters.origem } : {}),
       ...(filters.tipoDemanda ? { tipoDemanda: filters.tipoDemanda } : {}),
@@ -838,7 +854,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
 
     const [periodOpportunities, newLeads, overdueFollowUps, completedFollowUps] = await Promise.all([
       this.prisma.opportunity.findMany({ where: opportunityWhere, include: opportunityInclude }),
-      this.prisma.customer.count({ where: { createdAt: { gte: from, lte: to }, archivedAt: null } }),
+      this.prisma.customer.count({ where: { createdAt: { gte: from, lt: to }, archivedAt: null, isTestFixture: false } }),
       this.prisma.nextAction.count({
         where: {
           status: "pending",
@@ -851,7 +867,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       this.prisma.nextAction.count({
         where: {
           status: "completed",
-          completedAt: { gte: from, lte: to },
+          completedAt: { gte: from, lt: to },
           category: "commercial",
           ...(actor.role === "vendedor" ? { responsibleUserId: actor.id } : filters.responsibleUserId ? { responsibleUserId: filters.responsibleUserId } : {}),
         },
@@ -912,13 +928,13 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     };
   }
 
-  async globalSearch(actor: Actor, query: string): Promise<GlobalSearchResult> {
+  async globalSearch(actor: Actor, query: string, includeTestFixtures = false): Promise<GlobalSearchResult> {
     const trimmed = query.trim();
     if (!trimmed) return { customers: [], opportunities: [] };
 
     const [customers, opportunities] = await Promise.all([
-      this.listCustomers(actor, { search: trimmed }),
-      this.listOpportunities(actor, { search: trimmed }),
+      this.listCustomers(actor, { search: trimmed, includeTestFixtures }),
+      this.listOpportunities(actor, { search: trimmed, includeTestFixtures }),
     ]);
 
     return {
@@ -1193,13 +1209,37 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         externalServiceId: parsed.externalServiceId,
         status: "novo",
         suggestedCustomerId,
-        title: parsed.contactName ? `Atendimento - ${parsed.contactName}` : "Atendimento Auvo sem nome de contato",
+        title: buildCanonicalContactTitle(parsed.contactName, phoneNormalized),
         contactName: parsed.contactName,
         phoneNormalized,
         auvoContactId: parsed.auvoContactId,
         email: parsed.email,
         channelType: parsed.channelType,
         lastEventId: eventId,
+      },
+    });
+  }
+
+  private async upsertContactSnapshotFromContactEvent(payload: unknown): Promise<void> {
+    const parsed = parseAuvoContactPayload(payload);
+    if (!parsed) return;
+
+    const existing = await this.prisma.auvoInboxItem.findFirst({ where: { auvoContactId: parsed.auvoContactId } });
+    if (!existing) return;
+
+    const phoneNormalized = normalizePhone(parsed.phoneRaw) ?? existing.phoneNormalized;
+    const contactName = parsed.contactName ?? existing.contactName;
+    const suggestedCustomerId =
+      existing.suggestedCustomerId ?? (await this.suggestCustomerForInboxItem(parsed.auvoContactId, phoneNormalized, parsed.email ?? existing.email));
+
+    await this.prisma.auvoInboxItem.update({
+      where: { id: existing.id },
+      data: {
+        contactName,
+        phoneNormalized,
+        email: parsed.email ?? existing.email,
+        suggestedCustomerId,
+        title: buildCanonicalContactTitle(contactName, phoneNormalized),
       },
     });
   }
@@ -1410,6 +1450,81 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       data: { status: "ignored", ignoredAt: new Date(), updatedAt: new Date() },
     });
     return mapAuvoWebhookEvent(updated);
+  }
+
+  async reconcileAuvoWebhookEvents(limit = 50): Promise<{ claimed: number; processed: number; retried: number; failed: number }> {
+    const MAX_ATTEMPTS = 5;
+    const STUCK_PROCESSING_MINUTES = 5;
+    const now = new Date();
+
+    // Reclama eventos travados em "processing" por um worker anterior que morreu antes de concluir.
+    await this.prisma.auvoWebhookEvent.updateMany({
+      where: {
+        status: "processing",
+        processingStartedAt: { lt: new Date(now.getTime() - STUCK_PROCESSING_MINUTES * 60_000) },
+      },
+      data: { status: "received", processingStartedAt: null },
+    });
+
+    const batch = await this.prisma.auvoWebhookEvent.findMany({
+      where: {
+        status: "received",
+        OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
+      },
+      orderBy: { receivedAt: "asc" },
+      take: limit,
+    });
+
+    let processed = 0;
+    let retried = 0;
+    let failed = 0;
+
+    for (const event of batch) {
+      const claim = await this.prisma.auvoWebhookEvent.updateMany({
+        where: { id: event.id, status: "received" },
+        data: { status: "processing", processingStartedAt: new Date() },
+      });
+      if (claim.count === 0) continue; // outro worker ja reivindicou este evento
+
+      try {
+        if (isAuvoSessionEventType(event.eventType)) {
+          await this.upsertInboxItemFromSessionEvent(event.id, event.rawPayloadJson);
+        } else if (isAuvoContactEventType(event.eventType)) {
+          await this.upsertContactSnapshotFromContactEvent(event.rawPayloadJson);
+        }
+        await this.prisma.auvoWebhookEvent.update({
+          where: { id: event.id },
+          data: { status: "processed", processedAt: new Date(), lastError: null, nextRetryAt: null, updatedAt: new Date() },
+        });
+        processed += 1;
+      } catch (error) {
+        const attemptCount = event.attemptCount + 1;
+        const message = error instanceof Error ? error.message : String(error);
+        if (attemptCount >= MAX_ATTEMPTS) {
+          await this.prisma.auvoWebhookEvent.update({
+            where: { id: event.id },
+            data: { status: "failed", attemptCount, lastError: message.slice(0, 500), processingStartedAt: null, updatedAt: new Date() },
+          });
+          failed += 1;
+        } else {
+          const backoffMinutes = Math.min(2 ** attemptCount, 60);
+          await this.prisma.auvoWebhookEvent.update({
+            where: { id: event.id },
+            data: {
+              status: "received",
+              attemptCount,
+              lastError: message.slice(0, 500),
+              processingStartedAt: null,
+              nextRetryAt: new Date(now.getTime() + backoffMinutes * 60_000),
+              updatedAt: new Date(),
+            },
+          });
+          retried += 1;
+        }
+      }
+    }
+
+    return { claimed: batch.length, processed, retried, failed };
   }
 
   async getAuvoIntegrationStatus(_actor: Actor, configured: boolean): Promise<AuvoIntegrationStatusRecord> {
@@ -1793,6 +1908,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           where: {
             telefoneNormalizado: customer.telefoneNormalizado,
             id: { not: customer.id },
+            isTestFixture: false,
           },
           select: { id: true },
         })
@@ -2230,6 +2346,22 @@ function mapAuvoWebhookEvent(row: AuvoWebhookEventEntity): AuvoWebhookEventRecor
   };
 }
 
+export function buildCanonicalContactTitle(contactName: string | null, phoneNormalized: string | null): string {
+  if (contactName) return contactName;
+  if (phoneNormalized) return formatPhoneForDisplay(phoneNormalized);
+  return "Contato sem nome";
+}
+
+function formatPhoneForDisplay(phoneNormalized: string): string {
+  const digits = phoneNormalized.startsWith("55") ? phoneNormalized.slice(2) : phoneNormalized;
+  const match = /^(\d{2})(\d{4,5})(\d{4})$/.exec(digits);
+  return match ? `(${match[1]}) ${match[2]}-${match[3]}` : phoneNormalized;
+}
+
+export function isTestFixtureName(name: string): boolean {
+  return /^e2e\s/i.test(name.trim()) || /homolog/i.test(name);
+}
+
 const OUT_OF_SCOPE_AUVO_EVENT_TYPE_PREFIXES = ["MESSAGE_", "PAYMENT_", "CARD_", "PANEL_", "TEMPLATE_"];
 const OUT_OF_SCOPE_AUVO_EVENT_TYPES_EXACT = new Set(["CONTACT_TAG_UPDATE"]);
 
@@ -2249,7 +2381,15 @@ function inferEventType(payload: unknown): string | null {
 function inferExternalEventId(payload: unknown): string | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
   const record = payload as Record<string, unknown>;
-  return firstText(record.eventId, record.event_id, record.id);
+  const topLevel = firstText(record.eventId, record.event_id, record.id);
+  if (topLevel) return topLevel;
+
+  // Payloads reais do Auvo (CONTACT_*/SESSION_*) trazem o id apenas em content.id, nao no topo.
+  const content = record.content;
+  if (content && typeof content === "object" && !Array.isArray(content)) {
+    return firstText((content as Record<string, unknown>).id);
+  }
+  return null;
 }
 
 function firstText(...values: unknown[]): string | null {
@@ -2391,12 +2531,27 @@ function averageDays(pairs: Array<[Date, Date | null]>): number | null {
   return Math.round((diffs.reduce((sum, value) => sum + value, 0) / diffs.length) * 10) / 10;
 }
 
-function startOfLocalDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+// America/Sao_Paulo nao observa horario de verao desde 2019 (Lei/Decreto federal) — offset fixo
+// UTC-3 e seguro. Calculado via getters UTC para nao depender do fuso ambiente do processo Node
+// (em serverless/producao roda em UTC; em dev local pode ser qualquer fuso), que era a causa raiz
+// de acoes classificadas como vencidas/futuras incorretamente perto da meia-noite.
+const SAO_PAULO_UTC_OFFSET_HOURS = 3;
+
+export function startOfLocalDay(date: Date): Date {
+  const shifted = new Date(date.getTime() - SAO_PAULO_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+  return new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate(), SAO_PAULO_UTC_OFFSET_HOURS, 0, 0, 0));
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
 function toDateOnly(value: string): Date {
-  return new Date(`${value}T00:00:00.000Z`);
+  return new Date(`${value}T${String(SAO_PAULO_UTC_OFFSET_HOURS).padStart(2, "0")}:00:00.000Z`);
+}
+
+function toEndOfDateOnly(value: string): Date {
+  return addDays(toDateOnly(value), 1);
 }
 
 function assertCanTransition(current: OpportunityRecord, nextStatus: "ganha" | "perdida"): void {

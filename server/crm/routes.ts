@@ -128,7 +128,7 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
 
   app.get("/api/search", { preHandler: [guards.authenticate, guards.requirePermission("customers:read")] }, async (request) => {
     const query = request.query as { q?: string };
-    return { results: await repository.globalSearch(getActor(request), query.q ?? "") };
+    return { results: await repository.globalSearch(getActor(request), query.q ?? "", wantsTestFixtures(request)) };
   });
 
   app.get("/api/reports/commercial", { preHandler: [guards.authenticate, guards.requirePermission("reports:read")] }, async (request) => {
@@ -164,6 +164,7 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
       archived: query.archived === "true",
       cursor: query.cursor,
       limit: query.limit ? Number(query.limit) : undefined,
+      includeTestFixtures: wantsTestFixtures(request),
     });
   });
 
@@ -201,6 +202,7 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
     return repository.listOpportunities(getActor(request), {
       ...query,
       limit: query.limit ? Number(query.limit) : undefined,
+      includeTestFixtures: wantsTestFixtures(request),
     });
   });
 
@@ -400,6 +402,13 @@ function getActor(request: FastifyRequest): Actor {
   const user = request.crmUser;
   if (!user) throw new ApiError(401, "unauthorized", "Autenticacao obrigatoria.");
   return { id: user.id, role: user.role };
+}
+
+// Opt-in apenas: visao operacional padrao esconde fixtures de teste (ver migration 0017).
+// Testes automatizados (Playwright) enviam este header para poderem verificar seus proprios
+// dados de teste atraves da mesma UI que um usuario real usaria.
+function wantsTestFixtures(request: FastifyRequest): boolean {
+  return request.headers["x-crm-include-test-fixtures"] === "true";
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

@@ -7,8 +7,34 @@ export type ParsedAuvoSession = {
   channelType: string | null;
 };
 
+export type ParsedAuvoContact = {
+  auvoContactId: string;
+  contactName: string | null;
+  phoneRaw: string | null;
+  email: string | null;
+};
+
 export function isAuvoSessionEventType(eventType: string | null): boolean {
   return typeof eventType === "string" && eventType.toUpperCase().startsWith("SESSION_");
+}
+
+export function isAuvoContactEventType(eventType: string | null): boolean {
+  return typeof eventType === "string" && eventType.toUpperCase().startsWith("CONTACT_");
+}
+
+// Formato real observado em producao (CONTACT_NEW/CONTACT_UPDATE), catalogado nesta auditoria:
+// payload.content = { id, name, nameWhatsapp, email, phonenumber, phonenumberFormatted, ... }
+export function parseAuvoContactPayload(payload: unknown): ParsedAuvoContact | null {
+  if (!isRecord(payload)) return null;
+  const content = payload.content;
+  if (!isRecord(content) || typeof content.id !== "string" || !content.id.trim()) return null;
+
+  return {
+    auvoContactId: content.id,
+    contactName: firstNonEmptyString(content.name, content.nameWhatsapp),
+    phoneRaw: firstNonEmptyString(content.phonenumberFormatted, content.phonenumber),
+    email: firstNonEmptyString(content.email),
+  };
 }
 
 export function parseAuvoSessionPayload(payload: unknown): ParsedAuvoSession | null {

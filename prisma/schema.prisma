@@ -42,12 +42,14 @@ model Customer {
   createdBy           String        @map("created_by") @db.Uuid
   updatedBy           String?       @map("updated_by") @db.Uuid
   archivedAt          DateTime?     @map("archived_at") @db.Timestamptz(6)
+  isTestFixture       Boolean       @default(false) @map("is_test_fixture")
   activities          Activity[]
   nextActions         NextAction[]
   opportunities       Opportunity[]
 
   @@index([telefoneNormalizado], map: "clientes_telefone_normalizado_idx")
   @@index([archivedAt, createdAt], map: "clientes_archived_created_idx")
+  @@index([isTestFixture], map: "clientes_is_test_fixture_idx")
   @@map("clientes")
   @@schema("crm")
 }
@@ -105,6 +107,7 @@ model Opportunity {
   updatedBy           String?       @map("updated_by") @db.Uuid
   archivedAt          DateTime?     @map("archived_at") @db.Timestamptz(6)
   currentNextActionId String?       @map("current_next_action_id") @db.Uuid
+  isTestFixture       Boolean       @default(false) @map("is_test_fixture")
   activities          Activity[]
   cliente             Customer      @relation(fields: [clienteId], references: [id])
   etapa               PipelineStage @relation(fields: [etapaId], references: [id])
@@ -116,6 +119,7 @@ model Opportunity {
   @@index([responsavelId, status], map: "oportunidades_responsavel_status_idx")
   @@index([createdAt], map: "oportunidades_created_at_idx")
   @@index([archivedAt, status, updatedAt(sort: Desc)], map: "oportunidades_archived_status_updated_idx")
+  @@index([isTestFixture], map: "oportunidades_is_test_fixture_idx")
   @@map("oportunidades")
   @@schema("crm")
 }

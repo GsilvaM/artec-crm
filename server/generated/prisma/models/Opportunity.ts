@@ -70,6 +70,7 @@ export type OpportunityMinAggregateOutputType = {
   updatedBy: string | null
   archivedAt: Date | null
   currentNextActionId: string | null
+  isTestFixture: boolean | null
 }
 
 export type OpportunityMaxAggregateOutputType = {
@@ -102,6 +103,7 @@ export type OpportunityMaxAggregateOutputType = {
   updatedBy: string | null
   archivedAt: Date | null
   currentNextActionId: string | null
+  isTestFixture: boolean | null
 }
 
 export type OpportunityCountAggregateOutputType = {
@@ -134,6 +136,7 @@ export type OpportunityCountAggregateOutputType = {
   updatedBy: number
   archivedAt: number
   currentNextActionId: number
+  isTestFixture: number
   _all: number
 }
 
@@ -182,6 +185,7 @@ export type OpportunityMinAggregateInputType = {
   updatedBy?: true
   archivedAt?: true
   currentNextActionId?: true
+  isTestFixture?: true
 }
 
 export type OpportunityMaxAggregateInputType = {
@@ -214,6 +218,7 @@ export type OpportunityMaxAggregateInputType = {
   updatedBy?: true
   archivedAt?: true
   currentNextActionId?: true
+  isTestFixture?: true
 }
 
 export type OpportunityCountAggregateInputType = {
@@ -246,6 +251,7 @@ export type OpportunityCountAggregateInputType = {
   updatedBy?: true
   archivedAt?: true
   currentNextActionId?: true
+  isTestFixture?: true
   _all?: true
 }
 
@@ -365,6 +371,7 @@ export type OpportunityGroupByOutputType = {
   updatedBy: string | null
   archivedAt: Date | null
   currentNextActionId: string | null
+  isTestFixture: boolean
   _count: OpportunityCountAggregateOutputType | null
   _avg: OpportunityAvgAggregateOutputType | null
   _sum: OpportunitySumAggregateOutputType | null
@@ -420,6 +427,7 @@ export type OpportunityWhereInput = {
   updatedBy?: Prisma.UuidNullableFilter<"Opportunity"> | string | null
   archivedAt?: Prisma.DateTimeNullableFilter<"Opportunity"> | Date | string | null
   currentNextActionId?: Prisma.UuidNullableFilter<"Opportunity"> | string | null
+  isTestFixture?: Prisma.BoolFilter<"Opportunity"> | boolean
   activities?: Prisma.ActivityListRelationFilter
   cliente?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   etapa?: Prisma.XOR<Prisma.PipelineStageScalarRelationFilter, Prisma.PipelineStageWhereInput>
@@ -458,6 +466,7 @@ export type OpportunityOrderByWithRelationInput = {
   updatedBy?: Prisma.SortOrderInput | Prisma.SortOrder
   archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   currentNextActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
   activities?: Prisma.ActivityOrderByRelationAggregateInput
   cliente?: Prisma.CustomerOrderByWithRelationInput
   etapa?: Prisma.PipelineStageOrderByWithRelationInput
@@ -499,6 +508,7 @@ export type OpportunityWhereUniqueInput = Prisma.AtLeast<{
   updatedBy?: Prisma.UuidNullableFilter<"Opportunity"> | string | null
   archivedAt?: Prisma.DateTimeNullableFilter<"Opportunity"> | Date | string | null
   currentNextActionId?: Prisma.UuidNullableFilter<"Opportunity"> | string | null
+  isTestFixture?: Prisma.BoolFilter<"Opportunity"> | boolean
   activities?: Prisma.ActivityListRelationFilter
   cliente?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   etapa?: Prisma.XOR<Prisma.PipelineStageScalarRelationFilter, Prisma.PipelineStageWhereInput>
@@ -537,6 +547,7 @@ export type OpportunityOrderByWithAggregationInput = {
   updatedBy?: Prisma.SortOrderInput | Prisma.SortOrder
   archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   currentNextActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
   _count?: Prisma.OpportunityCountOrderByAggregateInput
   _avg?: Prisma.OpportunityAvgOrderByAggregateInput
   _max?: Prisma.OpportunityMaxOrderByAggregateInput
@@ -577,6 +588,7 @@ export type OpportunityScalarWhereWithAggregatesInput = {
   updatedBy?: Prisma.UuidNullableWithAggregatesFilter<"Opportunity"> | string | null
   archivedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Opportunity"> | Date | string | null
   currentNextActionId?: Prisma.UuidNullableWithAggregatesFilter<"Opportunity"> | string | null
+  isTestFixture?: Prisma.BoolWithAggregatesFilter<"Opportunity"> | boolean
 }
 
 export type OpportunityCreateInput = {
@@ -606,6 +618,7 @@ export type OpportunityCreateInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
@@ -644,6 +657,7 @@ export type OpportunityUncheckedCreateInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
@@ -676,6 +690,7 @@ export type OpportunityUpdateInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
@@ -714,6 +729,7 @@ export type OpportunityUncheckedUpdateInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
@@ -749,6 +765,7 @@ export type OpportunityCreateManyInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
 }
 
 export type OpportunityUpdateManyMutationInput = {
@@ -778,6 +795,7 @@ export type OpportunityUpdateManyMutationInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type OpportunityUncheckedUpdateManyInput = {
@@ -810,6 +828,7 @@ export type OpportunityUncheckedUpdateManyInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type OpportunityListRelationFilter = {
@@ -852,6 +871,7 @@ export type OpportunityCountOrderByAggregateInput = {
   updatedBy?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
   currentNextActionId?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 export type OpportunityAvgOrderByAggregateInput = {
@@ -891,6 +911,7 @@ export type OpportunityMaxOrderByAggregateInput = {
   updatedBy?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
   currentNextActionId?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 export type OpportunityMinOrderByAggregateInput = {
@@ -923,6 +944,7 @@ export type OpportunityMinOrderByAggregateInput = {
   updatedBy?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
   currentNextActionId?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 export type OpportunitySumOrderByAggregateInput = {
@@ -1149,6 +1171,7 @@ export type OpportunityCreateWithoutClienteInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
@@ -1185,6 +1208,7 @@ export type OpportunityUncheckedCreateWithoutClienteInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
@@ -1249,6 +1273,7 @@ export type OpportunityScalarWhereInput = {
   updatedBy?: Prisma.UuidNullableFilter<"Opportunity"> | string | null
   archivedAt?: Prisma.DateTimeNullableFilter<"Opportunity"> | Date | string | null
   currentNextActionId?: Prisma.UuidNullableFilter<"Opportunity"> | string | null
+  isTestFixture?: Prisma.BoolFilter<"Opportunity"> | boolean
 }
 
 export type OpportunityCreateWithoutEtapaInput = {
@@ -1278,6 +1303,7 @@ export type OpportunityCreateWithoutEtapaInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
@@ -1314,6 +1340,7 @@ export type OpportunityUncheckedCreateWithoutEtapaInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
@@ -1372,6 +1399,7 @@ export type OpportunityCreateWithoutMotivoPerdaInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
@@ -1408,6 +1436,7 @@ export type OpportunityUncheckedCreateWithoutMotivoPerdaInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
@@ -1466,6 +1495,7 @@ export type OpportunityCreateWithoutQuotesInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
@@ -1503,6 +1533,7 @@ export type OpportunityUncheckedCreateWithoutQuotesInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
 }
@@ -1550,6 +1581,7 @@ export type OpportunityUpdateWithoutQuotesInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
@@ -1587,6 +1619,7 @@ export type OpportunityUncheckedUpdateWithoutQuotesInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
 }
@@ -1618,6 +1651,7 @@ export type OpportunityCreateWithoutActivitiesInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
@@ -1655,6 +1689,7 @@ export type OpportunityUncheckedCreateWithoutActivitiesInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
 }
@@ -1702,6 +1737,7 @@ export type OpportunityUpdateWithoutActivitiesInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
@@ -1739,6 +1775,7 @@ export type OpportunityUncheckedUpdateWithoutActivitiesInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
 }
@@ -1770,6 +1807,7 @@ export type OpportunityCreateWithoutNextActionsInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
@@ -1807,6 +1845,7 @@ export type OpportunityUncheckedCreateWithoutNextActionsInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
 }
@@ -1854,6 +1893,7 @@ export type OpportunityUpdateWithoutNextActionsInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
@@ -1891,6 +1931,7 @@ export type OpportunityUncheckedUpdateWithoutNextActionsInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
 }
@@ -1924,6 +1965,7 @@ export type OpportunityCreateManyClienteInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
 }
 
 export type OpportunityUpdateWithoutClienteInput = {
@@ -1953,6 +1995,7 @@ export type OpportunityUpdateWithoutClienteInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
@@ -1989,6 +2032,7 @@ export type OpportunityUncheckedUpdateWithoutClienteInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
@@ -2023,6 +2067,7 @@ export type OpportunityUncheckedUpdateManyWithoutClienteInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type OpportunityCreateManyEtapaInput = {
@@ -2054,6 +2099,7 @@ export type OpportunityCreateManyEtapaInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
 }
 
 export type OpportunityUpdateWithoutEtapaInput = {
@@ -2083,6 +2129,7 @@ export type OpportunityUpdateWithoutEtapaInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
@@ -2119,6 +2166,7 @@ export type OpportunityUncheckedUpdateWithoutEtapaInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
@@ -2153,6 +2201,7 @@ export type OpportunityUncheckedUpdateManyWithoutEtapaInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type OpportunityCreateManyMotivoPerdaInput = {
@@ -2184,6 +2233,7 @@ export type OpportunityCreateManyMotivoPerdaInput = {
   updatedBy?: string | null
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
+  isTestFixture?: boolean
 }
 
 export type OpportunityUpdateWithoutMotivoPerdaInput = {
@@ -2213,6 +2263,7 @@ export type OpportunityUpdateWithoutMotivoPerdaInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
@@ -2249,6 +2300,7 @@ export type OpportunityUncheckedUpdateWithoutMotivoPerdaInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
@@ -2283,6 +2335,7 @@ export type OpportunityUncheckedUpdateManyWithoutMotivoPerdaInput = {
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 
@@ -2364,6 +2417,7 @@ export type OpportunitySelect<ExtArgs extends runtime.Types.Extensions.InternalA
   updatedBy?: boolean
   archivedAt?: boolean
   currentNextActionId?: boolean
+  isTestFixture?: boolean
   activities?: boolean | Prisma.Opportunity$activitiesArgs<ExtArgs>
   cliente?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   etapa?: boolean | Prisma.PipelineStageDefaultArgs<ExtArgs>
@@ -2403,6 +2457,7 @@ export type OpportunitySelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   updatedBy?: boolean
   archivedAt?: boolean
   currentNextActionId?: boolean
+  isTestFixture?: boolean
   cliente?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   etapa?: boolean | Prisma.PipelineStageDefaultArgs<ExtArgs>
   motivoPerda?: boolean | Prisma.Opportunity$motivoPerdaArgs<ExtArgs>
@@ -2438,6 +2493,7 @@ export type OpportunitySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   updatedBy?: boolean
   archivedAt?: boolean
   currentNextActionId?: boolean
+  isTestFixture?: boolean
   cliente?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   etapa?: boolean | Prisma.PipelineStageDefaultArgs<ExtArgs>
   motivoPerda?: boolean | Prisma.Opportunity$motivoPerdaArgs<ExtArgs>
@@ -2473,9 +2529,10 @@ export type OpportunitySelectScalar = {
   updatedBy?: boolean
   archivedAt?: boolean
   currentNextActionId?: boolean
+  isTestFixture?: boolean
 }
 
-export type OpportunityOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clienteId" | "titulo" | "descricao" | "tipoDemanda" | "origem" | "responsavelId" | "etapaId" | "situacao" | "valorEstimado" | "valorOrcamento" | "valorAprovado" | "formaPagamento" | "quantidadeParcelas" | "previsaoExecucao" | "proximaAcao" | "proximaAcaoEm" | "dataEntrada" | "dataOrcamento" | "dataAprovacao" | "dataPerda" | "motivoPerdaId" | "status" | "createdAt" | "updatedAt" | "createdBy" | "updatedBy" | "archivedAt" | "currentNextActionId", ExtArgs["result"]["opportunity"]>
+export type OpportunityOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clienteId" | "titulo" | "descricao" | "tipoDemanda" | "origem" | "responsavelId" | "etapaId" | "situacao" | "valorEstimado" | "valorOrcamento" | "valorAprovado" | "formaPagamento" | "quantidadeParcelas" | "previsaoExecucao" | "proximaAcao" | "proximaAcaoEm" | "dataEntrada" | "dataOrcamento" | "dataAprovacao" | "dataPerda" | "motivoPerdaId" | "status" | "createdAt" | "updatedAt" | "createdBy" | "updatedBy" | "archivedAt" | "currentNextActionId" | "isTestFixture", ExtArgs["result"]["opportunity"]>
 export type OpportunityInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   activities?: boolean | Prisma.Opportunity$activitiesArgs<ExtArgs>
   cliente?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
@@ -2536,6 +2593,7 @@ export type $OpportunityPayload<ExtArgs extends runtime.Types.Extensions.Interna
     updatedBy: string | null
     archivedAt: Date | null
     currentNextActionId: string | null
+    isTestFixture: boolean
   }, ExtArgs["result"]["opportunity"]>
   composites: {}
 }
@@ -2994,6 +3052,7 @@ export interface OpportunityFieldRefs {
   readonly updatedBy: Prisma.FieldRef<"Opportunity", 'String'>
   readonly archivedAt: Prisma.FieldRef<"Opportunity", 'DateTime'>
   readonly currentNextActionId: Prisma.FieldRef<"Opportunity", 'String'>
+  readonly isTestFixture: Prisma.FieldRef<"Opportunity", 'Boolean'>
 }
     
 

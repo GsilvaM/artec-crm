@@ -114,7 +114,8 @@ export const CustomerScalarFieldEnum = {
   updatedAt: 'updatedAt',
   createdBy: 'createdBy',
   updatedBy: 'updatedBy',
-  archivedAt: 'archivedAt'
+  archivedAt: 'archivedAt',
+  isTestFixture: 'isTestFixture'
 } as const
 
 export type CustomerScalarFieldEnum = (typeof CustomerScalarFieldEnum)[keyof typeof CustomerScalarFieldEnum]
@@ -170,7 +171,8 @@ export const OpportunityScalarFieldEnum = {
   createdBy: 'createdBy',
   updatedBy: 'updatedBy',
   archivedAt: 'archivedAt',
-  currentNextActionId: 'currentNextActionId'
+  currentNextActionId: 'currentNextActionId',
+  isTestFixture: 'isTestFixture'
 } as const
 
 export type OpportunityScalarFieldEnum = (typeof OpportunityScalarFieldEnum)[keyof typeof OpportunityScalarFieldEnum]

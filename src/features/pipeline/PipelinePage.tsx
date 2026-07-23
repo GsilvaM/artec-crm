@@ -34,14 +34,35 @@ export function PipelinePage() {
   }, []);
 
   async function handleMoveStage(opportunityId: string, etapaId: string) {
+    const current = snapshot;
+    const previousOpportunity = current?.opportunities.find((opportunity) => opportunity.id === opportunityId);
+    if (!current || !previousOpportunity || previousOpportunity.etapaId === etapaId) return;
+    const previousEtapaId = previousOpportunity.etapaId;
+    const stageName = current.stages.find((stage) => stage.id === etapaId)?.nome;
+
     setError(null);
+    setSnapshot({
+      ...current,
+      opportunities: current.opportunities.map((opportunity) =>
+        opportunity.id === opportunityId ? { ...opportunity, etapaId } : opportunity,
+      ),
+    });
+
     try {
       await updateOpportunity(opportunityId, { etapaId });
-      const stageName = snapshot?.stages.find((stage) => stage.id === etapaId)?.nome;
       showToast(stageName ? `Oportunidade movida para ${stageName}.` : "Etapa atualizada.");
-      await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível mover a oportunidade de etapa.");
+      setSnapshot((rollbackBase) =>
+        rollbackBase
+          ? {
+              ...rollbackBase,
+              opportunities: rollbackBase.opportunities.map((opportunity) =>
+                opportunity.id === opportunityId ? { ...opportunity, etapaId: previousEtapaId } : opportunity,
+              ),
+            }
+          : rollbackBase,
+      );
+      setError(err instanceof Error ? err.message : "Não foi possível mover a oportunidade de etapa. A alteração foi desfeita.");
     }
   }
 

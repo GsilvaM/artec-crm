@@ -44,6 +44,7 @@ export type CustomerMinAggregateOutputType = {
   createdBy: string | null
   updatedBy: string | null
   archivedAt: Date | null
+  isTestFixture: boolean | null
 }
 
 export type CustomerMaxAggregateOutputType = {
@@ -66,6 +67,7 @@ export type CustomerMaxAggregateOutputType = {
   createdBy: string | null
   updatedBy: string | null
   archivedAt: Date | null
+  isTestFixture: boolean | null
 }
 
 export type CustomerCountAggregateOutputType = {
@@ -88,6 +90,7 @@ export type CustomerCountAggregateOutputType = {
   createdBy: number
   updatedBy: number
   archivedAt: number
+  isTestFixture: number
   _all: number
 }
 
@@ -112,6 +115,7 @@ export type CustomerMinAggregateInputType = {
   createdBy?: true
   updatedBy?: true
   archivedAt?: true
+  isTestFixture?: true
 }
 
 export type CustomerMaxAggregateInputType = {
@@ -134,6 +138,7 @@ export type CustomerMaxAggregateInputType = {
   createdBy?: true
   updatedBy?: true
   archivedAt?: true
+  isTestFixture?: true
 }
 
 export type CustomerCountAggregateInputType = {
@@ -156,6 +161,7 @@ export type CustomerCountAggregateInputType = {
   createdBy?: true
   updatedBy?: true
   archivedAt?: true
+  isTestFixture?: true
   _all?: true
 }
 
@@ -251,6 +257,7 @@ export type CustomerGroupByOutputType = {
   createdBy: string
   updatedBy: string | null
   archivedAt: Date | null
+  isTestFixture: boolean
   _count: CustomerCountAggregateOutputType | null
   _min: CustomerMinAggregateOutputType | null
   _max: CustomerMaxAggregateOutputType | null
@@ -294,6 +301,7 @@ export type CustomerWhereInput = {
   createdBy?: Prisma.UuidFilter<"Customer"> | string
   updatedBy?: Prisma.UuidNullableFilter<"Customer"> | string | null
   archivedAt?: Prisma.DateTimeNullableFilter<"Customer"> | Date | string | null
+  isTestFixture?: Prisma.BoolFilter<"Customer"> | boolean
   activities?: Prisma.ActivityListRelationFilter
   nextActions?: Prisma.NextActionListRelationFilter
   opportunities?: Prisma.OpportunityListRelationFilter
@@ -319,6 +327,7 @@ export type CustomerOrderByWithRelationInput = {
   createdBy?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrderInput | Prisma.SortOrder
   archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
   activities?: Prisma.ActivityOrderByRelationAggregateInput
   nextActions?: Prisma.NextActionOrderByRelationAggregateInput
   opportunities?: Prisma.OpportunityOrderByRelationAggregateInput
@@ -347,6 +356,7 @@ export type CustomerWhereUniqueInput = Prisma.AtLeast<{
   createdBy?: Prisma.UuidFilter<"Customer"> | string
   updatedBy?: Prisma.UuidNullableFilter<"Customer"> | string | null
   archivedAt?: Prisma.DateTimeNullableFilter<"Customer"> | Date | string | null
+  isTestFixture?: Prisma.BoolFilter<"Customer"> | boolean
   activities?: Prisma.ActivityListRelationFilter
   nextActions?: Prisma.NextActionListRelationFilter
   opportunities?: Prisma.OpportunityListRelationFilter
@@ -372,6 +382,7 @@ export type CustomerOrderByWithAggregationInput = {
   createdBy?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrderInput | Prisma.SortOrder
   archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
   _count?: Prisma.CustomerCountOrderByAggregateInput
   _max?: Prisma.CustomerMaxOrderByAggregateInput
   _min?: Prisma.CustomerMinOrderByAggregateInput
@@ -400,6 +411,7 @@ export type CustomerScalarWhereWithAggregatesInput = {
   createdBy?: Prisma.UuidWithAggregatesFilter<"Customer"> | string
   updatedBy?: Prisma.UuidNullableWithAggregatesFilter<"Customer"> | string | null
   archivedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Customer"> | Date | string | null
+  isTestFixture?: Prisma.BoolWithAggregatesFilter<"Customer"> | boolean
 }
 
 export type CustomerCreateInput = {
@@ -422,6 +434,7 @@ export type CustomerCreateInput = {
   createdBy: string
   updatedBy?: string | null
   archivedAt?: Date | string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutCustomerInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutCustomerInput
   opportunities?: Prisma.OpportunityCreateNestedManyWithoutClienteInput
@@ -447,6 +460,7 @@ export type CustomerUncheckedCreateInput = {
   createdBy: string
   updatedBy?: string | null
   archivedAt?: Date | string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutCustomerInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutCustomerInput
   opportunities?: Prisma.OpportunityUncheckedCreateNestedManyWithoutClienteInput
@@ -472,6 +486,7 @@ export type CustomerUpdateInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutCustomerNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutCustomerNestedInput
   opportunities?: Prisma.OpportunityUpdateManyWithoutClienteNestedInput
@@ -497,6 +512,7 @@ export type CustomerUncheckedUpdateInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutCustomerNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutCustomerNestedInput
   opportunities?: Prisma.OpportunityUncheckedUpdateManyWithoutClienteNestedInput
@@ -522,6 +538,7 @@ export type CustomerCreateManyInput = {
   createdBy: string
   updatedBy?: string | null
   archivedAt?: Date | string | null
+  isTestFixture?: boolean
 }
 
 export type CustomerUpdateManyMutationInput = {
@@ -544,6 +561,7 @@ export type CustomerUpdateManyMutationInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type CustomerUncheckedUpdateManyInput = {
@@ -566,6 +584,7 @@ export type CustomerUncheckedUpdateManyInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type CustomerCountOrderByAggregateInput = {
@@ -588,6 +607,7 @@ export type CustomerCountOrderByAggregateInput = {
   createdBy?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 export type CustomerMaxOrderByAggregateInput = {
@@ -610,6 +630,7 @@ export type CustomerMaxOrderByAggregateInput = {
   createdBy?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 export type CustomerMinOrderByAggregateInput = {
@@ -632,6 +653,7 @@ export type CustomerMinOrderByAggregateInput = {
   createdBy?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 export type CustomerScalarRelationFilter = {
@@ -712,6 +734,7 @@ export type CustomerCreateWithoutOpportunitiesInput = {
   createdBy: string
   updatedBy?: string | null
   archivedAt?: Date | string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutCustomerInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutCustomerInput
 }
@@ -736,6 +759,7 @@ export type CustomerUncheckedCreateWithoutOpportunitiesInput = {
   createdBy: string
   updatedBy?: string | null
   archivedAt?: Date | string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutCustomerInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutCustomerInput
 }
@@ -776,6 +800,7 @@ export type CustomerUpdateWithoutOpportunitiesInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutCustomerNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutCustomerNestedInput
 }
@@ -800,6 +825,7 @@ export type CustomerUncheckedUpdateWithoutOpportunitiesInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutCustomerNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutCustomerNestedInput
 }
@@ -824,6 +850,7 @@ export type CustomerCreateWithoutActivitiesInput = {
   createdBy: string
   updatedBy?: string | null
   archivedAt?: Date | string | null
+  isTestFixture?: boolean
   nextActions?: Prisma.NextActionCreateNestedManyWithoutCustomerInput
   opportunities?: Prisma.OpportunityCreateNestedManyWithoutClienteInput
 }
@@ -848,6 +875,7 @@ export type CustomerUncheckedCreateWithoutActivitiesInput = {
   createdBy: string
   updatedBy?: string | null
   archivedAt?: Date | string | null
+  isTestFixture?: boolean
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutCustomerInput
   opportunities?: Prisma.OpportunityUncheckedCreateNestedManyWithoutClienteInput
 }
@@ -888,6 +916,7 @@ export type CustomerUpdateWithoutActivitiesInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   nextActions?: Prisma.NextActionUpdateManyWithoutCustomerNestedInput
   opportunities?: Prisma.OpportunityUpdateManyWithoutClienteNestedInput
 }
@@ -912,6 +941,7 @@ export type CustomerUncheckedUpdateWithoutActivitiesInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutCustomerNestedInput
   opportunities?: Prisma.OpportunityUncheckedUpdateManyWithoutClienteNestedInput
 }
@@ -936,6 +966,7 @@ export type CustomerCreateWithoutNextActionsInput = {
   createdBy: string
   updatedBy?: string | null
   archivedAt?: Date | string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutCustomerInput
   opportunities?: Prisma.OpportunityCreateNestedManyWithoutClienteInput
 }
@@ -960,6 +991,7 @@ export type CustomerUncheckedCreateWithoutNextActionsInput = {
   createdBy: string
   updatedBy?: string | null
   archivedAt?: Date | string | null
+  isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutCustomerInput
   opportunities?: Prisma.OpportunityUncheckedCreateNestedManyWithoutClienteInput
 }
@@ -1000,6 +1032,7 @@ export type CustomerUpdateWithoutNextActionsInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutCustomerNestedInput
   opportunities?: Prisma.OpportunityUpdateManyWithoutClienteNestedInput
 }
@@ -1024,6 +1057,7 @@ export type CustomerUncheckedUpdateWithoutNextActionsInput = {
   createdBy?: Prisma.StringFieldUpdateOperationsInput | string
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutCustomerNestedInput
   opportunities?: Prisma.OpportunityUncheckedUpdateManyWithoutClienteNestedInput
 }
@@ -1097,6 +1131,7 @@ export type CustomerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   createdBy?: boolean
   updatedBy?: boolean
   archivedAt?: boolean
+  isTestFixture?: boolean
   activities?: boolean | Prisma.Customer$activitiesArgs<ExtArgs>
   nextActions?: boolean | Prisma.Customer$nextActionsArgs<ExtArgs>
   opportunities?: boolean | Prisma.Customer$opportunitiesArgs<ExtArgs>
@@ -1123,6 +1158,7 @@ export type CustomerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   createdBy?: boolean
   updatedBy?: boolean
   archivedAt?: boolean
+  isTestFixture?: boolean
 }, ExtArgs["result"]["customer"]>
 
 export type CustomerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1145,6 +1181,7 @@ export type CustomerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   createdBy?: boolean
   updatedBy?: boolean
   archivedAt?: boolean
+  isTestFixture?: boolean
 }, ExtArgs["result"]["customer"]>
 
 export type CustomerSelectScalar = {
@@ -1167,9 +1204,10 @@ export type CustomerSelectScalar = {
   createdBy?: boolean
   updatedBy?: boolean
   archivedAt?: boolean
+  isTestFixture?: boolean
 }
 
-export type CustomerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tipoPessoa" | "nome" | "nomeFantasia" | "telefone" | "telefoneNormalizado" | "email" | "documento" | "empresa" | "bairro" | "cidade" | "estado" | "observacoes" | "auvoContactId" | "createdAt" | "updatedAt" | "createdBy" | "updatedBy" | "archivedAt", ExtArgs["result"]["customer"]>
+export type CustomerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tipoPessoa" | "nome" | "nomeFantasia" | "telefone" | "telefoneNormalizado" | "email" | "documento" | "empresa" | "bairro" | "cidade" | "estado" | "observacoes" | "auvoContactId" | "createdAt" | "updatedAt" | "createdBy" | "updatedBy" | "archivedAt" | "isTestFixture", ExtArgs["result"]["customer"]>
 export type CustomerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   activities?: boolean | Prisma.Customer$activitiesArgs<ExtArgs>
   nextActions?: boolean | Prisma.Customer$nextActionsArgs<ExtArgs>
@@ -1206,6 +1244,7 @@ export type $CustomerPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     createdBy: string
     updatedBy: string | null
     archivedAt: Date | null
+    isTestFixture: boolean
   }, ExtArgs["result"]["customer"]>
   composites: {}
 }
@@ -1651,6 +1690,7 @@ export interface CustomerFieldRefs {
   readonly createdBy: Prisma.FieldRef<"Customer", 'String'>
   readonly updatedBy: Prisma.FieldRef<"Customer", 'String'>
   readonly archivedAt: Prisma.FieldRef<"Customer", 'DateTime'>
+  readonly isTestFixture: Prisma.FieldRef<"Customer", 'Boolean'>
 }
     
 

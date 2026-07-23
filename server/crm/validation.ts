@@ -24,6 +24,19 @@ const notificationTypeSchema = z.enum([
 const notificationSeveritySchema = z.enum(["info", "attention", "urgent"]);
 const auvoWebhookStatusSchema = z.enum(["received", "processing", "processed", "ignored", "failed"]);
 
+// Categorias reais de demanda comercial da Artec (CONTEXTO-ROTINA-ATENDIMENTO-ARTEC-CRM.md secao 6,
+// subsecoes 6.1-6.5 e 6.7 — 6.6 "garantia, suporte e pos-venda" fica de fora: por regra do negocio
+// esses casos viram atividade do cliente, nunca oportunidade).
+export const TIPO_DEMANDA_OPTIONS = [
+  { value: "instalacao", label: "Instalação ou compra de equipamento" },
+  { value: "manutencao_corretiva", label: "Manutenção corretiva" },
+  { value: "higienizacao", label: "Higienização e limpeza" },
+  { value: "acj", label: "Ar-condicionado de janela (ACJ)" },
+  { value: "remocao_reinstalacao", label: "Remoção, reinstalação ou mudança de endereço" },
+  { value: "corporativo_b2b_pmoc", label: "Atendimento corporativo / B2B / PMOC" },
+] as const;
+const tipoDemandaSchema = z.enum(TIPO_DEMANDA_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+
 export const customerCreateSchema = z.object({
   tipoPessoa: z.enum(["fisica", "juridica"]).default("fisica"),
   nome: z.string().trim().min(2, "Informe o nome do cliente."),
@@ -47,7 +60,7 @@ const opportunityBaseSchema = z.object({
   clienteId: uuid,
   titulo: z.string().trim().min(2, "Informe o titulo da oportunidade."),
   descricao: optionalText,
-  tipoDemanda: z.string().trim().min(2, "Informe o tipo de demanda."),
+  tipoDemanda: tipoDemandaSchema,
   origem: optionalText,
   responsavelId: uuid,
   etapaId: uuid.optional().nullable(),
@@ -244,7 +257,7 @@ export const resolveAuvoInboxItemSchema = z.discriminatedUnion("action", [
     action: z.literal("create_opportunity"),
     clienteId: uuid,
     titulo: z.string().trim().min(2, "Informe o titulo da oportunidade."),
-    tipoDemanda: z.string().trim().min(2, "Informe o tipo de demanda."),
+    tipoDemanda: tipoDemandaSchema,
     origem: optionalText,
     situacao: z.string().trim().min(2, "Informe a situacao."),
     proximaAcao: z.string().trim().min(2, "Informe a proxima acao."),

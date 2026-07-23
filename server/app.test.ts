@@ -780,7 +780,7 @@ describe("CRM activities and next actions API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().commercialCenter.overdueActions).toHaveLength(1);
     expect(response.json().commercialCenter.todayActions).toHaveLength(0);
-    expect(response.json().commercialCenter.auvoInbox.status).toBe("homologation");
+    expect(response.json().commercialCenter.auvoInbox.status).toBe("empty");
     expect(response.json().commercialCenter.summary.newOpportunities).toBeGreaterThan(0);
   });
 
@@ -1556,7 +1556,7 @@ class FakeCrmRepository implements CrmDataRepository {
       quotesAwaitingReturn: opportunityItems.filter((opportunity) => ["Orcamento enviado", "Negociacao"].includes(opportunity.stageName)),
       upcomingVisits: actionItems.filter((action) => /visita/i.test(action.title)),
       stalledOpportunities: opportunityItems.filter((opportunity) => opportunity.daysOpen >= 3 && !opportunity.nextActionDueAt),
-      auvoInbox: { status: "homologation", pending: 0, message: "Nenhum atendimento recebido do Auvo. A integracao ainda esta em homologacao." },
+      auvoInbox: { status: "empty", pending: 0, message: "Nenhum atendimento do Auvo aguardando triagem." },
       summary: {
         newCustomers: this.customers.length,
         newOpportunities: opportunities.length,
