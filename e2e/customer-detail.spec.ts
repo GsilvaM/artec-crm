@@ -7,11 +7,15 @@ test("opens a customer detail page from the list and sees related opportunities 
   await page.waitForURL(/\/clientes$/);
 
   const firstRow = page.locator("#clientes-section table tbody tr").first();
-  const name = await firstRow.locator("td").first().innerText();
+  const name = await firstRow.locator("td").first().locator(".cell-primary-text").innerText();
   await firstRow.getByRole("link", { name: "Abrir" }).click();
   await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
 
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(name.replace(/poss[ií]vel duplicidade/i, "").trim());
-  await expect(page.getByText("Garantia, suporte e pós-venda")).toBeVisible();
-  await expect(page.getByText("Linha do tempo comercial")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(name.trim());
+
+  await page.getByRole("tab", { name: "Garantia e suporte" }).click();
+  await expect(page.getByLabel("Descrição")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Linha do tempo" }).click();
+  await expect(page.getByRole("tabpanel")).toBeVisible();
 });

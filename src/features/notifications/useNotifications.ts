@@ -14,17 +14,34 @@ export function useNotifications(initialFilters: NotificationFilters = { status:
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState(initialFilters);
 
   const refresh = useCallback(async (filters: NotificationFilters = initialFilters) => {
     setIsLoading(true);
+    setActiveFilters(filters);
     try {
       const [list, count] = await Promise.all([loadNotifications(filters), loadUnreadNotificationsCount()]);
       setNotifications(list.notifications);
+      setNextCursor(list.nextCursor);
       setUnreadCount(count);
     } finally {
       setIsLoading(false);
     }
   }, [initialFilters]);
+
+  async function loadMore() {
+    if (!nextCursor) return;
+    setIsLoadingMore(true);
+    try {
+      const list = await loadNotifications({ ...activeFilters, cursor: nextCursor });
+      setNotifications((current) => [...current, ...list.notifications]);
+      setNextCursor(list.nextCursor);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
 
   async function read(id: string) {
     await markNotificationRead(id);
@@ -47,5 +64,5 @@ export function useNotifications(initialFilters: NotificationFilters = { status:
     await refresh();
   }
 
-  return { notifications, unreadCount, isLoading, refresh, read, readAll, archive, snooze };
+  return { notifications, unreadCount, isLoading, isLoadingMore, hasMore: nextCursor !== null, refresh, loadMore, read, readAll, archive, snooze };
 }

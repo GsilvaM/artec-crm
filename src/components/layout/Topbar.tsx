@@ -1,6 +1,8 @@
-import { Bell, LogOut, Menu, Search, UserRound } from "lucide-react";
+import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Avatar } from "../ui/Avatar";
+import { IconButton } from "../ui/IconButton";
 import { NotificationList } from "../ui/NotificationList";
 import { globalSearch, type GlobalSearchResult } from "../../domain/crm";
 import { useNotifications } from "../../features/notifications/useNotifications";
@@ -17,6 +19,24 @@ export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
   const navigate = useNavigate();
   const bellButtonRef = useRef<HTMLButtonElement>(null);
   const notificationPanelRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+  // Atalho global de busca — AGENTS.md pede "atalhos" e "busca global" como
+  // prioridade de UX; convencao cross-produto (Linear/GitHub/Slack) usa
+  // Ctrl/Cmd+K, preferida aqui a letra "F" do mockup do kit Venture por
+  // familiaridade do usuario com outras ferramentas.
+  useEffect(() => {
+    function handleGlobalKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    }
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!notificationPanelOpen) return;
@@ -57,13 +77,14 @@ export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
   return (
     <>
       <header className="topbar">
-        <button className="icon-button mobile-nav-toggle" type="button" aria-label="Abrir menu de navegação" onClick={onOpenMobileNav}>
+        <IconButton className="mobile-nav-toggle" label="Abrir menu de navegação" onClick={onOpenMobileNav}>
           <Menu aria-hidden="true" />
-        </button>
+        </IconButton>
         <div className="search-shell">
           <label className="search-box">
             <Search aria-hidden="true" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Buscar no CRM"
               aria-label="Buscar no CRM"
@@ -73,6 +94,7 @@ export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
                 if (event.key === "Escape") setSearchResults(null);
               }}
             />
+            {search ? null : <kbd className="search-shortcut-hint">{isMac ? "⌘" : "Ctrl"} K</kbd>}
           </label>
           {searchResults && (searchResults.customers.length || searchResults.opportunities.length) ? (
             <div className="search-dropdown" role="listbox" aria-label="Resultados da busca">
@@ -102,21 +124,19 @@ export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
           ) : null}
         </div>
         <div className="user-chip">
-          <UserRound aria-hidden="true" />
+          <Avatar name={userEmail ?? "?"} size="sm" />
           <span>{userEmail ?? "Sem e-mail"}</span>
         </div>
         <div className="notification-shell">
-          <button
+          <IconButton
             ref={bellButtonRef}
-            className="icon-button"
-            type="button"
-            aria-label="Abrir notificações"
+            label="Abrir notificações"
             aria-expanded={notificationPanelOpen}
+            badge={notifications.unreadCount > 0 ? (notifications.unreadCount > 9 ? "9+" : notifications.unreadCount) : undefined}
             onClick={() => setNotificationPanelOpen((open) => !open)}
           >
             <Bell aria-hidden="true" />
-            {notifications.unreadCount > 0 ? <span>{notifications.unreadCount > 9 ? "9+" : notifications.unreadCount}</span> : null}
-          </button>
+          </IconButton>
           {notificationPanelOpen ? (
             <div className="notification-popover" role="dialog" aria-label="Notificações recentes" ref={notificationPanelRef}>
               <header>

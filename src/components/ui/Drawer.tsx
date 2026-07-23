@@ -1,14 +1,11 @@
 import { X } from "lucide-react";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode } from "react";
+import { IconButton } from "./IconButton";
+import { useEscapeKey, useOverlayScrollLockAndFocusRestore } from "./useOverlayBehavior";
 
 export function Drawer({ title, subtitle, onClose, children }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode }) {
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  useOverlayScrollLockAndFocusRestore(true);
+  useEscapeKey(true, onClose);
 
   return (
     <div className="drawer-overlay" role="presentation" onClick={onClose}>
@@ -18,9 +15,9 @@ export function Drawer({ title, subtitle, onClose, children }: { title: string; 
             {subtitle ? <p className="eyebrow">{subtitle}</p> : null}
             <h2>{title}</h2>
           </div>
-          <button className="icon-button" type="button" aria-label="Fechar" onClick={onClose}>
+          <IconButton label="Fechar" onClick={onClose}>
             <X aria-hidden="true" />
-          </button>
+          </IconButton>
         </header>
         <div className="drawer-body">{children}</div>
       </div>

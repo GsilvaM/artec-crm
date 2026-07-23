@@ -1,7 +1,17 @@
 /*
   Tokens do Artec CRM. Fonte unica de cor, tipografia, espacamento, radius,
   sombra, motion, z-index e dimensoes de layout — nenhum componente deve usar
-  hex ou medida solta fora daqui (ver docs/DESIGN-SYSTEM.md).
+  hex ou medida solta fora daqui (ver docs/FIGMA-DESIGN-SYSTEM-MAPPING.md).
+
+  Paleta e tipografia migradas nesta sessao do baseline Material 3 (fases
+  anteriores) para o kit "Venture - CRM Dashboard UI kit (Community)"
+  (Figma, MCP indisponivel neste ambiente — extracao via PDF local, ver
+  docs/FIGMA-DESIGN-SYSTEM-MAPPING.md secoes 0 e 2/3 para a evidencia e as
+  divergencias documentadas). Nomes de variavel ja em uso (--foreground,
+  --background, --primary, etc.) foram mantidos para nao exigir renomeacao
+  mecanica de toda a folha de estilo e componentes; os alias com o
+  vocabulario exato do kit (--content-*, --border-*, --background-*,
+  --action-*) foram adicionados abaixo para uso em componentes novos.
 
   Breakpoints documentados (usados como max-width literal nas media queries,
   CSS nao aceita var() em condicao de media query):
@@ -12,63 +22,235 @@
 :root {
   color-scheme: light;
 
-  /* Marca — Material Design 3, esquema "Blue" (paleta oficial harmonizada do
-     M3, decisao explicita do usuario nesta sessao para adotar a pasta
-     design-system/ como base real de cor e layout, substituindo a paleta
-     navy/azul derivada na Fase 1). Fonte: design-system/color-schemes-
-     material3/blue-light.tokens.json e blue-dark.tokens.json (ver
-     @media prefers-color-scheme: dark abaixo). Success/warning nao existem
-     nativamente no M3 (sao extensoes de app); sourced dos esquemas Green e
-     Yellow do mesmo kit para manter familia coerente. */
-  --color-navy-900: #001946;
-  --color-navy-700: #152e60;
-  --color-primary: #485e92;
-  --color-primary-hover: #324574;
-  --color-secondary: #585f72;
-  --color-tertiary: #735573;
-  --color-teal: #006b60;
+  /* === Venture — Global Colors (fonte: PDF pagina 2, ver mapping §2) ===
+     Cores globais nao devem ser usadas diretamente em componentes — apenas
+     como origem das cores semanticas abaixo. */
+  --venture-neutral-100: #000000;
+  --venture-neutral-90: #36383b;
+  --venture-neutral-80: #6d7076;
+  --venture-neutral-70: #a3a7b0;
+  --venture-neutral-60: #d9dfeb;
+  --venture-neutral-50: #e1e5ef;
+  --venture-neutral-40: #e8ecf3;
+  --venture-neutral-30: #f0f2f7;
+  --venture-neutral-20: #f7f9fb;
+  --venture-neutral-10: #fcfcfe;
+  --venture-neutral-0: #ffffff;
 
-  /* Cores semanticas */
-  --success: #376a3e;
-  --warning: #795a0c;
-  --danger: #b3261e;
-  --info: var(--color-secondary);
+  --venture-red-100: #230f0f;
+  --venture-red-90: #461e1e;
+  --venture-red-80: #692d2d;
+  --venture-red-70: #8c3c3c;
+  --venture-red-60: #a55555;
+  --venture-red-50: #bf6f6f;
+  --venture-red-40: #cf9393;
+  --venture-red-30: #dfb7b7;
+  --venture-red-20: #efdbdb;
+  --venture-red-10: #f7eded;
+
+  --venture-orange-100: #2a1c0c;
+  --venture-orange-90: #543918;
+  --venture-orange-80: #7e5525;
+  --venture-orange-70: #a87231;
+  --venture-orange-60: #d28e3d;
+  --venture-orange-50: #dba564;
+  --venture-orange-40: #e4bb8b;
+  --venture-orange-30: #edd2b1;
+  --venture-orange-20: #f6e8d8;
+  --venture-orange-10: #fbf4ec;
+
+  --venture-yellow-100: #232206;
+  --venture-yellow-90: #47440c;
+  --venture-yellow-80: #6a6711;
+  --venture-yellow-70: #8e8917;
+  --venture-yellow-60: #b1ab1d;
+  --venture-yellow-50: #c1bc4a;
+  --venture-yellow-40: #d0cd77;
+  --venture-yellow-30: #e0dda5;
+  --venture-yellow-20: #efeed2;
+  --venture-yellow-10: #f7f7e8;
+
+  --venture-purple-100: #1e0f23;
+  --venture-purple-90: #3c1e46;
+  --venture-purple-80: #592d69;
+  --venture-purple-70: #773c8c;
+  --venture-purple-60: #954baf;
+  --venture-purple-50: #aa6fbf;
+  --venture-purple-40: #bf93cf;
+  --venture-purple-30: #d5b7df;
+  --venture-purple-20: #eadbef;
+  --venture-purple-10: #f4edf7;
+
+  --venture-green-100: #16281b;
+  --venture-green-90: #233f29;
+  --venture-green-80: #345e3d;
+  --venture-green-70: #467e52;
+  --venture-green-60: #589e67;
+  --venture-green-50: #79b185;
+  --venture-green-40: #9bc5a4;
+  --venture-green-30: #bcd8c2;
+  --venture-green-20: #deece1;
+  --venture-green-10: #eef5f0;
+
+  --venture-blue-100: #121320;
+  --venture-blue-90: #23263f;
+  --venture-blue-80: #35395f;
+  --venture-blue-70: #464c7e;
+  --venture-blue-60: #585f9e;
+  --venture-blue-50: #797fb1;
+  --venture-blue-40: #9b9fc5;
+  --venture-blue-30: #bcbfd8;
+  --venture-blue-20: #dedfec;
+  --venture-blue-10: #eeeff5;
+
+  /* === Content (tipografia/icones) — mapping §3 === */
+  --content-primary: var(--venture-neutral-100);
+  --content-secondary: var(--venture-neutral-80);
+  --content-tertiary: var(--venture-neutral-70);
+  --content-disabled: var(--venture-neutral-60);
+  --content-informative: var(--venture-blue-60);
+  --content-positive: var(--venture-green-60);
+  --content-error: var(--venture-red-60);
+  --content-on-dark-primary: var(--venture-neutral-0);
+  --content-on-dark-secondary: var(--venture-neutral-20);
+  --content-on-dark-tertiary: var(--venture-neutral-30);
+
+  /* === Border — mapping §3 === */
+  --border-primary: var(--venture-neutral-40);
+  --border-secondary: var(--venture-neutral-60);
+  --border-tertiary: var(--venture-neutral-100);
+  --border-informative: var(--venture-blue-30);
+  --border-positive: var(--venture-green-30);
+  --border-error: var(--venture-red-30);
+  /* Warning: o PDF associa "Warning" a Blue 30 (colide com Informative) —
+     resolvido para Orange, unica familia dedicada a aviso na paleta.
+     Ver mapping §3. */
+  --border-warning: var(--venture-orange-30);
+
+  /* === Background — mapping §3 === */
+  --background-primary: var(--venture-neutral-0);
+  --background-secondary: var(--venture-neutral-20);
+  --background-tertiary: var(--venture-neutral-30);
+  --background-informative: var(--venture-blue-10);
+  --background-positive: var(--venture-green-10);
+  --background-error: var(--venture-red-10);
+  --background-warning: var(--venture-orange-10);
+  --background-purple: var(--venture-purple-10);
+
+  /* === Action — mapping §3. Base neutra do kit preservada para
+     secondary/outline; primary do CRM usa a familia Blue (ver nota
+     abaixo — divergencia documentada). === */
+  --action-primary-base: var(--venture-blue-70);
+  --action-primary-hover: var(--venture-blue-80);
+  --action-primary-active: var(--venture-blue-100);
+  --action-primary-selected: var(--venture-blue-70);
+  --action-primary-disabled: var(--venture-neutral-20);
+
+  --action-secondary-base: var(--venture-neutral-0);
+  --action-secondary-hover: var(--venture-neutral-40);
+  --action-secondary-active: var(--venture-neutral-50);
+  --action-secondary-selected: var(--venture-neutral-30);
+  --action-secondary-disabled: var(--venture-neutral-20);
+
+  --action-outline-base: var(--venture-neutral-50);
+  --action-outline-hover: var(--venture-neutral-60);
+  --action-outline-active: var(--venture-neutral-70);
+  --action-outline-selected: var(--venture-neutral-70);
+  --action-outline-disabled: var(--venture-neutral-30);
+
+  --action-destructive-base: var(--venture-red-50);
+  --action-destructive-hover: var(--venture-red-60);
+  --action-destructive-active: var(--venture-red-70);
+  --action-destructive-selected: var(--venture-red-60);
+  --action-destructive-disabled: var(--venture-red-20);
+
+  /* === Interaction — cores dedicadas por matiz para tags/badges/status
+     (base apenas; o kit define hover/active/selected/disabled por matiz,
+     mas nenhum componente do CRM hoje precisa de estado interativo por
+     matiz de tag — ver mapping §3/§9). === */
+  --interaction-red-base: var(--venture-red-60);
+  --interaction-green-base: var(--venture-green-60);
+  --interaction-blue-base: var(--venture-blue-60);
+  --interaction-yellow-base: var(--venture-yellow-60);
+  --interaction-purple-base: var(--venture-purple-60);
+  --interaction-orange-base: var(--venture-orange-60);
+
+  /* Marca — o kit Venture define Action/Primary como neutro/monocromatico
+     (Neutral 90/80/100), mas AGENTS.md e o contexto operacional da Artec
+     exigem explicitamente uma interface "colorida, mas profissional" (nao
+     preta/cinza). Divergencia deliberada: o azul do proprio kit
+     (Content/Informative = Blue, mapping §3) foi adotado como cor de marca,
+     mantendo fidelidade a paleta real do Venture sem reproduzir o botao
+     monocromatico do template. Documentado em docs/FIGMA-DESIGN-SYSTEM-MAPPING.md. */
+  --color-primary: var(--action-primary-base);
+  --color-primary-hover: var(--action-primary-hover);
+  --color-secondary: var(--venture-neutral-80);
+  --color-tertiary: var(--venture-purple-70);
+  --color-teal: var(--venture-green-70);
+
+  /* Cores semanticas (mantidas para compatibilidade com todo o CSS/JSX
+     existente — apontam para os valores Venture acima). Passos mais
+     escuros que o "base" semantico foram escolhidos onde o base nao
+     garante contraste AA de texto sobre fundo claro. */
+  --success: var(--venture-green-80);
+  --warning: var(--venture-orange-80);
+  --danger: var(--venture-red-80);
+  --info: var(--venture-blue-80);
+
+  /* Variantes "solid" — para fundo preenchido com texto branco (botao
+     destrutivo, badge de alerta forte, toast). Fixas nos dois temas (nao
+     sobrepostas no bloco dark abaixo): --success/--warning/--danger/--info
+     clareiam no escuro para servir como TEXTO sobre fundo escuro, o que
+     quebra o par "fundo solido + texto branco" (branco sobre uma tinta
+     clara nao tem contraste). Achado real: badge "prioridade alta" ficava
+     ilegivel no modo escuro antes desta separacao. */
+  --success-solid: var(--venture-green-80);
+  --warning-solid: var(--venture-orange-80);
+  --danger-solid: var(--venture-red-70);
+  --info-solid: var(--venture-blue-80);
 
   /* Superficies, texto e borda */
-  --background: #fdf7ff;
-  --surface: #faf8ff;
-  --surface-muted: #e2e2e9;
-  --surface-sunken: #eeedf4;
-  --foreground: #1a1b21;
-  --foreground-muted: #44464f;
-  --foreground-on-dark: #e6e0e9;
-  --foreground-on-dark-muted: #c5c6d0;
-  --border: #c5c6d0;
+  --background: var(--background-primary);
+  --surface: var(--venture-neutral-10);
+  --surface-muted: var(--background-secondary);
+  --surface-sunken: var(--background-tertiary);
+  --foreground: var(--content-primary);
+  /* Neutral 90 (nao Neutral 80/--content-secondary) por contraste: o axe-core
+     (e2e/accessibility.spec.ts) pegou 4.33:1 real em texto em negrito 12px
+     sobre superficies tintadas (ex. .metric-card-warning), abaixo do minimo
+     AA de 4.5:1 — Neutral 80 so passava (~4.96:1) contra branco puro, sem
+     margem para tinturas de cor. Ver docs/FIGMA-DESIGN-SYSTEM-MAPPING.md. */
+  --foreground-muted: var(--venture-neutral-90);
+  --foreground-on-dark: var(--content-on-dark-primary);
+  --foreground-on-dark-muted: var(--content-on-dark-secondary);
+  --border: var(--border-primary);
   --primary: var(--color-primary);
   --primary-hover: var(--color-primary-hover);
-  --primary-foreground: #ffffff;
-  --primary-container: #adc3fe;
-  --on-primary-container: #324574;
-  --secondary-container: #d9dff6;
-  --on-secondary-container: #404659;
-  --danger-container: #f9dedc;
-  --on-danger-container: #8c1d18;
-  --focus-ring: #92a8e1;
+  --primary-foreground: var(--content-on-dark-primary);
+  --primary-container: var(--venture-blue-20);
+  --on-primary-container: var(--venture-blue-80);
+  --secondary-container: var(--venture-neutral-30);
+  --on-secondary-container: var(--venture-neutral-90);
+  --danger-container: var(--background-error);
+  --on-danger-container: var(--venture-red-90);
+  --focus-ring: var(--venture-blue-50);
 
-  /* Tipografia — extremos adicionados com base no kit de referencia
-     (design-system/typography/: passos de tamanho abaixo de xs e acima de
-     2xl que a escala anterior nao cobria, ex. "Large Title"=41 -> 3xl=40,
-     ja usado em metricas de destaque mas antes como valor solto). */
+  /* Tipografia — Inter, escala do kit Venture (Heading 1-5 / Body XL-XS,
+     mapping §4) adaptada a densidade operacional do CRM por instrucao
+     explicita do prompt (nao usar Heading 1/48px indiscriminadamente):
+     32px titulo principal desktop, 28/24px paginas, 20px secoes, 16px
+     itens prioritarios, 14px corpo operacional, 12px metadado — nunca
+     abaixo de 12px para texto legivel. */
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --text-2xs: 11px;
+  --text-2xs: 12px;
   --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 15px;
+  --text-sm: 14px;
+  --text-base: 16px;
   --text-md: 16px;
-  --text-lg: 18px;
-  --text-xl: 22px;
+  --text-lg: 20px;
+  --text-xl: 24px;
   --text-2xl: 28px;
-  --text-3xl: 40px;
+  --text-3xl: 32px;
   --leading-tight: 1.2;
   --leading-normal: 1.5;
   --weight-normal: 400;
@@ -131,17 +313,25 @@
    mas os tokens agora tornam isso de baixo custo — todo componente ja
    consome var(), entao a troca de paleta cascata sem mudanca de CSS extra. */
 @media (prefers-color-scheme: dark) {
+  /* O kit Venture nao define um tema escuro de aplicacao (apenas
+     Content/Light/* para uso pontual sobre superficies escuras, como a
+     sidebar). Os neutros de fundo abaixo foram mantidos da implementacao
+     anterior (ja validados visualmente na Fase 6); apenas os matizes de
+     marca/acento foram trocados pelos tons Venture equivalentes (passos
+     mais claros da mesma familia usada no modo claro, para contraste sobre
+     fundo escuro). Ver docs/FIGMA-DESIGN-SYSTEM-MAPPING.md secao 6. */
   :root {
     color-scheme: dark;
 
-    --color-primary: #b0c6ff;
-    --color-primary-hover: #92a8e1;
-    --color-secondary: #c0c6dc;
-    --color-tertiary: #e0bbdd;
+    --color-primary: var(--venture-blue-40);
+    --color-primary-hover: var(--venture-blue-50);
+    --color-secondary: var(--venture-neutral-40);
+    --color-tertiary: var(--venture-purple-40);
 
-    --success: #9cd49f;
-    --warning: #e9c16c;
-    --danger: #f2b8b5;
+    --success: var(--venture-green-40);
+    --warning: var(--venture-orange-40);
+    --danger: var(--venture-red-40);
+    --info: var(--venture-blue-40);
 
     --background: #141218;
     --surface: #121318;
@@ -150,14 +340,14 @@
     --foreground: #e2e2e9;
     --foreground-muted: #c5c6d0;
     --border: #44464f;
-    --primary-foreground: #152e60;
-    --primary-container: #2e4578;
-    --on-primary-container: #d9e2ff;
+    --primary-foreground: var(--venture-blue-90);
+    --primary-container: var(--venture-blue-80);
+    --on-primary-container: var(--venture-blue-20);
     --secondary-container: #404659;
     --on-secondary-container: #dce2f9;
-    --danger-container: #8c1d18;
-    --on-danger-container: #f9dedc;
-    --focus-ring: #b0c6ff;
+    --danger-container: var(--venture-red-80);
+    --on-danger-container: var(--venture-red-10);
+    --focus-ring: var(--venture-blue-50);
   }
 }
 
@@ -181,6 +371,15 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
+  /* Qualidade textual: sem isso o Inter (fonte web, nao do sistema) pode
+     renderizar com peso irregular/serrilhado em telas nao-Retina no
+     Chrome/Windows, contrariando o objetivo de tipografia legivel e
+     profissional (ver AGENTS.md, "Design e experiencia"). */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1;
+  font-optical-sizing: auto;
 }
 
 button,
@@ -260,12 +459,12 @@ textarea::placeholder {
 }
 
 .button.destructive {
-  background: var(--danger);
-  color: var(--primary-foreground);
+  background: var(--danger-solid);
+  color: #ffffff;
 }
 
 .button.destructive:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger) 85%, black);
+  background: color-mix(in srgb, var(--danger-solid) 85%, black);
 }
 
 .button.loading {
@@ -285,9 +484,12 @@ textarea::placeholder {
   animation: button-spin 0.6s linear infinite;
 }
 
-.button.primary.loading::after,
-.button.destructive.loading::after {
+.button.primary.loading::after {
   border-top-color: var(--primary-foreground);
+}
+
+.button.destructive.loading::after {
+  border-top-color: #ffffff;
 }
 
 .button.secondary.loading::after,
@@ -335,8 +537,8 @@ textarea::placeholder {
   min-width: 20px;
   height: 20px;
   border-radius: var(--radius-full);
-  background: var(--danger);
-  color: var(--primary-foreground);
+  background: var(--danger-solid);
+  color: #ffffff;
   font-size: var(--text-xs);
   font-weight: var(--weight-black);
   line-height: 1;
@@ -438,13 +640,20 @@ textarea::placeholder {
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 }
 
+/* Sidebar clara — a pagina "Navigation" do kit Venture (mapping §1, no 9)
+   mostra o painel de navegacao na mesma superficie clara do resto do app
+   (nao invertido/escuro), com item ativo marcado por um fundo cinza claro,
+   nao por inversao de cor. Ate a Fase 7 desta refatoracao o sidebar era
+   escuro (herdado do ciclo Material 3 anterior); corrigido aqui para
+   fidelidade real ao kit (pedido explicito de refatoracao pixel a pixel). */
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
   padding: var(--space-5);
-  background: var(--color-navy-900);
-  color: var(--foreground-on-dark);
+  background: var(--background-primary);
+  color: var(--foreground);
+  border-right: 1px solid var(--border);
 }
 
 .mobile-nav-toggle {
@@ -465,11 +674,15 @@ textarea::placeholder {
 
 .brand-row span {
   display: block;
-  color: var(--foreground-on-dark-muted);
+  color: var(--foreground-muted);
   font-size: var(--text-sm);
 }
 
 .sidebar nav {
+  display: grid;
+}
+
+.sidebar nav > div {
   display: grid;
   gap: var(--space-1);
 }
@@ -477,7 +690,7 @@ textarea::placeholder {
 .nav-section-label {
   margin: var(--space-3) 0 var(--space-1);
   padding: 0 var(--space-3);
-  color: var(--foreground-on-dark-muted);
+  color: var(--foreground-muted);
   font-size: var(--text-2xs);
   font-weight: var(--weight-black);
   letter-spacing: 0.04em;
@@ -490,15 +703,15 @@ textarea::placeholder {
   padding: 0 var(--space-3);
   justify-content: flex-start;
   background: transparent;
-  color: var(--foreground-on-dark-muted);
+  color: var(--foreground-muted);
   text-decoration: none;
   font-weight: var(--weight-medium);
 }
 
 .nav-item.active,
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--foreground-on-dark);
+  background: var(--surface-muted);
+  color: var(--foreground);
 }
 
 .nav-item.active {
@@ -602,6 +815,25 @@ textarea::placeholder {
   outline: 0;
   background: transparent;
   color: var(--foreground);
+}
+
+.search-shortcut-hint {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--foreground-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .search-shortcut-hint {
+    display: none;
+  }
 }
 
 .user-chip {
@@ -800,6 +1032,13 @@ textarea::placeholder {
   overflow-wrap: anywhere;
 }
 
+.detail-list dd a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+}
+
 .payload-preview {
   max-height: 360px;
   margin: 0;
@@ -936,6 +1175,41 @@ textarea::placeholder {
   border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
   background: color-mix(in srgb, var(--primary) 10%, var(--surface));
   color: var(--primary);
+}
+
+.tabs {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.tabs-list {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab-trigger {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--foreground-muted);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab-trigger.is-active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.tabs-panel {
+  outline: none;
 }
 
 .action-operation {
@@ -1125,7 +1399,7 @@ textarea::placeholder {
 
 .work-list li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   padding: 12px;
@@ -1232,19 +1506,80 @@ tr:last-child td {
   color: var(--danger);
 }
 
+/* Badges "soft" — fundo tintado (Background/*, passo 10 do kit) + texto na
+   mesma familia de cor. O texto usa o passo 80 (nao --content-positive/
+   informative/error, que sao o passo 60 do kit) por contraste real: o
+   axe-core (e2e/accessibility.spec.ts) mediu 2.91:1 com o passo 60 sobre o
+   fundo tintado, abaixo do minimo AA de 4.5:1 — mesmo ajuste ja aplicado a
+   --success/--warning/--danger/--info. Ver docs/FIGMA-DESIGN-SYSTEM-MAPPING.md
+   secao 3 (Background) e secao 6. */
+.badge-positive,
+.badge-danger-soft,
+.badge-informative,
+.badge-purple {
+  gap: 5px;
+}
+
+.badge-positive::before,
+.badge-danger-soft::before,
+.badge-informative::before,
+.badge-purple::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+}
+
+.badge-positive {
+  background: var(--background-positive);
+  color: var(--venture-green-80);
+}
+
+.badge-positive::before {
+  background: var(--venture-green-60);
+}
+
+.badge-danger-soft {
+  background: var(--background-error);
+  color: var(--venture-red-80);
+}
+
+.badge-danger-soft::before {
+  background: var(--venture-red-60);
+}
+
+.badge-informative {
+  background: var(--background-informative);
+  color: var(--venture-blue-80);
+}
+
+.badge-informative::before {
+  background: var(--venture-blue-60);
+}
+
+.badge-purple {
+  background: var(--background-purple);
+  color: var(--venture-purple-70);
+}
+
+.badge-purple::before {
+  background: var(--venture-purple-60);
+}
+
 /* Badges de alerta forte — para sinais que exigem acao imediata (vencida,
    atrasada, sem proxima acao, prioridade alta). Fundo preenchido, nao so
    texto colorido: achado real de diagnostico visual (peso insuficiente
    para o quanto a informacao importa operacionalmente). */
 .badge-alert-danger {
-  border: 1px solid color-mix(in srgb, var(--danger) 60%, black);
-  background: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger-solid) 60%, black);
+  background: var(--danger-solid);
   color: #ffffff;
 }
 
 .badge-alert-warning {
-  border: 1px solid color-mix(in srgb, var(--warning) 55%, black);
-  background: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning-solid) 55%, black);
+  background: var(--warning-solid);
   color: #ffffff;
 }
 
@@ -1342,6 +1677,8 @@ tr:last-child td {
 }
 
 .pipeline-card-open {
+  flex: 1;
+  min-width: 0;
   border: 0;
   padding: 0;
   background: transparent;
@@ -1433,12 +1770,21 @@ tr:last-child td {
   gap: 12px;
 }
 
+.auvo-inbox-item-header > div {
+  flex: 1;
+  min-width: 0;
+}
+
+/* justify-content:flex-start (nao space-between) e proposital: as acoes de
+   dispensa (nao comercial/duplicado) ficam agrupadas logo apos as acoes
+   primarias, nao no extremo oposto da tela — achado real do diagnostico
+   visual (ver docs/FIGMA-DESIGN-SYSTEM-MAPPING.md, secao "Caixa Auvo"). */
 .auvo-inbox-action-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 16px;
 }
 
 .auvo-inbox-primary-actions {
@@ -1504,6 +1850,46 @@ tr:last-child td {
 .dropdown-menu button:focus-visible {
   background: var(--surface-muted);
 }
+
+/* Avatar — iniciais sobre matiz derivado do nome (padrao "Cards"/"Table" do
+   kit Venture: avatar + nome para identificar responsavel/contato). Passo
+   "80" de cada familia escolhido por contraste de texto branco >= 4.5:1
+   (ver docs/FIGMA-DESIGN-SYSTEM-MAPPING.md). */
+.avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  color: var(--venture-neutral-0);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
+.avatar-sm {
+  width: 24px;
+  height: 24px;
+  font-size: var(--text-2xs);
+}
+
+.avatar-md {
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-xs);
+}
+
+.cell-with-avatar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar-red { background: var(--venture-red-80); }
+.avatar-orange { background: var(--venture-orange-80); }
+.avatar-yellow { background: var(--venture-yellow-80); }
+.avatar-green { background: var(--venture-green-80); }
+.avatar-blue { background: var(--venture-blue-80); }
+.avatar-purple { background: var(--venture-purple-80); }
 
 .auvo-inbox-item-header span {
   display: block;
@@ -2135,12 +2521,12 @@ tr:last-child td {
 }
 
 .toast-success {
-  background: var(--success);
+  background: var(--success-solid);
   color: #ffffff;
 }
 
 .toast-error {
-  background: var(--danger);
+  background: var(--danger-solid);
   color: #ffffff;
 }
 

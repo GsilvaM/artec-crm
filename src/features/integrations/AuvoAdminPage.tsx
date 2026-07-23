@@ -25,6 +25,8 @@ export function AuvoAdminPage() {
   const [selectedEvent, setSelectedEvent] = useState<AuvoWebhookEvent | null>(null);
   const [filter, setFilter] = useState<AuvoWebhookStatus | "">("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh(currentFilter = filter) {
@@ -33,10 +35,11 @@ export function AuvoAdminPage() {
     try {
       const [integrationStatus, list] = await Promise.all([
         loadAuvoIntegrationStatus(),
-        loadAuvoWebhookEvents({ status: currentFilter || undefined, limit: "10" }),
+        loadAuvoWebhookEvents({ status: currentFilter || undefined, limit: "20" }),
       ]);
       setStatus(integrationStatus);
       setEvents(list.events);
+      setNextCursor(list.nextCursor);
       setSelectedEvent((current) => (current ? list.events.find((event) => event.id === current.id) ?? current : current));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar a integração Auvo.");
@@ -53,6 +56,18 @@ export function AuvoAdminPage() {
   async function handleFilterChange(value: AuvoWebhookStatus | "") {
     setFilter(value);
     await refresh(value);
+  }
+
+  async function handleLoadMore() {
+    if (!nextCursor) return;
+    setIsLoadingMore(true);
+    try {
+      const list = await loadAuvoWebhookEvents({ status: filter || undefined, limit: "20", cursor: nextCursor });
+      setEvents((current) => [...current, ...list.events]);
+      setNextCursor(list.nextCursor);
+    } finally {
+      setIsLoadingMore(false);
+    }
   }
 
   async function handleOpenEvent(id: string) {
@@ -141,6 +156,11 @@ export function AuvoAdminPage() {
                   {!events.length ? <tr><td colSpan={5}>Nenhum evento recebido nesta homologação.</td></tr> : null}
                 </tbody>
               </table>
+              {nextCursor ? (
+                <button className="button secondary" type="button" disabled={isLoadingMore} onClick={() => void handleLoadMore()}>
+                  {isLoadingMore ? "Carregando..." : "Carregar mais eventos"}
+                </button>
+              ) : null}
             </div>
             <AuvoEventDetail event={selectedEvent} onReprocess={handleReprocess} onIgnore={handleIgnore} />
           </div>

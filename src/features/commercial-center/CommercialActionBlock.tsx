@@ -1,3 +1,4 @@
+import { Avatar } from "../../components/ui/Avatar";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { formatDateTime } from "../../domain/format";
 import type { CommercialCenterActionItem } from "../../domain/crm";
@@ -20,12 +21,13 @@ export function CommercialActionBlock({ title, emptyText, items, onAction }: {
     <article className="panel commercial-card">
       <header>
         <h2>{title}</h2>
-        <span className="badge">{items.length}</span>
+        <span className="badge badge-informative">{items.length}</span>
       </header>
       {items.length ? (
         <ul className="work-list">
           {items.slice(0, 5).map((item) => (
             <li key={item.id}>
+              <Avatar name={item.customerName} size="sm" />
               <div>
                 <strong>{item.title}</strong>
                 <span>{item.customerName}{item.opportunityTitle ? ` - ${item.opportunityTitle}` : ""}</span>

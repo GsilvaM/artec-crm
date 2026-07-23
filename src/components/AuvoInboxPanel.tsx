@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { ChevronDown, Inbox } from "lucide-react";
+import { Avatar } from "./ui/Avatar";
 import { formatDateTime } from "../domain/format";
 import {
   loadAuvoInboxItems,
@@ -19,6 +20,15 @@ const STATUS_LABELS: Record<AuvoInboxStatus, string> = {
   processado: "Processado",
   descartado: "Descartado",
   erro_integracao: "Erro de integração",
+};
+
+const STATUS_BADGE_CLASS: Record<AuvoInboxStatus, string> = {
+  novo: "badge-informative",
+  em_analise: "warning",
+  aguardando_dados: "warning",
+  processado: "badge-positive",
+  descartado: "",
+  erro_integracao: "badge-alert-danger",
 };
 
 const ACTION_LABELS: Record<ActionMode, string> = {
@@ -174,11 +184,12 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
             return (
               <li key={item.id} className="auvo-inbox-item">
                 <div className="auvo-inbox-item-header">
+                  <Avatar name={suggestedCustomer?.nome ?? item.title} size="sm" />
                   <div>
                     <strong>{item.title}</strong>
                     <span>{item.channelType ?? "canal desconhecido"} - {formatDateTime(item.createdAt)}</span>
                   </div>
-                  <span className="badge">{STATUS_LABELS[item.status]}</span>
+                  <span className={`badge ${STATUS_BADGE_CLASS[item.status]}`}>{STATUS_LABELS[item.status]}</span>
                 </div>
                 <dl className="auvo-inbox-facts">
                   {item.phoneNormalized ? <div><dt>Telefone</dt><dd>{item.phoneNormalized}</dd></div> : null}

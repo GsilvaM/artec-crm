@@ -54,7 +54,7 @@ test.describe("WCAG automated audit", () => {
     await page.waitForURL(/\/clientes$/);
     await page.locator("#clientes-section table tbody tr").first().getByRole("link", { name: "Abrir" }).click();
     await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
-    await page.waitForSelector("text=Linha do tempo comercial");
+    await page.getByRole("tablist").waitFor();
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });

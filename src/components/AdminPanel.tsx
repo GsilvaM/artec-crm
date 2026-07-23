@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { PromptDialog } from "./ui/PromptDialog";
+import { Tabs } from "./ui/Tabs";
 import { useToast } from "./ui/Toast";
 import {
   createLossReason,
@@ -29,6 +30,7 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
   const [newLossReason, setNewLossReason] = useState("");
   const [stageToRename, setStageToRename] = useState<PipelineStage | null>(null);
   const [stageToReorder, setStageToReorder] = useState<PipelineStage | null>(null);
+  const [activeTab, setActiveTab] = useState("etapas");
 
   useEffect(() => {
     void refreshAdminData();
@@ -136,75 +138,93 @@ export function AdminPanel({ stages, onStagesChanged, currentUserId }: {
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
 
-      <div className="admin-grid">
-        <article className="admin-block">
-          <h3>Etapas do funil</h3>
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Nome</th><th>Ordem</th><th>Tipo</th><th>Ações</th></tr></thead>
-              <tbody>
-                {orderedStages.map((stage) => (
-                  <tr key={stage.id}>
-                    <td>{stage.nome}</td>
-                    <td>{stage.ordem}</td>
-                    <td>{stage.isTerminal ? <span className="badge">terminal</span> : null}</td>
-                    <td className="actions-cell">
-                      <button className="button ghost" type="button" onClick={() => setStageToReorder(stage)}>Reordenar</button>
-                      <button className="button ghost" type="button" disabled={stage.isTerminal} onClick={() => setStageToRename(stage)}>Renomear</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <form className="admin-inline-form" onSubmit={handleCreateStage}>
-            <label>Nova etapa<input required value={newStage.nome} onChange={(event) => setNewStage({ ...newStage, nome: event.target.value })} /></label>
-            <label>Ordem<input required type="number" min={1} value={newStage.ordem} onChange={(event) => setNewStage({ ...newStage, ordem: event.target.value })} /></label>
-            <button className="button secondary" type="submit"><Plus aria-hidden="true" />Adicionar</button>
-          </form>
-        </article>
-
-        <article className="admin-block">
-          <h3>Motivos de perda</h3>
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Nome</th><th>Status</th><th>Ações</th></tr></thead>
-              <tbody>
-                {lossReasons.map((reason) => (
-                  <tr key={reason.id}>
-                    <td>{reason.nome}</td>
-                    <td><span className={`badge${reason.isActive ? "" : " warning"}`}>{reason.isActive ? "ativo" : "inativo"}</span></td>
-                    <td className="actions-cell">
-                      <button className="button ghost" type="button" onClick={() => void handleToggleLossReason(reason)}>
-                        {reason.isActive ? "Desativar" : "Ativar"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <form className="admin-inline-form" onSubmit={handleCreateLossReason}>
-            <label>Novo motivo<input required value={newLossReason} onChange={(event) => setNewLossReason(event.target.value)} /></label>
-            <button className="button secondary" type="submit"><Plus aria-hidden="true" />Adicionar</button>
-          </form>
-        </article>
-
-        <article className="admin-block">
-          <h3>Usuários e acesso ao CRM</h3>
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>E-mail</th><th>Papel</th><th>Ativo</th><th>Ações</th></tr></thead>
-              <tbody>
-                {users.map((user) => (
-                  <UserMembershipRow key={user.userId} user={user} isSelf={user.userId === currentUserId} onSave={handleUpdateMembership} />
-                ))}
-                {!users.length ? <tr><td colSpan={4}>Nenhum usuário encontrado no Supabase Auth.</td></tr> : null}
-              </tbody>
-            </table>
-          </div>
-        </article>
-      </div>
+      <Tabs
+        ariaLabel="Seções da Administração"
+        activeId={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            id: "etapas",
+            label: "Etapas",
+            content: (
+              <article className="admin-block">
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Nome</th><th>Ordem</th><th>Tipo</th><th>Ações</th></tr></thead>
+                    <tbody>
+                      {orderedStages.map((stage) => (
+                        <tr key={stage.id}>
+                          <td>{stage.nome}</td>
+                          <td>{stage.ordem}</td>
+                          <td>{stage.isTerminal ? <span className="badge">terminal</span> : null}</td>
+                          <td className="actions-cell">
+                            <button className="button ghost" type="button" onClick={() => setStageToReorder(stage)}>Reordenar</button>
+                            <button className="button ghost" type="button" disabled={stage.isTerminal} onClick={() => setStageToRename(stage)}>Renomear</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <form className="admin-inline-form" onSubmit={handleCreateStage}>
+                  <label>Nova etapa<input required value={newStage.nome} onChange={(event) => setNewStage({ ...newStage, nome: event.target.value })} /></label>
+                  <label>Ordem<input required type="number" min={1} value={newStage.ordem} onChange={(event) => setNewStage({ ...newStage, ordem: event.target.value })} /></label>
+                  <button className="button secondary" type="submit"><Plus aria-hidden="true" />Adicionar</button>
+                </form>
+              </article>
+            ),
+          },
+          {
+            id: "motivos-perda",
+            label: "Motivos de perda",
+            content: (
+              <article className="admin-block">
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Nome</th><th>Status</th><th>Ações</th></tr></thead>
+                    <tbody>
+                      {lossReasons.map((reason) => (
+                        <tr key={reason.id}>
+                          <td>{reason.nome}</td>
+                          <td><span className={`badge${reason.isActive ? " badge-positive" : " warning"}`}>{reason.isActive ? "ativo" : "inativo"}</span></td>
+                          <td className="actions-cell">
+                            <button className="button ghost" type="button" onClick={() => void handleToggleLossReason(reason)}>
+                              {reason.isActive ? "Desativar" : "Ativar"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <form className="admin-inline-form" onSubmit={handleCreateLossReason}>
+                  <label>Novo motivo<input required value={newLossReason} onChange={(event) => setNewLossReason(event.target.value)} /></label>
+                  <button className="button secondary" type="submit"><Plus aria-hidden="true" />Adicionar</button>
+                </form>
+              </article>
+            ),
+          },
+          {
+            id: "usuarios",
+            label: "Usuários",
+            content: (
+              <article className="admin-block">
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>E-mail</th><th>Papel</th><th>Ativo</th><th>Ações</th></tr></thead>
+                    <tbody>
+                      {users.map((user) => (
+                        <UserMembershipRow key={user.userId} user={user} isSelf={user.userId === currentUserId} onSave={handleUpdateMembership} />
+                      ))}
+                      {!users.length ? <tr><td colSpan={4}>Nenhum usuário encontrado no Supabase Auth.</td></tr> : null}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            ),
+          },
+        ]}
+      />
 
       {stageToRename ? (
         <PromptDialog

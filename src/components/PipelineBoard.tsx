@@ -1,5 +1,6 @@
 import { Clock } from "lucide-react";
-import { formatDateTime, formatMoney, formatOpportunityStatus } from "../domain/format";
+import { Avatar } from "./ui/Avatar";
+import { formatDateTime, formatMoney, formatOpportunityStatus, opportunityStatusBadgeClass } from "../domain/format";
 import type { Opportunity, PipelineStage } from "../domain/crm";
 
 export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mobileActiveStageId, onMoveStage, onOpenOpportunity }: {
@@ -69,10 +70,11 @@ function PipelineCard({ opportunity, stage, movableStages, isStalled, onMoveStag
   return (
     <article className="pipeline-card">
       <header>
+        <Avatar name={opportunity.clienteNome} size="sm" />
         <button className="pipeline-card-open" type="button" onClick={() => onOpenOpportunity(opportunity.id)}>
           {opportunity.clienteNome}
         </button>
-        <span className="badge">{formatOpportunityStatus(opportunity.status)}</span>
+        <span className={`badge ${opportunityStatusBadgeClass(opportunity.status)}`}>{formatOpportunityStatus(opportunity.status)}</span>
       </header>
       <p className="pipeline-card-title">{opportunity.titulo}</p>
       <dl className="pipeline-card-facts">

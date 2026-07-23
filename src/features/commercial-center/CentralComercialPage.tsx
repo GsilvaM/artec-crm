@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LoadingPanels } from "../../components/ui/Skeleton";
 import { NotificationList } from "../../components/ui/NotificationList";
 import { formatMoney } from "../../domain/format";
@@ -212,13 +212,14 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
           <article className="panel commercial-card">
             <header>
               <h2>Notificações relevantes</h2>
-              <span className="badge">{notifications.notifications.length}</span>
+              <span className="badge badge-informative">{notifications.notifications.length}</span>
             </header>
             <NotificationList items={notifications.notifications} onRead={notifications.read} onArchive={notifications.archive} onSnooze={notifications.snooze} />
           </article>
           <article className="panel commercial-card">
             <h2>Caixa Auvo</h2>
             <p>{auvoMessage}</p>
+            <Link className="button secondary" to="/caixa-auvo">Abrir Caixa Auvo</Link>
           </article>
           <article className="panel commercial-card summary-card">
             <h2>Resumo comercial</h2>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { LoadingPanels } from "../../components/ui/Skeleton";
+import { DataTable, type DataTableColumn } from "../../components/ui/DataTable";
 import { formatDateTime, formatNextActionStatus } from "../../domain/format";
 import { loadNextActions, type NextAction } from "../../domain/crm";
 import { useActionOperation } from "./useActionOperation";
@@ -107,45 +106,58 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
           />
         ) : null}
 
-        {isLoading ? (
-          <LoadingPanels />
-        ) : visibleActions.length ? (
-          <div className="table-wrap mobile-cards">
-            <table>
-              <thead><tr><th>Ação</th><th>Cliente</th><th>Contexto</th><th>Categoria</th><th>Vencimento</th><th>Prioridade</th><th>Status</th><th>Ações</th></tr></thead>
-              <tbody>
-                {visibleActions.map((action) => (
-                  <tr key={action.id}>
-                    <td data-label="Ação">{action.title}{isOverdue(action) ? <span className="badge badge-alert-danger">vencida</span> : null}</td>
-                    <td data-label="Cliente">
-                      <button className="search-dropdown-item" type="button" onClick={() => navigate(`/clientes/${action.customerId}`)}>
-                        {action.customerName}
-                      </button>
-                    </td>
-                    <td data-label="Contexto">
-                      {action.opportunityId ? (
-                        <button className="search-dropdown-item" type="button" onClick={() => navigate(`/oportunidades/${action.opportunityId}`)}>
-                          {action.opportunityTitle}
-                        </button>
-                      ) : "Atendimento"}
-                    </td>
-                    <td data-label="Categoria"><span className="badge">{CATEGORY_LABELS[action.category]}</span></td>
-                    <td data-label="Vencimento">{formatDateTime(action.dueAt)}</td>
-                    <td data-label="Prioridade"><span className={`badge${action.priority === "high" ? " badge-alert-warning" : ""}`}>{PRIORITY_LABELS[action.priority]}</span></td>
-                    <td data-label="Status"><span className="badge">{formatNextActionStatus(action.status)}</span></td>
-                    <td className="actions-cell">
-                      <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => void actionOperation.open(action, "complete")}>Concluir</button>
-                      <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => void actionOperation.open(action, "postpone")}>Reagendar</button>
-                      <button className="button secondary" type="button" disabled={action.status !== "pending"} onClick={() => void actionOperation.open(action, "cancel")}>Cancelar</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState title="Nenhuma próxima ação neste filtro" text="Crie uma ação pendente para acompanhar cliente, garantia, suporte ou oportunidade." />
-        )}
+        <DataTable
+          columns={[
+            {
+              key: "acao",
+              header: "Ação",
+              render: (action) => <>{action.title}{isOverdue(action) ? <span className="badge badge-alert-danger">vencida</span> : null}</>,
+            },
+            {
+              key: "cliente",
+              header: "Cliente",
+              render: (action) => (
+                <button className="search-dropdown-item" type="button" onClick={() => navigate(`/clientes/${action.customerId}`)}>
+                  {action.customerName}
+                </button>
+              ),
+            },
+            {
+              key: "contexto",
+              header: "Contexto",
+              render: (action) => action.opportunityId ? (
+                <button className="search-dropdown-item" type="button" onClick={() => navigate(`/oportunidades/${action.opportunityId}`)}>
+                  {action.opportunityTitle}
+                </button>
+              ) : "Atendimento",
+            },
+            { key: "categoria", header: "Categoria", render: (action) => <span className="badge">{CATEGORY_LABELS[action.category]}</span> },
+            { key: "vencimento", header: "Vencimento", render: (action) => formatDateTime(action.dueAt) },
+            {
+              key: "prioridade",
+              header: "Prioridade",
+              render: (action) => <span className={`badge${action.priority === "high" ? " badge-alert-warning" : ""}`}>{PRIORITY_LABELS[action.priority]}</span>,
+            },
+            { key: "status", header: "Status", render: (action) => <span className="badge">{formatNextActionStatus(action.status)}</span> },
+            {
+              key: "acoes",
+              header: "Ações",
+              className: "actions-cell",
+              render: (action) => action.status === "pending" ? (
+                <>
+                  <button className="button secondary" type="button" onClick={() => void actionOperation.open(action, "complete")}>Concluir</button>
+                  <button className="button secondary" type="button" onClick={() => void actionOperation.open(action, "postpone")}>Reagendar</button>
+                  <button className="button secondary" type="button" onClick={() => void actionOperation.open(action, "cancel")}>Cancelar</button>
+                </>
+              ) : null,
+            },
+          ] satisfies DataTableColumn<NextAction>[]}
+          rows={visibleActions}
+          rowKey={(action) => action.id}
+          isLoading={isLoading}
+          emptyTitle="Nenhuma próxima ação neste filtro"
+          emptyText="Crie uma ação pendente para acompanhar cliente, garantia, suporte ou oportunidade."
+        />
       </section>
 
     </>

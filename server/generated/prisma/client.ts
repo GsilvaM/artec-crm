@@ -24,7 +24,7 @@ export * as $Enums from './enums.js'
 export * from "./enums.js"
 /**
  * ## Prisma Client
- *
+ * 
  * Type-safe database client for TypeScript
  * @example
  * ```
@@ -34,7 +34,7 @@ export * from "./enums.js"
  * // Fetch zero or more UserMemberships
  * const userMemberships = await prisma.userMembership.findMany()
  * ```
- *
+ * 
  * Read more in our [docs](https://pris.ly/d/client).
  */
 export const PrismaClient = $Class.getPrismaClientClass()
@@ -43,56 +43,66 @@ export { Prisma }
 
 /**
  * Model UserMembership
- *
+ * 
  */
 export type UserMembership = Prisma.UserMembershipModel
 /**
  * Model Customer
- *
+ * 
  */
 export type Customer = Prisma.CustomerModel
 /**
  * Model PipelineStage
- *
+ * 
  */
 export type PipelineStage = Prisma.PipelineStageModel
 /**
  * Model LossReason
- *
+ * 
  */
 export type LossReason = Prisma.LossReasonModel
 /**
  * Model Opportunity
- *
+ * 
  */
 export type Opportunity = Prisma.OpportunityModel
 /**
+ * Model Quote
+ * 
+ */
+export type Quote = Prisma.QuoteModel
+/**
  * Model Activity
- *
+ * 
  */
 export type Activity = Prisma.ActivityModel
 /**
  * Model NextAction
- *
+ * 
  */
 export type NextAction = Prisma.NextActionModel
 /**
  * Model AuditLog
- *
+ * 
  */
 export type AuditLog = Prisma.AuditLogModel
 /**
  * Model Notification
- *
+ * 
  */
 export type Notification = Prisma.NotificationModel
 /**
  * Model AuvoWebhookEvent
- *
+ * 
  */
 export type AuvoWebhookEvent = Prisma.AuvoWebhookEventModel
 /**
+ * Model AuvoInboxItem
+ * 
+ */
+export type AuvoInboxItem = Prisma.AuvoInboxItemModel
+/**
  * Model MigrationHistory
- *
+ * 
  */
 export type MigrationHistory = Prisma.MigrationHistoryModel

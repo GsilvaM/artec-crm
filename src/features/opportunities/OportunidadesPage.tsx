@@ -1,9 +1,9 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
-import { formatDateTime, formatOpportunityStatus } from "../../domain/format";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { LoadingPanels } from "../../components/ui/Skeleton";
+import { formatDateTime, formatOpportunityStatus, opportunityStatusBadgeClass } from "../../domain/format";
+import { Avatar } from "../../components/ui/Avatar";
+import { DataTable, type DataTableColumn } from "../../components/ui/DataTable";
 import { createOpportunity, loadCustomersPage, loadOpportunitiesPage, type Customer, type Opportunity } from "../../domain/crm";
 
 export function OportunidadesPage({ currentUserId }: { currentUserId: string }) {
@@ -121,36 +121,42 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
           </label>
         </div>
 
-        {isLoading ? (
-          <LoadingPanels />
-        ) : opportunities.length ? (
-          <div className="table-wrap mobile-cards">
-            <table>
-              <thead><tr><th>Título</th><th>Cliente</th><th>Etapa</th><th>Situação</th><th>Próxima ação</th><th>Status</th><th>Ações</th></tr></thead>
-              <tbody>
-                {opportunities.map((opportunity) => (
-                  <tr key={opportunity.id}>
-                    <td data-label="Título">{opportunity.titulo}</td>
-                    <td data-label="Cliente">{opportunity.clienteNome}</td>
-                    <td data-label="Etapa">{opportunity.etapaNome}</td>
-                    <td data-label="Situação">{opportunity.situacao}</td>
-                    <td data-label="Próxima ação">{opportunity.proximaAcao ? `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}` : <span className="badge badge-alert-danger">sem próxima ação</span>}</td>
-                    <td data-label="Status"><span className="badge">{formatOpportunityStatus(opportunity.status)}</span></td>
-                    <td className="actions-cell"><Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState title="Nenhuma oportunidade cadastrada" text="Crie uma oportunidade com responsável, próxima ação e data." />
-        )}
-        {nextCursor ? (
-          <button className="button secondary" type="button" disabled={isLoadingMore} onClick={() => void handleLoadMore()}>
-            {isLoadingMore ? "Carregando..." : "Carregar mais oportunidades"}
-          </button>
-        ) : null}
+        <DataTable
+          columns={opportunityColumns}
+          rows={opportunities}
+          rowKey={(opportunity) => opportunity.id}
+          isLoading={isLoading}
+          emptyTitle="Nenhuma oportunidade cadastrada"
+          emptyText="Crie uma oportunidade com responsável, próxima ação e data."
+          hasMore={nextCursor !== null}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={() => void handleLoadMore()}
+          loadMoreLabel="Carregar mais oportunidades"
+        />
       </section>
     </>
   );
 }
+
+const opportunityColumns: DataTableColumn<Opportunity>[] = [
+  { key: "titulo", header: "Título", render: (opportunity) => opportunity.titulo },
+  {
+    key: "cliente",
+    header: "Cliente",
+    render: (opportunity) => (
+      <span className="cell-with-avatar">
+        <Avatar name={opportunity.clienteNome} size="sm" />
+        <span className="cell-primary-text">{opportunity.clienteNome}</span>
+      </span>
+    ),
+  },
+  { key: "etapa", header: "Etapa", render: (opportunity) => opportunity.etapaNome },
+  { key: "situacao", header: "Situação", render: (opportunity) => opportunity.situacao },
+  {
+    key: "proximaAcao",
+    header: "Próxima ação",
+    render: (opportunity) => (opportunity.proximaAcao ? `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}` : <span className="badge badge-alert-danger">sem próxima ação</span>),
+  },
+  { key: "status", header: "Status", render: (opportunity) => <span className={`badge ${opportunityStatusBadgeClass(opportunity.status)}`}>{formatOpportunityStatus(opportunity.status)}</span> },
+  { key: "acoes", header: "Ações", className: "actions-cell", render: (opportunity) => <Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir</Link> },
+];

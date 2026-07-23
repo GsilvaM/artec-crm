@@ -3,6 +3,7 @@ import { RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
+import { useToast } from "../../components/ui/Toast";
 import { PipelineBoard } from "../../components/PipelineBoard";
 import { loadCrmSnapshot, updateOpportunity, type CrmSnapshot } from "../../domain/crm";
 
@@ -12,6 +13,7 @@ export function PipelinePage() {
   const [error, setError] = useState<string | null>(null);
   const [mobileStageId, setMobileStageId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   async function refresh() {
     setIsLoading(true);
@@ -35,6 +37,8 @@ export function PipelinePage() {
     setError(null);
     try {
       await updateOpportunity(opportunityId, { etapaId });
+      const stageName = snapshot?.stages.find((stage) => stage.id === etapaId)?.nome;
+      showToast(stageName ? `Oportunidade movida para ${stageName}.` : "Etapa atualizada.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível mover a oportunidade de etapa.");

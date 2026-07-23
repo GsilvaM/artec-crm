@@ -2,6 +2,7 @@ import { Download, Share, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useInstallPrompt } from "../../hooks/useInstallPrompt";
+import { IconButton } from "../ui/IconButton";
 
 // So aparece depois que o usuario navegou pelo menos uma vez (ja concluiu
 // algo util), nunca no primeiro carregamento da tela — secao 25.3.
@@ -32,9 +33,9 @@ export function InstallPrompt() {
           <span>Para instalar: toque em Compartilhar no Safari e escolha "Adicionar à Tela de Início".</span>
         </>
       )}
-      <button className="icon-button" type="button" aria-label="Dispensar convite de instalação" onClick={dismiss}>
+      <IconButton label="Dispensar convite de instalação" onClick={dismiss}>
         <X aria-hidden="true" />
-      </button>
+      </IconButton>
     </div>
   );
 }

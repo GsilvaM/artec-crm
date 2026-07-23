@@ -5,7 +5,7 @@ import { LoadingPanels } from "../../components/ui/Skeleton";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
 import { QuotesPanel } from "../../components/QuotesPanel";
-import { formatActivityType, formatDateTime, formatMoney, formatOpportunityStatus } from "../../domain/format";
+import { formatActivityType, formatDateTime, formatMoney, formatOpportunityStatus, opportunityStatusBadgeClass } from "../../domain/format";
 import {
   approveOpportunity,
   archiveOpportunity,
@@ -190,7 +190,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
           </p>
           <h1>{opportunity.titulo}</h1>
         </div>
-        <span className={`badge ${opportunity.status === "perdida" ? "danger-badge" : ""}`}>{formatOpportunityStatus(opportunity.status)}</span>
+        <span className={`badge ${opportunityStatusBadgeClass(opportunity.status)}`}>{formatOpportunityStatus(opportunity.status)}</span>
       </section>
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}

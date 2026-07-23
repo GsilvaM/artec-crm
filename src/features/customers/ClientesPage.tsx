@@ -1,8 +1,8 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { LoadingPanels } from "../../components/ui/Skeleton";
+import { Avatar } from "../../components/ui/Avatar";
+import { DataTable, type DataTableColumn } from "../../components/ui/DataTable";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
 import { archiveCustomer, createCustomer, loadCustomersPage, type Customer } from "../../domain/crm";
@@ -78,6 +78,34 @@ export function ClientesPage() {
 
   const activeCustomers = customers.filter((customer) => !customer.archivedAt);
 
+  const customerColumns: DataTableColumn<Customer>[] = [
+    {
+      key: "nome",
+      header: "Nome",
+      render: (customer) => (
+        <span className="cell-with-avatar">
+          <Avatar name={customer.nome} size="sm" />
+          <span className="cell-primary-text">{customer.nome}</span>
+          {customer.duplicatePhoneCustomerIds.length ? <span className="badge warning">possível duplicidade</span> : null}
+        </span>
+      ),
+    },
+    { key: "telefone", header: "Telefone", render: (customer) => customer.telefone ?? "-" },
+    { key: "empresa", header: "Empresa", render: (customer) => customer.empresa ?? "-" },
+    { key: "oportunidades", header: "Oportunidades", render: (customer) => customer.opportunitiesCount },
+    {
+      key: "acoes",
+      header: "Ações",
+      className: "actions-cell",
+      render: (customer) => (
+        <>
+          <Link className="button secondary" to={`/clientes/${customer.id}`}>Abrir</Link>
+          <button className="button ghost" type="button" onClick={() => setCustomerToArchive(customer)}>Arquivar</button>
+        </>
+      ),
+    },
+  ];
+
   return (
     <>
       <section id="clientes" className="page-heading">
@@ -120,36 +148,18 @@ export function ClientesPage() {
           </label>
         </div>
 
-        {isLoading ? (
-          <LoadingPanels />
-        ) : activeCustomers.length ? (
-          <div className="table-wrap mobile-cards">
-            <table>
-              <thead><tr><th>Nome</th><th>Telefone</th><th>Empresa</th><th>Oportunidades</th><th>Ações</th></tr></thead>
-              <tbody>
-                {activeCustomers.map((customer) => (
-                  <tr key={customer.id}>
-                    <td data-label="Nome">{customer.nome}{customer.duplicatePhoneCustomerIds.length ? <span className="badge warning">possível duplicidade</span> : null}</td>
-                    <td data-label="Telefone">{customer.telefone ?? "-"}</td>
-                    <td data-label="Empresa">{customer.empresa ?? "-"}</td>
-                    <td data-label="Oportunidades">{customer.opportunitiesCount}</td>
-                    <td className="actions-cell">
-                      <Link className="button secondary" to={`/clientes/${customer.id}`}>Abrir</Link>
-                      <button className="button ghost" type="button" onClick={() => setCustomerToArchive(customer)}>Arquivar</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState title="Nenhum cliente cadastrado" text="Cadastre o primeiro cliente para criar oportunidades comerciais." />
-        )}
-        {nextCursor ? (
-          <button className="button secondary" type="button" disabled={isLoadingMore} onClick={() => void handleLoadMore()}>
-            {isLoadingMore ? "Carregando..." : "Carregar mais clientes"}
-          </button>
-        ) : null}
+        <DataTable
+          columns={customerColumns}
+          rows={activeCustomers}
+          rowKey={(customer) => customer.id}
+          isLoading={isLoading}
+          emptyTitle="Nenhum cliente cadastrado"
+          emptyText="Cadastre o primeiro cliente para criar oportunidades comerciais."
+          hasMore={nextCursor !== null}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={() => void handleLoadMore()}
+          loadMoreLabel="Carregar mais clientes"
+        />
       </section>
 
       {customerToArchive ? (

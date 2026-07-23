@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
 import { CheckCircle2, X, XCircle } from "lucide-react";
+import { IconButton } from "./IconButton";
 
 type ToastVariant = "success" | "error";
 type ToastEntry = { id: number; message: string; variant: ToastVariant };
@@ -36,9 +37,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div key={toast.id} className={`toast toast-${toast.variant}`}>
             {toast.variant === "success" ? <CheckCircle2 aria-hidden="true" size={18} /> : <XCircle aria-hidden="true" size={18} />}
             <span>{toast.message}</span>
-            <button className="icon-button" type="button" aria-label="Fechar aviso" onClick={() => dismiss(toast.id)}>
+            <IconButton label="Fechar aviso" onClick={() => dismiss(toast.id)}>
               <X aria-hidden="true" size={14} />
-            </button>
+            </IconButton>
           </div>
         ))}
       </div>

@@ -39,4 +39,39 @@ test.describe("Navegacao por teclado e gerenciamento de foco", () => {
     await page.keyboard.press("Escape");
     await expect(form).not.toBeVisible();
   });
+
+  test("Tabs da ficha do cliente navegam com setas do teclado", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Clientes" }).click();
+    await page.waitForURL(/\/clientes$/);
+    await page.locator("#clientes-section table tbody tr").first().getByRole("link", { name: "Abrir" }).click();
+    await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
+
+    const firstTab = page.getByRole("tab", { name: "Visão geral" });
+    await expect(firstTab).toHaveAttribute("aria-selected", "true");
+    await firstTab.focus();
+
+    await page.keyboard.press("ArrowRight");
+    const secondTab = page.getByRole("tab", { name: /^Oportunidades/ });
+    await expect(secondTab).toHaveAttribute("aria-selected", "true");
+    await expect(secondTab).toBeFocused();
+  });
+
+  test("ConfirmDialog devolve foco ao botao que o abriu ao cancelar com Escape", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Clientes" }).click();
+    await page.waitForURL(/\/clientes$/);
+    await page.locator("#clientes-section table tbody tr").first().getByRole("link", { name: "Abrir" }).click();
+    await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
+
+    const archiveButton = page.locator(".page-heading").getByRole("button", { name: "Arquivar" });
+    await archiveButton.click();
+
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+    await expect(archiveButton).toBeFocused();
+  });
 });

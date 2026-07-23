@@ -1,10 +1,13 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Mail, Phone } from "lucide-react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Avatar } from "../../components/ui/Avatar";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { Tabs, type TabItem } from "../../components/ui/Tabs";
 import { useToast } from "../../components/ui/Toast";
-import { formatActivityType, formatDateTime, formatOpportunityStatus } from "../../domain/format";
+import { formatActivityType, formatDateTime, formatOpportunityStatus, opportunityStatusBadgeClass } from "../../domain/format";
 import {
   archiveCustomer,
   createActivity,
@@ -20,11 +23,14 @@ import {
 } from "../../domain/crm";
 
 const SUPPORT_ACTIVITY_TYPES: Activity["type"][] = ["warranty", "support", "after_sales"];
+const TAB_IDS = ["visao-geral", "oportunidades", "proximas-acoes", "garantia-suporte", "linha-do-tempo"] as const;
+type TabId = (typeof TAB_IDS)[number];
 
 export function ClientePage({ currentUserId }: { currentUserId: string }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [nextActions, setNextActions] = useState<NextAction[]>([]);
@@ -34,6 +40,17 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
   const [activityForm, setActivityForm] = useState<{ type: Activity["type"]; description: string }>({ type: "warranty", description: "" });
   const [actionForm, setActionForm] = useState({ title: "", dueAt: "" });
   const [confirmArchive, setConfirmArchive] = useState(false);
+
+  const requestedTab = searchParams.get("aba");
+  const activeTab: TabId = (TAB_IDS as readonly string[]).includes(requestedTab ?? "") ? (requestedTab as TabId) : "visao-geral";
+
+  function setActiveTab(tab: string) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("aba", tab);
+      return next;
+    });
+  }
 
   async function refresh() {
     if (!id) return;
@@ -107,15 +124,151 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
 
   const supportActivities = activities.filter((activity) => SUPPORT_ACTIVITY_TYPES.includes(activity.type));
   const commercialActivities = activities.filter((activity) => !SUPPORT_ACTIVITY_TYPES.includes(activity.type));
+  const nextUpAction = [...nextActions].sort((a, b) => a.dueAt.localeCompare(b.dueAt))[0] ?? null;
+
+  const tabs: TabItem[] = [
+    {
+      id: "visao-geral",
+      label: "Visão geral",
+      content: (
+        <section className="panel" aria-label="Dados cadastrais">
+          <dl className="detail-list">
+            <div><dt>Tipo</dt><dd>{customer.tipoPessoa === "fisica" ? "Pessoa física" : "Pessoa jurídica"}</dd></div>
+            <div><dt>Telefone</dt><dd>{customer.telefone ? <a href={`tel:${customer.telefone}`}><Phone aria-hidden="true" size={14} /> {customer.telefone}</a> : "-"}</dd></div>
+            <div><dt>E-mail</dt><dd>{customer.email ? <a href={`mailto:${customer.email}`}><Mail aria-hidden="true" size={14} /> {customer.email}</a> : "-"}</dd></div>
+            <div><dt>Empresa</dt><dd>{customer.empresa ?? "-"}</dd></div>
+            <div><dt>Cidade</dt><dd>{customer.cidade ?? "-"}</dd></div>
+            <div><dt>Bairro</dt><dd>{customer.bairro ?? "-"}</dd></div>
+          </dl>
+        </section>
+      ),
+    },
+    {
+      id: "oportunidades",
+      label: `Oportunidades (${opportunities.length})`,
+      content: opportunities.length ? (
+        <div className="table-wrap mobile-cards">
+          <table>
+            <thead><tr><th>Título</th><th>Etapa</th><th>Situação</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody>
+              {opportunities.map((opportunity) => (
+                <tr key={opportunity.id}>
+                  <td data-label="Título">{opportunity.titulo}</td>
+                  <td data-label="Etapa">{opportunity.etapaNome}</td>
+                  <td data-label="Situação">{opportunity.situacao}</td>
+                  <td data-label="Status"><span className={`badge ${opportunityStatusBadgeClass(opportunity.status)}`}>{formatOpportunityStatus(opportunity.status)}</span></td>
+                  <td className="actions-cell"><Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir</Link></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="Nenhuma oportunidade" text="Este cliente ainda não tem oportunidades comerciais registradas." />
+      ),
+    },
+    {
+      id: "proximas-acoes",
+      label: `Próximas ações (${nextActions.length})`,
+      content: (
+        <>
+          <form className="admin-inline-form" onSubmit={handleCreateAction}>
+            <label>Nova ação de atendimento<input value={actionForm.title} onChange={(event) => setActionForm({ ...actionForm, title: event.target.value })} placeholder="ex: retornar sobre garantia" /></label>
+            <label>Data<input type="datetime-local" value={actionForm.dueAt} onChange={(event) => setActionForm({ ...actionForm, dueAt: event.target.value })} /></label>
+            <button className="button secondary" type="submit">Criar</button>
+          </form>
+          {nextActions.length ? (
+            <ul className="work-list">
+              {nextActions.map((action) => (
+                <li key={action.id}>
+                  <div>
+                    <strong>{action.title}</strong>
+                    <span>{action.opportunityTitle ?? "Atendimento"}</span>
+                    <small>{formatDateTime(action.dueAt)}</small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title="Nenhuma ação pendente" text="Crie uma ação para acompanhar este cliente." />
+          )}
+        </>
+      ),
+    },
+    {
+      id: "garantia-suporte",
+      label: "Garantia e suporte",
+      content: (
+        <>
+          <form className="admin-inline-form" onSubmit={handleRegisterActivity}>
+            <label>Tipo
+              <select value={activityForm.type} onChange={(event) => setActivityForm({ ...activityForm, type: event.target.value as Activity["type"] })}>
+                <option value="warranty">Garantia</option>
+                <option value="support">Suporte</option>
+                <option value="after_sales">Pós-venda</option>
+              </select>
+            </label>
+            <label>Descrição<input value={activityForm.description} onChange={(event) => setActivityForm({ ...activityForm, description: event.target.value })} placeholder="Descreva o atendimento" /></label>
+            <button className="button secondary" type="submit">Registrar</button>
+          </form>
+          {supportActivities.length ? (
+            <ol className="timeline-list">
+              {supportActivities.map((activity) => (
+                <li key={activity.id}>
+                  <strong>{formatActivityType(activity.type)}</strong>
+                  <span>{formatDateTime(activity.occurredAt)}</span>
+                  <p>{activity.description}</p>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <EmptyState title="Nenhum registro de garantia, suporte ou pós-venda" text="Registre um atendimento técnico quando ocorrer." />
+          )}
+        </>
+      ),
+    },
+    {
+      id: "linha-do-tempo",
+      label: "Linha do tempo",
+      content: commercialActivities.length ? (
+        <ol className="timeline-list">
+          {commercialActivities.map((activity) => (
+            <li key={activity.id}>
+              <strong>{formatActivityType(activity.type)}</strong>
+              <span>{formatDateTime(activity.occurredAt)}</span>
+              <p>{activity.description}</p>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <EmptyState title="Nenhuma atividade comercial" text="O histórico comercial aparece aqui conforme as oportunidades avançam." />
+      ),
+    },
+  ];
 
   return (
     <>
       <section className="page-heading">
-        <div>
-          <p className="eyebrow"><Link to="/clientes">Clientes</Link> / {customer.nome}</p>
-          <h1>{customer.nome}</h1>
+        <div className="cell-with-avatar">
+          <Avatar name={customer.nome} />
+          <div>
+            <p className="eyebrow"><Link to="/clientes">Clientes</Link> / {customer.nome}</p>
+            <h1>{customer.nome}</h1>
+          </div>
         </div>
-        <button className="button ghost" type="button" onClick={() => setConfirmArchive(true)}>Arquivar</button>
+        <div className="quick-actions">
+          {customer.telefone ? (
+            <a className="button secondary" href={`tel:${customer.telefone}`}>
+              <Phone aria-hidden="true" size={16} /> Ligar
+            </a>
+          ) : null}
+          {customer.email ? (
+            <a className="button secondary" href={`mailto:${customer.email}`}>
+              <Mail aria-hidden="true" size={16} /> E-mail
+            </a>
+          ) : null}
+          <button className="button ghost" type="button" onClick={() => setConfirmArchive(true)}>Arquivar</button>
+        </div>
       </section>
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
@@ -124,109 +277,15 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
         <div className="alert" role="status">Este telefone também aparece em {customer.duplicatePhoneCustomerIds.length} outro(s) cadastro(s) — verifique possível duplicidade.</div>
       ) : null}
 
-      <section className="panel" aria-label="Identificação">
-        <dl className="detail-list">
-          <div><dt>Tipo</dt><dd>{customer.tipoPessoa === "fisica" ? "Pessoa física" : "Pessoa jurídica"}</dd></div>
-          <div><dt>Telefone</dt><dd>{customer.telefone ?? "-"}</dd></div>
-          <div><dt>E-mail</dt><dd>{customer.email ?? "-"}</dd></div>
-          <div><dt>Empresa</dt><dd>{customer.empresa ?? "-"}</dd></div>
-          <div><dt>Cidade</dt><dd>{customer.cidade ?? "-"}</dd></div>
-          <div><dt>Bairro</dt><dd>{customer.bairro ?? "-"}</dd></div>
-        </dl>
-      </section>
-
-      <section className="data-section" aria-label="Oportunidades relacionadas">
-        <h2>Oportunidades ({opportunities.length})</h2>
-        {opportunities.length ? (
-          <div className="table-wrap mobile-cards">
-            <table>
-              <thead><tr><th>Título</th><th>Etapa</th><th>Situação</th><th>Status</th><th>Ações</th></tr></thead>
-              <tbody>
-                {opportunities.map((opportunity) => (
-                  <tr key={opportunity.id}>
-                    <td data-label="Título">{opportunity.titulo}</td>
-                    <td data-label="Etapa">{opportunity.etapaNome}</td>
-                    <td data-label="Situação">{opportunity.situacao}</td>
-                    <td data-label="Status"><span className="badge">{formatOpportunityStatus(opportunity.status)}</span></td>
-                    <td className="actions-cell"><Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <div className="alert" role="status">
+        {nextUpAction ? (
+          <>Próxima ação: <strong>{nextUpAction.title}</strong> — {formatDateTime(nextUpAction.dueAt)}</>
         ) : (
-          <EmptyState title="Nenhuma oportunidade" text="Este cliente ainda não tem oportunidades comerciais registradas." />
+          "Nenhuma ação pendente para este cliente."
         )}
-      </section>
+      </div>
 
-      <section className="data-section" aria-label="Próximas ações">
-        <h2>Próximas ações pendentes ({nextActions.length})</h2>
-        <form className="admin-inline-form" onSubmit={handleCreateAction}>
-          <label>Nova ação de atendimento<input value={actionForm.title} onChange={(event) => setActionForm({ ...actionForm, title: event.target.value })} placeholder="ex: retornar sobre garantia" /></label>
-          <label>Data<input type="datetime-local" value={actionForm.dueAt} onChange={(event) => setActionForm({ ...actionForm, dueAt: event.target.value })} /></label>
-          <button className="button secondary" type="submit">Criar</button>
-        </form>
-        {nextActions.length ? (
-          <ul className="work-list">
-            {nextActions.map((action) => (
-              <li key={action.id}>
-                <div>
-                  <strong>{action.title}</strong>
-                  <span>{action.opportunityTitle ?? "Atendimento"}</span>
-                  <small>{formatDateTime(action.dueAt)}</small>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyState title="Nenhuma ação pendente" text="Crie uma ação para acompanhar este cliente." />
-        )}
-      </section>
-
-      <section className="data-section" aria-label="Garantia, suporte e pós-venda">
-        <h2>Garantia, suporte e pós-venda</h2>
-        <form className="admin-inline-form" onSubmit={handleRegisterActivity}>
-          <label>Tipo
-            <select value={activityForm.type} onChange={(event) => setActivityForm({ ...activityForm, type: event.target.value as Activity["type"] })}>
-              <option value="warranty">Garantia</option>
-              <option value="support">Suporte</option>
-              <option value="after_sales">Pós-venda</option>
-            </select>
-          </label>
-          <label>Descrição<input value={activityForm.description} onChange={(event) => setActivityForm({ ...activityForm, description: event.target.value })} placeholder="Descreva o atendimento" /></label>
-          <button className="button secondary" type="submit">Registrar</button>
-        </form>
-        {supportActivities.length ? (
-          <ol className="timeline-list">
-            {supportActivities.map((activity) => (
-              <li key={activity.id}>
-                <strong>{formatActivityType(activity.type)}</strong>
-                <span>{formatDateTime(activity.occurredAt)}</span>
-                <p>{activity.description}</p>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <EmptyState title="Nenhum registro de garantia, suporte ou pós-venda" text="Registre um atendimento técnico quando ocorrer." />
-        )}
-      </section>
-
-      <section className="data-section timeline-section" aria-label="Linha do tempo comercial">
-        <h2>Linha do tempo comercial</h2>
-        {commercialActivities.length ? (
-          <ol className="timeline-list">
-            {commercialActivities.map((activity) => (
-              <li key={activity.id}>
-                <strong>{formatActivityType(activity.type)}</strong>
-                <span>{formatDateTime(activity.occurredAt)}</span>
-                <p>{activity.description}</p>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <EmptyState title="Nenhuma atividade comercial" text="O histórico comercial aparece aqui conforme as oportunidades avançam." />
-        )}
-      </section>
+      <Tabs items={tabs} activeId={activeTab} onChange={setActiveTab} />
 
       {confirmArchive ? (
         <ConfirmDialog

@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef } from "react";
+import { useEscapeKey, useOverlayScrollLockAndFocusRestore } from "../../components/ui/useOverlayBehavior";
 import type { NextAction } from "../../domain/crm";
 import type { ActionOperationState } from "./useActionOperation";
 
@@ -21,16 +22,16 @@ export function ActionOperationForm({ operation, error, onChange, onSubmit, onCa
   onCancel: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  // So vira bottom sheet real (com backdrop) abaixo de 767px — no desktop e um
+  // painel inline sem overlay (ver .action-operation-backdrop em styles.css),
+  // entao so trava o scroll do body quando de fato cobre a tela.
+  const isBottomSheet = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+
+  useOverlayScrollLockAndFocusRestore(isBottomSheet);
+  useEscapeKey(true, onCancel);
 
   useEffect(() => {
     formRef.current?.querySelector<HTMLElement>("input, select, textarea")?.focus();
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {

@@ -55,6 +55,20 @@ export function formatOpportunityStatus(status: string): string {
   return OPPORTUNITY_STATUS_LABELS[status] ?? status;
 }
 
+// Cores semanticas do kit Venture (Background/Content Positive|Informative|Error
+// — ver docs/FIGMA-DESIGN-SYSTEM-MAPPING.md) aplicadas ao status da oportunidade,
+// usado em toda superficie que lista oportunidades (Funil, ficha do cliente,
+// lista e ficha da oportunidade) para leitura visual consistente do estado.
+const OPPORTUNITY_STATUS_BADGE_CLASS: Record<string, string> = {
+  ativa: "badge-informative",
+  ganha: "badge-positive",
+  perdida: "badge-danger-soft",
+};
+
+export function opportunityStatusBadgeClass(status: string): string {
+  return OPPORTUNITY_STATUS_BADGE_CLASS[status] ?? "";
+}
+
 const CRM_ROLE_LABELS: Record<string, string> = {
   gestor: "Gestor",
   vendedor: "Vendedor",

@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useEscapeKey, useOverlayScrollLockAndFocusRestore } from "./useOverlayBehavior";
 
 export function PromptDialog({ title, label, defaultValue = "", confirmLabel = "Salvar", cancelLabel = "Cancelar", onConfirm, onCancel }: {
   title: string;
@@ -12,15 +13,13 @@ export function PromptDialog({ title, label, defaultValue = "", confirmLabel = "
   const [value, setValue] = useState(defaultValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useOverlayScrollLockAndFocusRestore(true);
+  useEscapeKey(true, onCancel);
+
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel]);
+  }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

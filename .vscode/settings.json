@@ -1,0 +1,10 @@
+{
+    "chat.mcp.serverSampling": {
+        "artec-crm/.vscode/mcp.json: Figma": {
+            "allowedModels": [
+                "copilotcli/auto",
+                "copilot/auto"
+            ]
+        }
+    }
+}

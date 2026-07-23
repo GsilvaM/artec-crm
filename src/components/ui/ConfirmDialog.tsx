@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useEscapeKey, useOverlayScrollLockAndFocusRestore } from "./useOverlayBehavior";
 
 export function ConfirmDialog({ title, message, confirmLabel = "Confirmar", cancelLabel = "Cancelar", destructive, onConfirm, onCancel }: {
   title: string;
@@ -11,14 +12,12 @@ export function ConfirmDialog({ title, message, confirmLabel = "Confirmar", canc
 }) {
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
+  useOverlayScrollLockAndFocusRestore(true);
+  useEscapeKey(true, onCancel);
+
   useEffect(() => {
     confirmButtonRef.current?.focus();
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel]);
+  }, []);
 
   return (
     <div className="confirm-dialog-backdrop" role="presentation" onClick={onCancel}>
