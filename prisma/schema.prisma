@@ -300,10 +300,12 @@ model AuvoInboxItem {
   lastEventId           String?   @map("last_event_id") @db.Uuid
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isTestFixture         Boolean   @default(false) @map("is_test_fixture")
 
   @@index([status, createdAt], map: "auvo_inbox_items_status_idx")
   @@index([auvoContactId], map: "auvo_inbox_items_auvo_contact_id_idx")
   @@index([phoneNormalized], map: "auvo_inbox_items_phone_normalized_idx")
+  @@index([isTestFixture], map: "auvo_inbox_items_is_test_fixture_idx")
   @@map("auvo_inbox_items")
   @@schema("crm_internal")
 }

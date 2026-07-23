@@ -44,6 +44,7 @@ export type AuvoInboxItemMinAggregateOutputType = {
   lastEventId: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  isTestFixture: boolean | null
 }
 
 export type AuvoInboxItemMaxAggregateOutputType = {
@@ -66,6 +67,7 @@ export type AuvoInboxItemMaxAggregateOutputType = {
   lastEventId: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  isTestFixture: boolean | null
 }
 
 export type AuvoInboxItemCountAggregateOutputType = {
@@ -88,6 +90,7 @@ export type AuvoInboxItemCountAggregateOutputType = {
   lastEventId: number
   createdAt: number
   updatedAt: number
+  isTestFixture: number
   _all: number
 }
 
@@ -112,6 +115,7 @@ export type AuvoInboxItemMinAggregateInputType = {
   lastEventId?: true
   createdAt?: true
   updatedAt?: true
+  isTestFixture?: true
 }
 
 export type AuvoInboxItemMaxAggregateInputType = {
@@ -134,6 +138,7 @@ export type AuvoInboxItemMaxAggregateInputType = {
   lastEventId?: true
   createdAt?: true
   updatedAt?: true
+  isTestFixture?: true
 }
 
 export type AuvoInboxItemCountAggregateInputType = {
@@ -156,6 +161,7 @@ export type AuvoInboxItemCountAggregateInputType = {
   lastEventId?: true
   createdAt?: true
   updatedAt?: true
+  isTestFixture?: true
   _all?: true
 }
 
@@ -251,6 +257,7 @@ export type AuvoInboxItemGroupByOutputType = {
   lastEventId: string | null
   createdAt: Date
   updatedAt: Date
+  isTestFixture: boolean
   _count: AuvoInboxItemCountAggregateOutputType | null
   _min: AuvoInboxItemMinAggregateOutputType | null
   _max: AuvoInboxItemMaxAggregateOutputType | null
@@ -294,6 +301,7 @@ export type AuvoInboxItemWhereInput = {
   lastEventId?: Prisma.UuidNullableFilter<"AuvoInboxItem"> | string | null
   createdAt?: Prisma.DateTimeFilter<"AuvoInboxItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AuvoInboxItem"> | Date | string
+  isTestFixture?: Prisma.BoolFilter<"AuvoInboxItem"> | boolean
 }
 
 export type AuvoInboxItemOrderByWithRelationInput = {
@@ -316,6 +324,7 @@ export type AuvoInboxItemOrderByWithRelationInput = {
   lastEventId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 export type AuvoInboxItemWhereUniqueInput = Prisma.AtLeast<{
@@ -341,6 +350,7 @@ export type AuvoInboxItemWhereUniqueInput = Prisma.AtLeast<{
   lastEventId?: Prisma.UuidNullableFilter<"AuvoInboxItem"> | string | null
   createdAt?: Prisma.DateTimeFilter<"AuvoInboxItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AuvoInboxItem"> | Date | string
+  isTestFixture?: Prisma.BoolFilter<"AuvoInboxItem"> | boolean
 }, "id" | "externalServiceId">
 
 export type AuvoInboxItemOrderByWithAggregationInput = {
@@ -363,6 +373,7 @@ export type AuvoInboxItemOrderByWithAggregationInput = {
   lastEventId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
   _count?: Prisma.AuvoInboxItemCountOrderByAggregateInput
   _max?: Prisma.AuvoInboxItemMaxOrderByAggregateInput
   _min?: Prisma.AuvoInboxItemMinOrderByAggregateInput
@@ -391,6 +402,7 @@ export type AuvoInboxItemScalarWhereWithAggregatesInput = {
   lastEventId?: Prisma.UuidNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"AuvoInboxItem"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"AuvoInboxItem"> | Date | string
+  isTestFixture?: Prisma.BoolWithAggregatesFilter<"AuvoInboxItem"> | boolean
 }
 
 export type AuvoInboxItemCreateInput = {
@@ -413,6 +425,7 @@ export type AuvoInboxItemCreateInput = {
   lastEventId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isTestFixture?: boolean
 }
 
 export type AuvoInboxItemUncheckedCreateInput = {
@@ -435,6 +448,7 @@ export type AuvoInboxItemUncheckedCreateInput = {
   lastEventId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isTestFixture?: boolean
 }
 
 export type AuvoInboxItemUpdateInput = {
@@ -457,6 +471,7 @@ export type AuvoInboxItemUpdateInput = {
   lastEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type AuvoInboxItemUncheckedUpdateInput = {
@@ -479,6 +494,7 @@ export type AuvoInboxItemUncheckedUpdateInput = {
   lastEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type AuvoInboxItemCreateManyInput = {
@@ -501,6 +517,7 @@ export type AuvoInboxItemCreateManyInput = {
   lastEventId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isTestFixture?: boolean
 }
 
 export type AuvoInboxItemUpdateManyMutationInput = {
@@ -523,6 +540,7 @@ export type AuvoInboxItemUpdateManyMutationInput = {
   lastEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type AuvoInboxItemUncheckedUpdateManyInput = {
@@ -545,6 +563,7 @@ export type AuvoInboxItemUncheckedUpdateManyInput = {
   lastEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
 export type AuvoInboxItemCountOrderByAggregateInput = {
@@ -567,6 +586,7 @@ export type AuvoInboxItemCountOrderByAggregateInput = {
   lastEventId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 export type AuvoInboxItemMaxOrderByAggregateInput = {
@@ -589,6 +609,7 @@ export type AuvoInboxItemMaxOrderByAggregateInput = {
   lastEventId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 export type AuvoInboxItemMinOrderByAggregateInput = {
@@ -611,6 +632,7 @@ export type AuvoInboxItemMinOrderByAggregateInput = {
   lastEventId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isTestFixture?: Prisma.SortOrder
 }
 
 
@@ -635,6 +657,7 @@ export type AuvoInboxItemSelect<ExtArgs extends runtime.Types.Extensions.Interna
   lastEventId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  isTestFixture?: boolean
 }, ExtArgs["result"]["auvoInboxItem"]>
 
 export type AuvoInboxItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -657,6 +680,7 @@ export type AuvoInboxItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types
   lastEventId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  isTestFixture?: boolean
 }, ExtArgs["result"]["auvoInboxItem"]>
 
 export type AuvoInboxItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -679,6 +703,7 @@ export type AuvoInboxItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   lastEventId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  isTestFixture?: boolean
 }, ExtArgs["result"]["auvoInboxItem"]>
 
 export type AuvoInboxItemSelectScalar = {
@@ -701,9 +726,10 @@ export type AuvoInboxItemSelectScalar = {
   lastEventId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  isTestFixture?: boolean
 }
 
-export type AuvoInboxItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "externalServiceId" | "status" | "suggestedCustomerId" | "title" | "contactName" | "phoneNormalized" | "auvoContactId" | "email" | "channelType" | "resolution" | "resolvedOpportunityId" | "resolvedCustomerId" | "resolvedBy" | "resolvedAt" | "discardReason" | "lastEventId" | "createdAt" | "updatedAt", ExtArgs["result"]["auvoInboxItem"]>
+export type AuvoInboxItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "externalServiceId" | "status" | "suggestedCustomerId" | "title" | "contactName" | "phoneNormalized" | "auvoContactId" | "email" | "channelType" | "resolution" | "resolvedOpportunityId" | "resolvedCustomerId" | "resolvedBy" | "resolvedAt" | "discardReason" | "lastEventId" | "createdAt" | "updatedAt" | "isTestFixture", ExtArgs["result"]["auvoInboxItem"]>
 
 export type $AuvoInboxItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "AuvoInboxItem"
@@ -728,6 +754,7 @@ export type $AuvoInboxItemPayload<ExtArgs extends runtime.Types.Extensions.Inter
     lastEventId: string | null
     createdAt: Date
     updatedAt: Date
+    isTestFixture: boolean
   }, ExtArgs["result"]["auvoInboxItem"]>
   composites: {}
 }
@@ -1170,6 +1197,7 @@ export interface AuvoInboxItemFieldRefs {
   readonly lastEventId: Prisma.FieldRef<"AuvoInboxItem", 'String'>
   readonly createdAt: Prisma.FieldRef<"AuvoInboxItem", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"AuvoInboxItem", 'DateTime'>
+  readonly isTestFixture: Prisma.FieldRef<"AuvoInboxItem", 'Boolean'>
 }
     
 

@@ -26,8 +26,8 @@ const STATUS_LABELS: Record<AuvoInboxStatus, string> = {
 
 const STATUS_BADGE_CLASS: Record<AuvoInboxStatus, string> = {
   novo: "badge-informative",
-  em_analise: "warning",
-  aguardando_dados: "warning",
+  em_analise: "badge-warning-soft",
+  aguardando_dados: "badge-warning-soft",
   processado: "badge-positive",
   descartado: "",
   erro_integracao: "badge-alert-danger",

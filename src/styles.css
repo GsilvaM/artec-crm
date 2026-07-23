@@ -1505,7 +1505,8 @@ tr:last-child td {
   min-height: 24px;
   margin-left: 8px;
   padding: 0 8px;
-  border-radius: var(--radius-full);
+  /* docs/cards.json: badgeRadius = 4px no kit (nao pill). */
+  border-radius: var(--radius-component);
   background: var(--surface-muted);
   color: var(--foreground);
   font-size: var(--text-xs);
@@ -1530,14 +1531,16 @@ tr:last-child td {
 .badge-positive,
 .badge-danger-soft,
 .badge-informative,
-.badge-purple {
+.badge-purple,
+.badge-warning-soft {
   gap: 5px;
 }
 
 .badge-positive::before,
 .badge-danger-soft::before,
 .badge-informative::before,
-.badge-purple::before {
+.badge-purple::before,
+.badge-warning-soft::before {
   content: "";
   flex: 0 0 auto;
   width: 6px;
@@ -1579,6 +1582,15 @@ tr:last-child td {
 
 .badge-purple::before {
   background: var(--venture-purple-60);
+}
+
+.badge-warning-soft {
+  background: var(--background-warning);
+  color: var(--venture-orange-80);
+}
+
+.badge-warning-soft::before {
+  background: var(--venture-orange-60);
 }
 
 /* Badges de alerta forte — para sinais que exigem acao imediata (vencida,
@@ -1687,7 +1699,7 @@ tr:last-child td {
   gap: 8px;
   padding: 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-component);
   background: var(--surface);
   transition: opacity 120ms ease, box-shadow 120ms ease;
 }
@@ -1914,6 +1926,11 @@ tr:last-child td {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.cell-primary-text {
+  font-weight: var(--weight-bold);
+  color: var(--foreground);
 }
 
 .avatar-red { background: var(--venture-red-80); }
@@ -2147,7 +2164,10 @@ tr:last-child td {
 .panel,
 .state-panel {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  /* docs/cards.json especifica 4px em quase todas as variantes de card do kit
+     (cardsContactRadius, cardsTaskCardRadius, cardsIntegrationsCardRadius,
+     cardCardRadius etc.) — nao os 8px que .panel usava antes. */
+  border-radius: var(--radius-component);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }

@@ -144,6 +144,7 @@ export type CommercialCenterFilters = {
   demandType?: string;
   category?: NextActionCategory;
   priority?: NextActionPriority;
+  includeTestFixtures?: boolean;
 };
 
 export type CommercialCenterActionItem = {
@@ -589,6 +590,7 @@ export type CrmDataRepository = {
       customerId?: string;
       opportunityId?: string;
       priority?: NextActionPriority;
+      includeTestFixtures?: boolean;
     },
   ): Promise<NextActionRecord[]>;
   getCommercialCenter(actor: Actor, filters: CommercialCenterFilters): Promise<CommercialCenterRecord>;
@@ -599,6 +601,7 @@ export type CrmDataRepository = {
   archiveNotification(actor: Actor, id: string): Promise<NotificationRecord | null>;
   snoozeNotification(actor: Actor, id: string, input: SnoozeNotificationInput): Promise<NotificationRecord | null>;
   reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult>;
+  reconcileAuvoWebhookEvents(limit?: number): Promise<{ claimed: number; processed: number; retried: number; failed: number }>;
   receiveAuvoWebhookEvent(input: ReceiveAuvoWebhookEventInput): Promise<ReceiveAuvoWebhookEventResult>;
   listAuvoWebhookEvents(actor: Actor, filters: AuvoWebhookEventFilters): Promise<AuvoWebhookEventListRecord>;
   getAuvoWebhookEvent(actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null>;

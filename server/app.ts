@@ -7,7 +7,7 @@ import type { AuthenticatedUser, AuthVerifier, MembershipRepository } from "./au
 import type { ServerConfig } from "./config.js";
 import { AUVO_WEBHOOK_MAX_BYTES, sanitizeWebhookHeaders } from "./crm/auvo-webhook.js";
 import { createRouteGuards, registerCrmRoutes } from "./crm/routes.js";
-import type { CrmDataRepository } from "./crm/types.js";
+import type { Actor, CrmDataRepository } from "./crm/types.js";
 import type { DatabaseHealth } from "./database/health.js";
 import { ApiError, toPublicError } from "./errors.js";
 
@@ -18,7 +18,7 @@ declare module "fastify" {
 }
 
 export type ServerDependencies = {
-  config: Pick<ServerConfig, "corsOrigins" | "CRM_LOG_LEVEL" | "AUVO_WEBHOOK_SECRET">;
+  config: Pick<ServerConfig, "corsOrigins" | "CRM_LOG_LEVEL" | "AUVO_WEBHOOK_SECRET" | "CRON_SECRET">;
   authVerifier: AuthVerifier;
   membershipRepository: MembershipRepository;
   crmRepository: CrmDataRepository;
@@ -93,6 +93,10 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
 
   void app.register(async (instance) => {
     registerAuvoWebhookRoutes(instance, dependencies);
+  });
+
+  void app.register(async (instance) => {
+    registerInternalReconcileRoute(instance, dependencies);
   });
 
   void app.register(async (instance) => {
@@ -189,6 +193,29 @@ function registerAuvoWebhookRoutes(instance: FastifyInstance, dependencies: Serv
     handler: async () => {
       throw new ApiError(405, "bad_request", "Use POST para enviar webhook Auvo.");
     },
+  });
+}
+
+const SYSTEM_ACTOR: Actor = { id: "00000000-0000-0000-0000-000000000000", role: "gestor" };
+
+// Agendamento real dos dois workers que, sem isso, so avancam via CLI manual (achado da
+// auditoria: fila Auvo e notificacoes de atraso voltam a acumular logo apos rodar na mao).
+// Protegido por CRON_SECRET (Vercel Cron envia "Authorization: Bearer $CRON_SECRET" quando a
+// variavel de ambiente CRON_SECRET esta configurada no projeto Vercel; ver vercel.json "crons").
+function registerInternalReconcileRoute(instance: FastifyInstance, dependencies: ServerDependencies): void {
+  instance.get("/api/internal/reconcile", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request) => {
+    const expectedSecret = dependencies.config.CRON_SECRET;
+    if (!expectedSecret) throw new ApiError(503, "internal_error", "CRON_SECRET nao configurado.");
+    const provided = readBearerToken(request.headers.authorization);
+    if (!secretsMatch(provided, expectedSecret)) throw new ApiError(403, "forbidden", "Reconcile interno recusado.");
+
+    const [auvo, notifications] = await Promise.all([
+      dependencies.crmRepository.reconcileAuvoWebhookEvents(),
+      dependencies.crmRepository.reconcileNotifications(SYSTEM_ACTOR),
+    ]);
+
+    request.log.info({ auvo, notifications }, "internal_reconcile_completed");
+    return { auvo, notifications };
   });
 }
 

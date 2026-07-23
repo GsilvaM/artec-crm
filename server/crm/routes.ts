@@ -153,6 +153,7 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
         to: query.to ?? undefined,
         situation: query.situation ?? undefined,
         demandType: query.demandType ?? undefined,
+        includeTestFixtures: wantsTestFixtures(request),
       }),
     };
   });
@@ -351,6 +352,7 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
         overdue: query.overdue === "true",
         today: query.today === "true",
         future: query.future === "true",
+        includeTestFixtures: wantsTestFixtures(request),
       }),
     };
   });

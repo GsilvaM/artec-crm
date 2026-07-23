@@ -679,6 +679,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       customerId?: string;
       opportunityId?: string;
       priority?: NextActionPriority;
+      includeTestFixtures?: boolean;
     },
   ): Promise<NextActionRecord[]> {
     const now = new Date();
@@ -693,6 +694,9 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         ...(filters.category ? { category: filters.category } : {}),
         ...(filters.customerId ? { customerId: filters.customerId } : {}),
         ...(filters.opportunityId ? { opportunityId: filters.opportunityId } : {}),
+        // Fila global (sem customerId/opportunityId explicito) exclui fixtures E2E/homologacao;
+        // a ficha de um cliente/oportunidade especifico continua mostrando suas proprias acoes.
+        ...(filters.customerId || filters.opportunityId || filters.includeTestFixtures ? {} : { customer: { isTestFixture: false } }),
         ...(filters.priority ? { priority: filters.priority } : {}),
         ...(filters.overdue ? { status: "pending", dueAt: { lt: now } } : {}),
         ...(filters.today ? { status: "pending", dueAt: { gte: startOfToday, lt: startOfTomorrow } } : {}),
@@ -716,8 +720,8 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     const now = new Date();
     const startOfToday = startOfLocalDay(now);
     const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
-    const from = filters.from ? new Date(filters.from) : new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const to = filters.to ? new Date(filters.to) : now;
+    const from = filters.from ? toDateOnly(filters.from) : new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const to = filters.to ? toEndOfDateOnly(filters.to) : now;
     const responsibleScope =
       actor.role === "vendedor"
         ? { responsavelId: actor.id }
@@ -730,9 +734,10 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         : actor.role === "gestor" && filters.responsibleUserId
           ? { responsibleUserId: filters.responsibleUserId }
           : {};
+    const fixtureFilter = filters.includeTestFixtures ? {} : { isTestFixture: false };
     const opportunityFilters = {
       archivedAt: null,
-      isTestFixture: false,
+      ...fixtureFilter,
       ...responsibleScope,
       ...(filters.stageId ? { etapaId: filters.stageId } : {}),
       ...(filters.situation ? { situacao: filters.situation } : {}),
@@ -744,6 +749,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         where: {
           archivedAt: null,
           status: "pending",
+          ...(filters.includeTestFixtures ? {} : { customer: { isTestFixture: false } }),
           ...actionResponsibleScope,
           ...(filters.category ? { category: filters.category } : {}),
           ...(filters.priority ? { priority: filters.priority } : {}),
@@ -761,9 +767,9 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       this.prisma.opportunity.findMany({
         where: {
           archivedAt: null,
-          isTestFixture: false,
+          ...fixtureFilter,
           ...responsibleScope,
-          createdAt: { gte: from, lte: to },
+          createdAt: { gte: from, lt: to },
         },
         include: opportunityInclude,
         take: 500,
@@ -771,11 +777,11 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       this.prisma.customer.count({
         where: {
           archivedAt: null,
-          isTestFixture: false,
-          createdAt: { gte: from, lte: to },
+          ...fixtureFilter,
+          createdAt: { gte: from, lt: to },
         },
       }),
-      this.prisma.auvoInboxItem.count({ where: { status: { in: ["novo", "em_analise", "aguardando_dados"] } } }),
+      this.prisma.auvoInboxItem.count({ where: { status: { in: ["novo", "em_analise", "aguardando_dados"] }, isTestFixture: false } }),
     ]);
 
     const actionItems = pendingActions.map((action) => mapCommercialAction(action, now));
@@ -1054,7 +1060,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           type: "overdue_next_action",
           severity: "urgent",
           title: "Proxima acao vencida",
-          body: `${action.title} venceu em ${action.dueAt.toISOString()}.`,
+          body: `${action.title} venceu em ${formatDateTimeBrazil(action.dueAt)}.`,
           entityType: "next_action",
           entityId: action.id,
           customerId: action.customerId,
@@ -1160,23 +1166,35 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     const eventType = inferEventType(input.payload);
     const outOfScope = isOutOfScopeAuvoEventType(eventType);
 
-    const event = await this.prisma.auvoWebhookEvent.create({
-      data: {
-        provider: "auvo",
-        externalEventId: inferExternalEventId(input.payload),
-        eventType,
-        dedupeKey,
-        status: outOfScope ? "ignored" : "received",
-        ignoredAt: outOfScope ? new Date() : null,
-        lastError: outOfScope ? "Tipo de evento fora do escopo do MVP; payload nao armazenado." : null,
-        sanitizedHeadersJson: input.headers,
-        rawPayloadJson: outOfScope ? ({ eventType, outOfScope: true } as Prisma.InputJsonValue) : (input.payload as Prisma.InputJsonValue),
-        payloadHash,
-        sourceIpHash: input.sourceIpHash,
-        contentLength: input.contentLength,
-        schemaVersion: 1,
-      },
-    });
+    let event;
+    try {
+      event = await this.prisma.auvoWebhookEvent.create({
+        data: {
+          provider: "auvo",
+          externalEventId: inferExternalEventId(input.payload),
+          eventType,
+          dedupeKey,
+          status: outOfScope ? "ignored" : "received",
+          ignoredAt: outOfScope ? new Date() : null,
+          lastError: outOfScope ? "Tipo de evento fora do escopo do MVP; payload nao armazenado." : null,
+          sanitizedHeadersJson: input.headers,
+          rawPayloadJson: outOfScope ? ({ eventType, outOfScope: true } as Prisma.InputJsonValue) : (input.payload as Prisma.InputJsonValue),
+          payloadHash,
+          sourceIpHash: input.sourceIpHash,
+          contentLength: input.contentLength,
+          schemaVersion: 1,
+        },
+      });
+    } catch (error) {
+      // Corrida: duas entregas concorrentes do mesmo payload podem ambas passar pelo findUnique
+      // acima antes de qualquer uma commitar o create. O constraint unico em dedupe_key e a
+      // fonte de verdade real; se ele disparar aqui, trata como duplicata legitima, nao como erro.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        const raceWinner = await this.prisma.auvoWebhookEvent.findUnique({ where: { dedupeKey } });
+        if (raceWinner) return { event: mapAuvoWebhookEvent(raceWinner), duplicate: true };
+      }
+      throw error;
+    }
 
     if (!outOfScope && isAuvoSessionEventType(eventType)) {
       await this.upsertInboxItemFromSessionEvent(event.id, input.payload).catch(() => {
@@ -1216,6 +1234,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         email: parsed.email,
         channelType: parsed.channelType,
         lastEventId: eventId,
+        isTestFixture: isHomologationPayload(payload),
       },
     });
   }
@@ -1262,7 +1281,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
 
   async listAuvoInboxItems(_actor: Actor, filters: { status?: AuvoInboxStatus }): Promise<AuvoInboxItemRecord[]> {
     const items = await this.prisma.auvoInboxItem.findMany({
-      where: { ...(filters.status ? { status: filters.status } : {}) },
+      where: { isTestFixture: false, ...(filters.status ? { status: filters.status } : {}) },
       orderBy: { createdAt: "desc" },
       take: 200,
     });
@@ -1424,20 +1443,25 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     if (!current) return null;
     if (current.status === "processed") throw new ApiError(409, "bad_request", "Evento ja processado nao pode voltar para a fila.");
 
-    const updated = await this.prisma.auvoWebhookEvent.update({
+    const claimed = await this.prisma.auvoWebhookEvent.update({
       where: { id },
       data: {
-        status: "received",
-        attemptCount: { increment: 1 },
+        status: "processing",
         lastError: null,
-        processingStartedAt: null,
+        processingStartedAt: new Date(),
         processedAt: null,
         ignoredAt: null,
         nextRetryAt: null,
         updatedAt: new Date(),
       },
     });
-    return mapAuvoWebhookEvent(updated);
+
+    // Reprocessa de verdade, na hora — nao apenas reseta o status para "received" e depende do
+    // proximo ciclo do reconcile em background. E o mesmo motivo pelo qual o botao "Reprocessar"
+    // parecia nao fazer nada da perspectiva do gestor (achado da auditoria Auvo).
+    await this.processClaimedAuvoWebhookEvent(claimed, 5);
+    const result = await this.prisma.auvoWebhookEvent.findUnique({ where: { id } });
+    return result ? mapAuvoWebhookEvent(result) : null;
   }
 
   async ignoreAuvoWebhookEvent(_actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null> {
@@ -1486,45 +1510,57 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       });
       if (claim.count === 0) continue; // outro worker ja reivindicou este evento
 
-      try {
-        if (isAuvoSessionEventType(event.eventType)) {
-          await this.upsertInboxItemFromSessionEvent(event.id, event.rawPayloadJson);
-        } else if (isAuvoContactEventType(event.eventType)) {
-          await this.upsertContactSnapshotFromContactEvent(event.rawPayloadJson);
-        }
-        await this.prisma.auvoWebhookEvent.update({
-          where: { id: event.id },
-          data: { status: "processed", processedAt: new Date(), lastError: null, nextRetryAt: null, updatedAt: new Date() },
-        });
-        processed += 1;
-      } catch (error) {
-        const attemptCount = event.attemptCount + 1;
-        const message = error instanceof Error ? error.message : String(error);
-        if (attemptCount >= MAX_ATTEMPTS) {
-          await this.prisma.auvoWebhookEvent.update({
-            where: { id: event.id },
-            data: { status: "failed", attemptCount, lastError: message.slice(0, 500), processingStartedAt: null, updatedAt: new Date() },
-          });
-          failed += 1;
-        } else {
-          const backoffMinutes = Math.min(2 ** attemptCount, 60);
-          await this.prisma.auvoWebhookEvent.update({
-            where: { id: event.id },
-            data: {
-              status: "received",
-              attemptCount,
-              lastError: message.slice(0, 500),
-              processingStartedAt: null,
-              nextRetryAt: new Date(now.getTime() + backoffMinutes * 60_000),
-              updatedAt: new Date(),
-            },
-          });
-          retried += 1;
-        }
-      }
+      const outcome = await this.processClaimedAuvoWebhookEvent(event, MAX_ATTEMPTS);
+      if (outcome === "processed") processed += 1;
+      else if (outcome === "failed") failed += 1;
+      else retried += 1;
     }
 
     return { claimed: batch.length, processed, retried, failed };
+  }
+
+  /** Processa um evento ja reivindicado (status="processing") e grava o resultado real. Usado
+   * tanto pelo reconcile em lote quanto pelo botao "Reprocessar" (execucao imediata, sincrona). */
+  private async processClaimedAuvoWebhookEvent(
+    event: { id: string; eventType: string | null; rawPayloadJson: Prisma.JsonValue; attemptCount: number },
+    maxAttempts: number,
+  ): Promise<"processed" | "retried" | "failed"> {
+    const now = new Date();
+    try {
+      if (isAuvoSessionEventType(event.eventType)) {
+        await this.upsertInboxItemFromSessionEvent(event.id, event.rawPayloadJson);
+      } else if (isAuvoContactEventType(event.eventType)) {
+        await this.upsertContactSnapshotFromContactEvent(event.rawPayloadJson);
+      }
+      await this.prisma.auvoWebhookEvent.update({
+        where: { id: event.id },
+        data: { status: "processed", processedAt: new Date(), lastError: null, nextRetryAt: null, updatedAt: new Date() },
+      });
+      return "processed";
+    } catch (error) {
+      const attemptCount = event.attemptCount + 1;
+      const message = error instanceof Error ? error.message : String(error);
+      if (attemptCount >= maxAttempts) {
+        await this.prisma.auvoWebhookEvent.update({
+          where: { id: event.id },
+          data: { status: "failed", attemptCount, lastError: message.slice(0, 500), processingStartedAt: null, updatedAt: new Date() },
+        });
+        return "failed";
+      }
+      const backoffMinutes = Math.min(2 ** attemptCount, 60);
+      await this.prisma.auvoWebhookEvent.update({
+        where: { id: event.id },
+        data: {
+          status: "received",
+          attemptCount,
+          lastError: message.slice(0, 500),
+          processingStartedAt: null,
+          nextRetryAt: new Date(now.getTime() + backoffMinutes * 60_000),
+          updatedAt: new Date(),
+        },
+      });
+      return "retried";
+    }
   }
 
   async getAuvoIntegrationStatus(_actor: Actor, configured: boolean): Promise<AuvoIntegrationStatusRecord> {
@@ -2356,6 +2392,25 @@ function formatPhoneForDisplay(phoneNormalized: string): string {
   const digits = phoneNormalized.startsWith("55") ? phoneNormalized.slice(2) : phoneNormalized;
   const match = /^(\d{2})(\d{4,5})(\d{4})$/.exec(digits);
   return match ? `(${match[1]}) ${match[2]}-${match[3]}` : phoneNormalized;
+}
+
+export function isHomologationPayload(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  const value = (payload as Record<string, unknown>).homologation;
+  return value === true || value === "true";
+}
+
+const BRAZIL_DATETIME_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function formatDateTimeBrazil(date: Date): string {
+  return BRAZIL_DATETIME_FORMATTER.format(date);
 }
 
 export function isTestFixtureName(name: string): boolean {

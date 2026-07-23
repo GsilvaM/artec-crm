@@ -67,12 +67,14 @@ const stageId = "44444444-4444-4444-8444-444444444444";
 const lostStageId = "55555555-5555-4555-8555-555555555555";
 const lossReasonId = "66666666-6666-4666-8666-666666666666";
 const auvoSecret = "local-auvo-secret";
+const cronSecret = "local-cron-secret";
 
 function createTestServer(options: {
   verifiedUser?: VerifiedTokenUser;
   verifyError?: Error;
   membership?: Membership | null;
   crmRepository?: CrmDataRepository;
+  cronSecretConfigured?: boolean;
 }) {
   const authVerifier: AuthVerifier = {
     async verify() {
@@ -98,6 +100,7 @@ function createTestServer(options: {
       corsOrigins: ["http://localhost:3100"],
       CRM_LOG_LEVEL: "silent",
       AUVO_WEBHOOK_SECRET: auvoSecret,
+      CRON_SECRET: options.cronSecretConfigured === false ? undefined : cronSecret,
     },
     authVerifier,
     membershipRepository,
@@ -1156,6 +1159,48 @@ describe("CRM activities and next actions API", () => {
     expect(lastResponse?.json()).toMatchObject({ error: { code: "rate_limited" } });
   });
 
+  it("refuses the internal reconcile route when CRON_SECRET is not configured", async () => {
+    const app = createTestServer({ cronSecretConfigured: false });
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/internal/reconcile",
+      headers: { authorization: `Bearer ${cronSecret}` },
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(503);
+  });
+
+  it("rejects the internal reconcile route without a valid bearer token", async () => {
+    const app = createTestServer({});
+    const noAuth = await app.inject({ method: "GET", url: "/api/internal/reconcile" });
+    const wrongSecret = await app.inject({
+      method: "GET",
+      url: "/api/internal/reconcile",
+      headers: { authorization: "Bearer wrong-secret-wrong-secret" },
+    });
+    await app.close();
+
+    expect(noAuth.statusCode).toBe(401);
+    expect(wrongSecret.statusCode).toBe(403);
+  });
+
+  it("runs both Auvo and notifications reconcile when the internal route is called with the right secret", async () => {
+    const app = createTestServer({});
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/internal/reconcile",
+      headers: { authorization: `Bearer ${cronSecret}` },
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      auvo: { claimed: 0, processed: 0, retried: 0, failed: 0 },
+      notifications: { generated: 0, updated: 0, resolved: 0 },
+    });
+  });
+
   it("keeps Auvo admin APIs restricted to gestor and supports detail, filters, reprocess and ignore", async () => {
     const repository = new FakeCrmRepository();
     const event = (await repository.receiveAuvoWebhookEvent({
@@ -1739,6 +1784,12 @@ class FakeCrmRepository implements CrmDataRepository {
   async reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult> {
     if (actor.role !== "gestor") throw new ApiError(403, "forbidden", "Apenas gestor pode reconciliar notificacoes.");
     return { generated: 0, updated: 0, resolved: 0 };
+  }
+
+  async reconcileAuvoWebhookEvents(): Promise<{ claimed: number; processed: number; retried: number; failed: number }> {
+    // O fake nao simula a maquina de estados real do worker (ver PrismaCrmDataRepository) —
+    // cobertura de rota/contrato apenas, nao de logica de reconciliacao.
+    return { claimed: 0, processed: 0, retried: 0, failed: 0 };
   }
 
   async receiveAuvoWebhookEvent(input: ReceiveAuvoWebhookEventInput): Promise<ReceiveAuvoWebhookEventResult> {

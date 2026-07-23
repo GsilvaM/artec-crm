@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCanonicalContactTitle, isOutOfScopeAuvoEventType, isTestFixtureName, startOfLocalDay } from "./prisma-repository.js";
+import { buildCanonicalContactTitle, isHomologationPayload, isOutOfScopeAuvoEventType, isTestFixtureName, startOfLocalDay } from "./prisma-repository.js";
 
 describe("isOutOfScopeAuvoEventType", () => {
   it("allows the approved MVP event types", () => {
@@ -72,6 +72,20 @@ describe("startOfLocalDay (America/Sao_Paulo, UTC-3, sem horario de verao desde 
   it("is idempotent exactly at the Sao Paulo day boundary", () => {
     const exactBoundary = new Date("2026-07-23T03:00:00.000Z");
     expect(startOfLocalDay(exactBoundary).toISOString()).toBe(exactBoundary.toISOString());
+  });
+});
+
+describe("isHomologationPayload", () => {
+  it("flags payloads with a boolean or string homologation marker, matching the SQL raw_payload_json->>'homologation' check used elsewhere", () => {
+    expect(isHomologationPayload({ homologation: true })).toBe(true);
+    expect(isHomologationPayload({ homologation: "true" })).toBe(true);
+  });
+
+  it("does not flag real payloads", () => {
+    expect(isHomologationPayload({ eventType: "SESSION_NEW", content: {} })).toBe(false);
+    expect(isHomologationPayload({ homologation: false })).toBe(false);
+    expect(isHomologationPayload(null)).toBe(false);
+    expect(isHomologationPayload("not an object")).toBe(false);
   });
 });
 

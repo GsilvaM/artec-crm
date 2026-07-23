@@ -333,7 +333,8 @@ export const AuvoInboxItemScalarFieldEnum = {
   discardReason: 'discardReason',
   lastEventId: 'lastEventId',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  isTestFixture: 'isTestFixture'
 } as const
 
 export type AuvoInboxItemScalarFieldEnum = (typeof AuvoInboxItemScalarFieldEnum)[keyof typeof AuvoInboxItemScalarFieldEnum]
