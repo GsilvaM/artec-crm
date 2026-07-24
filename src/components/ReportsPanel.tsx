@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
+import { AlertTriangle, CheckCircle2, Clock3, DollarSign, Filter, TrendingUp } from "lucide-react";
 import { formatMoney } from "../domain/format";
 import { loadCommercialReport, type CommercialReport, type CommercialReportFilters, type PipelineStage } from "../domain/crm";
+
+type ReportMetric = {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "good" | "warning" | "neutral";
+};
 
 export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
   const [filters, setFilters] = useState<CommercialReportFilters>({});
@@ -10,6 +18,7 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
 
   useEffect(() => {
     void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function refresh() {
@@ -18,110 +27,178 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
     try {
       setReport(await loadCommercialReport(filters));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar o relatório.");
+      setError(err instanceof Error ? err.message : "Nao foi possivel carregar o relatorio.");
     } finally {
       setIsLoading(false);
     }
   }
 
+  const metrics = report ? buildReportMetrics(report) : [];
+  const maxStageCount = Math.max(1, ...(report?.opportunitiesByStage.map((row) => row.count) ?? [0]));
+  const maxOriginCount = Math.max(1, ...(report?.conversionByOrigin.map((row) => row.created) ?? [0]));
+  const maxLossCount = Math.max(1, ...(report?.lossReasons.map((row) => row.count) ?? [0]));
+  const followUpTotal = report ? report.completedFollowUps + report.overdueFollowUps : 0;
+  const followUpCompletion = followUpTotal ? report!.completedFollowUps / followUpTotal : null;
+
   return (
-    <section className="panel reports-panel" aria-label="Relatórios comerciais">
-      <header>
+    <section className="reports-panel" aria-label="Relatorios comerciais">
+      <header className="reports-header">
         <div>
-          <p className="eyebrow">Relatórios</p>
+          <p className="eyebrow">Relatorios</p>
           <h2>Desempenho comercial</h2>
+          <p>Leia conversao, receita aprovada e pendencias de follow-up antes de abrir a carteira.</p>
         </div>
       </header>
 
-      <div className="filter-grid">
+      <div className="reports-filter-bar" aria-label="Filtros do relatorio comercial">
         <label>De<input type="date" value={filters.from ?? ""} onChange={(event) => setFilters({ ...filters, from: event.target.value || undefined })} /></label>
-        <label>Até<input type="date" value={filters.to ?? ""} onChange={(event) => setFilters({ ...filters, to: event.target.value || undefined })} /></label>
+        <label>Ate<input type="date" value={filters.to ?? ""} onChange={(event) => setFilters({ ...filters, to: event.target.value || undefined })} /></label>
         <label>Etapa
           <select value={filters.stageId ?? ""} onChange={(event) => setFilters({ ...filters, stageId: event.target.value || undefined })}>
             <option value="">Todas</option>
             {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
           </select>
         </label>
-      </div>
-      <div className="filter-actions">
-        <button className="button secondary" type="button" onClick={refresh} disabled={isLoading}>Aplicar filtros</button>
+        <button className="button secondary" type="button" onClick={() => void refresh()} disabled={isLoading}>
+          <Filter aria-hidden="true" size={16} /> Aplicar
+        </button>
       </div>
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
 
       {report ? (
         <>
-          <div className="reports-metrics-grid">
-            <article className="metric-card"><span>Novos leads</span><strong>{report.newLeads}</strong></article>
-            <article className="metric-card"><span>Oportunidades criadas</span><strong>{report.opportunitiesCreated}</strong></article>
-            <article className="metric-card"><span>Valor orçado</span><strong>{formatMoney(report.budgetValue)}</strong></article>
-            <article className="metric-card"><span>Valor aprovado</span><strong>{formatMoney(report.approvedValue)}</strong></article>
-            <article className="metric-card"><span>Aprovações</span><strong>{report.approvedCount}</strong></article>
-            <article className="metric-card"><span>Ticket médio</span><strong>{formatMoney(report.averageApprovedTicket)}</strong></article>
-            <article className="metric-card"><span>Conversão</span><strong>{formatPercentValue(report.conversionRate)}</strong></article>
-            <article className="metric-card"><span>Follow-ups vencidos</span><strong>{report.overdueFollowUps}</strong></article>
-            <article className="metric-card"><span>Follow-ups concluídos</span><strong>{report.completedFollowUps}</strong></article>
-            <article className="metric-card"><span>Dias até orçamento</span><strong>{formatDaysValue(report.averageDaysToQuote)}</strong></article>
-            <article className="metric-card"><span>Dias até aprovação</span><strong>{formatDaysValue(report.averageDaysToApproval)}</strong></article>
-            <article className="metric-card"><span>Dias até perda</span><strong>{formatDaysValue(report.averageDaysToLoss)}</strong></article>
-          </div>
+          <section className="reports-decision-grid" aria-label="Indicadores principais">
+            {metrics.map((metric) => (
+              <article key={metric.label} className={`report-decision-card report-decision-card-${metric.tone ?? "neutral"}`}>
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+                <small>{metric.detail}</small>
+              </article>
+            ))}
+          </section>
 
-          <div className="admin-grid">
-            <article className="admin-block">
-              <h3>Oportunidades por etapa</h3>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Etapa</th><th>Quantidade</th></tr></thead>
-                  <tbody>
-                    {report.opportunitiesByStage.map((row) => <tr key={row.stageId}><td>{row.stageName}</td><td>{row.count}</td></tr>)}
-                    {!report.opportunitiesByStage.length ? <tr><td colSpan={2}>Sem dados no período.</td></tr> : null}
-                  </tbody>
-                </table>
+          <section className="reports-main-grid">
+            <article className="report-section" aria-label="Oportunidades por etapa">
+              <header>
+                <TrendingUp aria-hidden="true" size={18} />
+                <h3>Oportunidades por etapa</h3>
+              </header>
+              {report.opportunitiesByStage.length ? (
+                <ol className="report-bar-list">
+                  {report.opportunitiesByStage.map((row) => (
+                    <li key={row.stageId}>
+                      <div>
+                        <span>{row.stageName}</span>
+                        <strong>{row.count}</strong>
+                      </div>
+                      <meter min={0} max={maxStageCount} value={row.count} aria-label={`${row.stageName}: ${row.count} oportunidades`} />
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="quotes-empty">Sem dados no periodo.</p>
+              )}
+            </article>
+
+            <article className="report-section" aria-label="Conversao por origem">
+              <header>
+                <DollarSign aria-hidden="true" size={18} />
+                <h3>Conversao por origem</h3>
+              </header>
+              {report.conversionByOrigin.length ? (
+                <ol className="report-origin-list">
+                  {report.conversionByOrigin.map((row) => (
+                    <li key={row.origem}>
+                      <div>
+                        <strong>{row.origem}</strong>
+                        <span>{row.created} criadas - {row.approved} aprovadas - {formatPercentValue(row.conversionRate)}</span>
+                      </div>
+                      <meter min={0} max={maxOriginCount} value={row.created} aria-label={`${row.origem}: ${row.created} oportunidades criadas`} />
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="quotes-empty">Sem dados no periodo.</p>
+              )}
+            </article>
+          </section>
+
+          <section className="reports-secondary-grid">
+            <article className="report-section" aria-label="Eficiencia de follow-up">
+              <header>
+                <CheckCircle2 aria-hidden="true" size={18} />
+                <h3>Eficiencia de follow-up</h3>
+              </header>
+              <div className="report-followup-grid">
+                <span><CheckCircle2 aria-hidden="true" size={16} /> {report.completedFollowUps} concluidos</span>
+                <span><AlertTriangle aria-hidden="true" size={16} /> {report.overdueFollowUps} vencidos</span>
+                <span><Clock3 aria-hidden="true" size={16} /> {followUpCompletion === null ? "Sem base" : formatPercentValue(followUpCompletion)} resolvidos</span>
               </div>
             </article>
 
-            <article className="admin-block">
-              <h3>Conversão por origem</h3>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Origem</th><th>Criadas</th><th>Aprovadas</th><th>Conversão</th></tr></thead>
-                  <tbody>
-                    {report.conversionByOrigin.map((row) => (
-                      <tr key={row.origem}><td>{row.origem}</td><td>{row.created}</td><td>{row.approved}</td><td>{formatPercentValue(row.conversionRate)}</td></tr>
-                    ))}
-                    {!report.conversionByOrigin.length ? <tr><td colSpan={4}>Sem dados no período.</td></tr> : null}
-                  </tbody>
-                </table>
-              </div>
+            <article className="report-section" aria-label="Motivos de perda">
+              <header>
+                <AlertTriangle aria-hidden="true" size={18} />
+                <h3>Motivos de perda</h3>
+              </header>
+              {report.lossReasons.length ? (
+                <ol className="report-bar-list">
+                  {report.lossReasons.map((row) => (
+                    <li key={row.reason}>
+                      <div>
+                        <span>{row.reason}</span>
+                        <strong>{row.count}</strong>
+                      </div>
+                      <meter min={0} max={maxLossCount} value={row.count} aria-label={`${row.reason}: ${row.count} perdas`} />
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="quotes-empty">Nenhuma perda no periodo.</p>
+              )}
             </article>
-
-            <article className="admin-block">
-              <h3>Motivos de perda</h3>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Motivo</th><th>Quantidade</th></tr></thead>
-                  <tbody>
-                    {report.lossReasons.map((row) => <tr key={row.reason}><td>{row.reason}</td><td>{row.count}</td></tr>)}
-                    {!report.lossReasons.length ? <tr><td colSpan={2}>Nenhuma perda no período.</td></tr> : null}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          </div>
+          </section>
         </>
       ) : null}
     </section>
   );
 }
 
+function buildReportMetrics(report: CommercialReport): ReportMetric[] {
+  const openBudget = Math.max(0, report.budgetValue - report.approvedValue);
+  return [
+    {
+      label: "Valor aprovado",
+      value: formatMoney(report.approvedValue),
+      detail: `${report.approvedCount} aprovacao(oes) - ticket medio ${formatMoney(report.averageApprovedTicket)}`,
+      tone: report.approvedValue > 0 ? "good" : "neutral",
+    },
+    {
+      label: "Conversao",
+      value: formatPercentValue(report.conversionRate),
+      detail: `${report.opportunitiesCreated} oportunidades criadas`,
+      tone: report.conversionRate >= 0.35 ? "good" : report.conversionRate > 0 ? "warning" : "neutral",
+    },
+    {
+      label: "Valor em aberto",
+      value: formatMoney(openBudget),
+      detail: `${formatMoney(report.budgetValue)} orcado no periodo`,
+      tone: openBudget > 0 ? "warning" : "neutral",
+    },
+    {
+      label: "Tempo ate aprovacao",
+      value: formatDaysValue(report.averageDaysToApproval),
+      detail: `Orcamento: ${formatDaysValue(report.averageDaysToQuote)} - perda: ${formatDaysValue(report.averageDaysToLoss)}`,
+      tone: "neutral",
+    },
+  ];
+}
+
 function formatPercentValue(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 }).format(value);
 }
 
-// "0 dias" sozinho e ambiguo (pode parecer "sem dados" em vez de "no mesmo
-// dia") — achado real de diagnostico visual. O backend ja distingue null
-// (sem dados) de 0 (media real igual a zero); aqui so tornamos os dois casos
-// inequivocos na exibicao, sem tocar no calculo.
 function formatDaysValue(value: number | null): string {
   if (value === null) return "Sem dados";
   if (value === 0) return "Menos de 1 dia";

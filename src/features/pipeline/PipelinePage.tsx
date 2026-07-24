@@ -85,37 +85,39 @@ export function PipelinePage() {
         </button>
       </section>
 
-      {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
+      <section className="data-section pipeline-page" aria-label="Board operacional do funil">
+        {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
 
-      {orderedStages.length ? (
-        <div className="pipeline-mobile-tabs segmented-control" aria-label="Selecionar etapa no mobile">
-          {orderedStages.map((stage) => (
-            <button
-              key={stage.id}
-              type="button"
-              className={mobileStageId === stage.id ? "active" : ""}
-              onClick={() => setMobileStageId(stage.id)}
-            >
-              {stage.nome}
-            </button>
-          ))}
-        </div>
-      ) : null}
+        {orderedStages.length ? (
+          <div className="pipeline-mobile-tabs segmented-control" aria-label="Selecionar etapa no mobile">
+            {orderedStages.map((stage) => (
+              <button
+                key={stage.id}
+                type="button"
+                className={mobileStageId === stage.id ? "active" : ""}
+                onClick={() => setMobileStageId(stage.id)}
+              >
+                {stage.nome}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
-      {isLoading || !snapshot ? (
-        <LoadingPanels />
-      ) : orderedStages.length ? (
-        <PipelineBoard
-          stages={orderedStages}
-          opportunities={snapshot.opportunities}
-          stalledOpportunityIds={stalledIds}
-          mobileActiveStageId={mobileStageId}
-          onMoveStage={handleMoveStage}
-          onOpenOpportunity={(id) => navigate(`/oportunidades/${id}`)}
-        />
-      ) : (
-        <EmptyState title="Nenhuma etapa configurada" text="Configure as etapas do funil para visualizar o quadro." />
-      )}
+        {isLoading || !snapshot ? (
+          <LoadingPanels />
+        ) : orderedStages.length ? (
+          <PipelineBoard
+            stages={orderedStages}
+            opportunities={snapshot.opportunities}
+            stalledOpportunityIds={stalledIds}
+            mobileActiveStageId={mobileStageId}
+            onMoveStage={handleMoveStage}
+            onOpenOpportunity={(id) => navigate(`/oportunidades/${id}`)}
+          />
+        ) : (
+          <EmptyState title="Nenhuma etapa configurada" text="Configure as etapas do funil para visualizar o quadro." />
+        )}
+      </section>
     </>
   );
 }

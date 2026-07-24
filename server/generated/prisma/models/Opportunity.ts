@@ -429,11 +429,13 @@ export type OpportunityWhereInput = {
   currentNextActionId?: Prisma.UuidNullableFilter<"Opportunity"> | string | null
   isTestFixture?: Prisma.BoolFilter<"Opportunity"> | boolean
   activities?: Prisma.ActivityListRelationFilter
+  equipment?: Prisma.EquipmentListRelationFilter
   cliente?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   etapa?: Prisma.XOR<Prisma.PipelineStageScalarRelationFilter, Prisma.PipelineStageWhereInput>
   motivoPerda?: Prisma.XOR<Prisma.LossReasonNullableScalarRelationFilter, Prisma.LossReasonWhereInput> | null
   nextActions?: Prisma.NextActionListRelationFilter
   quotes?: Prisma.QuoteListRelationFilter
+  visits?: Prisma.VisitListRelationFilter
 }
 
 export type OpportunityOrderByWithRelationInput = {
@@ -468,11 +470,13 @@ export type OpportunityOrderByWithRelationInput = {
   currentNextActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   isTestFixture?: Prisma.SortOrder
   activities?: Prisma.ActivityOrderByRelationAggregateInput
+  equipment?: Prisma.EquipmentOrderByRelationAggregateInput
   cliente?: Prisma.CustomerOrderByWithRelationInput
   etapa?: Prisma.PipelineStageOrderByWithRelationInput
   motivoPerda?: Prisma.LossReasonOrderByWithRelationInput
   nextActions?: Prisma.NextActionOrderByRelationAggregateInput
   quotes?: Prisma.QuoteOrderByRelationAggregateInput
+  visits?: Prisma.VisitOrderByRelationAggregateInput
 }
 
 export type OpportunityWhereUniqueInput = Prisma.AtLeast<{
@@ -510,11 +514,13 @@ export type OpportunityWhereUniqueInput = Prisma.AtLeast<{
   currentNextActionId?: Prisma.UuidNullableFilter<"Opportunity"> | string | null
   isTestFixture?: Prisma.BoolFilter<"Opportunity"> | boolean
   activities?: Prisma.ActivityListRelationFilter
+  equipment?: Prisma.EquipmentListRelationFilter
   cliente?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   etapa?: Prisma.XOR<Prisma.PipelineStageScalarRelationFilter, Prisma.PipelineStageWhereInput>
   motivoPerda?: Prisma.XOR<Prisma.LossReasonNullableScalarRelationFilter, Prisma.LossReasonWhereInput> | null
   nextActions?: Prisma.NextActionListRelationFilter
   quotes?: Prisma.QuoteListRelationFilter
+  visits?: Prisma.VisitListRelationFilter
 }, "id">
 
 export type OpportunityOrderByWithAggregationInput = {
@@ -620,11 +626,13 @@ export type OpportunityCreateInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityUncheckedCreateInput = {
@@ -659,8 +667,10 @@ export type OpportunityUncheckedCreateInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityUpdateInput = {
@@ -692,11 +702,13 @@ export type OpportunityUpdateInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateInput = {
@@ -731,8 +743,10 @@ export type OpportunityUncheckedUpdateInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityCreateManyInput = {
@@ -954,14 +968,14 @@ export type OpportunitySumOrderByAggregateInput = {
   quantidadeParcelas?: Prisma.SortOrder
 }
 
-export type OpportunityScalarRelationFilter = {
-  is?: Prisma.OpportunityWhereInput
-  isNot?: Prisma.OpportunityWhereInput
-}
-
 export type OpportunityNullableScalarRelationFilter = {
   is?: Prisma.OpportunityWhereInput | null
   isNot?: Prisma.OpportunityWhereInput | null
+}
+
+export type OpportunityScalarRelationFilter = {
+  is?: Prisma.OpportunityWhereInput
+  isNot?: Prisma.OpportunityWhereInput
 }
 
 export type OpportunityCreateNestedManyWithoutClienteInput = {
@@ -1098,6 +1112,38 @@ export type NullableIntFieldUpdateOperationsInput = {
   divide?: number
 }
 
+export type OpportunityCreateNestedOneWithoutEquipmentInput = {
+  create?: Prisma.XOR<Prisma.OpportunityCreateWithoutEquipmentInput, Prisma.OpportunityUncheckedCreateWithoutEquipmentInput>
+  connectOrCreate?: Prisma.OpportunityCreateOrConnectWithoutEquipmentInput
+  connect?: Prisma.OpportunityWhereUniqueInput
+}
+
+export type OpportunityUpdateOneWithoutEquipmentNestedInput = {
+  create?: Prisma.XOR<Prisma.OpportunityCreateWithoutEquipmentInput, Prisma.OpportunityUncheckedCreateWithoutEquipmentInput>
+  connectOrCreate?: Prisma.OpportunityCreateOrConnectWithoutEquipmentInput
+  upsert?: Prisma.OpportunityUpsertWithoutEquipmentInput
+  disconnect?: Prisma.OpportunityWhereInput | boolean
+  delete?: Prisma.OpportunityWhereInput | boolean
+  connect?: Prisma.OpportunityWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OpportunityUpdateToOneWithWhereWithoutEquipmentInput, Prisma.OpportunityUpdateWithoutEquipmentInput>, Prisma.OpportunityUncheckedUpdateWithoutEquipmentInput>
+}
+
+export type OpportunityCreateNestedOneWithoutVisitsInput = {
+  create?: Prisma.XOR<Prisma.OpportunityCreateWithoutVisitsInput, Prisma.OpportunityUncheckedCreateWithoutVisitsInput>
+  connectOrCreate?: Prisma.OpportunityCreateOrConnectWithoutVisitsInput
+  connect?: Prisma.OpportunityWhereUniqueInput
+}
+
+export type OpportunityUpdateOneWithoutVisitsNestedInput = {
+  create?: Prisma.XOR<Prisma.OpportunityCreateWithoutVisitsInput, Prisma.OpportunityUncheckedCreateWithoutVisitsInput>
+  connectOrCreate?: Prisma.OpportunityCreateOrConnectWithoutVisitsInput
+  upsert?: Prisma.OpportunityUpsertWithoutVisitsInput
+  disconnect?: Prisma.OpportunityWhereInput | boolean
+  delete?: Prisma.OpportunityWhereInput | boolean
+  connect?: Prisma.OpportunityWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OpportunityUpdateToOneWithWhereWithoutVisitsInput, Prisma.OpportunityUpdateWithoutVisitsInput>, Prisma.OpportunityUncheckedUpdateWithoutVisitsInput>
+}
+
 export type OpportunityCreateNestedOneWithoutQuotesInput = {
   create?: Prisma.XOR<Prisma.OpportunityCreateWithoutQuotesInput, Prisma.OpportunityUncheckedCreateWithoutQuotesInput>
   connectOrCreate?: Prisma.OpportunityCreateOrConnectWithoutQuotesInput
@@ -1173,10 +1219,12 @@ export type OpportunityCreateWithoutClienteInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentCreateNestedManyWithoutOpportunityInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityUncheckedCreateWithoutClienteInput = {
@@ -1210,8 +1258,10 @@ export type OpportunityUncheckedCreateWithoutClienteInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityCreateOrConnectWithoutClienteInput = {
@@ -1305,10 +1355,12 @@ export type OpportunityCreateWithoutEtapaInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityUncheckedCreateWithoutEtapaInput = {
@@ -1342,8 +1394,10 @@ export type OpportunityUncheckedCreateWithoutEtapaInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityCreateOrConnectWithoutEtapaInput = {
@@ -1401,10 +1455,12 @@ export type OpportunityCreateWithoutMotivoPerdaInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityUncheckedCreateWithoutMotivoPerdaInput = {
@@ -1438,8 +1494,10 @@ export type OpportunityUncheckedCreateWithoutMotivoPerdaInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityCreateOrConnectWithoutMotivoPerdaInput = {
@@ -1468,7 +1526,7 @@ export type OpportunityUpdateManyWithWhereWithoutMotivoPerdaInput = {
   data: Prisma.XOR<Prisma.OpportunityUpdateManyMutationInput, Prisma.OpportunityUncheckedUpdateManyWithoutMotivoPerdaInput>
 }
 
-export type OpportunityCreateWithoutQuotesInput = {
+export type OpportunityCreateWithoutEquipmentInput = {
   id?: string
   titulo: string
   descricao?: string | null
@@ -1501,6 +1559,336 @@ export type OpportunityCreateWithoutQuotesInput = {
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitCreateNestedManyWithoutOpportunityInput
+}
+
+export type OpportunityUncheckedCreateWithoutEquipmentInput = {
+  id?: string
+  clienteId: string
+  titulo: string
+  descricao?: string | null
+  tipoDemanda: string
+  origem?: string | null
+  responsavelId: string
+  etapaId: string
+  situacao: string
+  valorEstimado?: number | null
+  valorOrcamento?: number | null
+  valorAprovado?: number | null
+  formaPagamento?: string | null
+  quantidadeParcelas?: number | null
+  previsaoExecucao?: Date | string | null
+  proximaAcao?: string | null
+  proximaAcaoEm?: Date | string | null
+  dataEntrada?: Date | string
+  dataOrcamento?: Date | string | null
+  dataAprovacao?: Date | string | null
+  dataPerda?: Date | string | null
+  motivoPerdaId?: string | null
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdBy: string
+  updatedBy?: string | null
+  archivedAt?: Date | string | null
+  currentNextActionId?: string | null
+  isTestFixture?: boolean
+  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutOpportunityInput
+}
+
+export type OpportunityCreateOrConnectWithoutEquipmentInput = {
+  where: Prisma.OpportunityWhereUniqueInput
+  create: Prisma.XOR<Prisma.OpportunityCreateWithoutEquipmentInput, Prisma.OpportunityUncheckedCreateWithoutEquipmentInput>
+}
+
+export type OpportunityUpsertWithoutEquipmentInput = {
+  update: Prisma.XOR<Prisma.OpportunityUpdateWithoutEquipmentInput, Prisma.OpportunityUncheckedUpdateWithoutEquipmentInput>
+  create: Prisma.XOR<Prisma.OpportunityCreateWithoutEquipmentInput, Prisma.OpportunityUncheckedCreateWithoutEquipmentInput>
+  where?: Prisma.OpportunityWhereInput
+}
+
+export type OpportunityUpdateToOneWithWhereWithoutEquipmentInput = {
+  where?: Prisma.OpportunityWhereInput
+  data: Prisma.XOR<Prisma.OpportunityUpdateWithoutEquipmentInput, Prisma.OpportunityUncheckedUpdateWithoutEquipmentInput>
+}
+
+export type OpportunityUpdateWithoutEquipmentInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  titulo?: Prisma.StringFieldUpdateOperationsInput | string
+  descricao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tipoDemanda?: Prisma.StringFieldUpdateOperationsInput | string
+  origem?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  responsavelId?: Prisma.StringFieldUpdateOperationsInput | string
+  situacao?: Prisma.StringFieldUpdateOperationsInput | string
+  valorEstimado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorOrcamento?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorAprovado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  formaPagamento?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantidadeParcelas?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  previsaoExecucao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  proximaAcao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  proximaAcaoEm?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataEntrada?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataOrcamento?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataAprovacao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataPerda?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdBy?: Prisma.StringFieldUpdateOperationsInput | string
+  updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
+  cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
+  etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
+  motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
+  nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutOpportunityNestedInput
+}
+
+export type OpportunityUncheckedUpdateWithoutEquipmentInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  clienteId?: Prisma.StringFieldUpdateOperationsInput | string
+  titulo?: Prisma.StringFieldUpdateOperationsInput | string
+  descricao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tipoDemanda?: Prisma.StringFieldUpdateOperationsInput | string
+  origem?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  responsavelId?: Prisma.StringFieldUpdateOperationsInput | string
+  etapaId?: Prisma.StringFieldUpdateOperationsInput | string
+  situacao?: Prisma.StringFieldUpdateOperationsInput | string
+  valorEstimado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorOrcamento?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorAprovado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  formaPagamento?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantidadeParcelas?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  previsaoExecucao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  proximaAcao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  proximaAcaoEm?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataEntrada?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataOrcamento?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataAprovacao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataPerda?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  motivoPerdaId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdBy?: Prisma.StringFieldUpdateOperationsInput | string
+  updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutOpportunityNestedInput
+}
+
+export type OpportunityCreateWithoutVisitsInput = {
+  id?: string
+  titulo: string
+  descricao?: string | null
+  tipoDemanda: string
+  origem?: string | null
+  responsavelId: string
+  situacao: string
+  valorEstimado?: number | null
+  valorOrcamento?: number | null
+  valorAprovado?: number | null
+  formaPagamento?: string | null
+  quantidadeParcelas?: number | null
+  previsaoExecucao?: Date | string | null
+  proximaAcao?: string | null
+  proximaAcaoEm?: Date | string | null
+  dataEntrada?: Date | string
+  dataOrcamento?: Date | string | null
+  dataAprovacao?: Date | string | null
+  dataPerda?: Date | string | null
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdBy: string
+  updatedBy?: string | null
+  archivedAt?: Date | string | null
+  currentNextActionId?: string | null
+  isTestFixture?: boolean
+  activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentCreateNestedManyWithoutOpportunityInput
+  cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
+  etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
+  motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
+  nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
+}
+
+export type OpportunityUncheckedCreateWithoutVisitsInput = {
+  id?: string
+  clienteId: string
+  titulo: string
+  descricao?: string | null
+  tipoDemanda: string
+  origem?: string | null
+  responsavelId: string
+  etapaId: string
+  situacao: string
+  valorEstimado?: number | null
+  valorOrcamento?: number | null
+  valorAprovado?: number | null
+  formaPagamento?: string | null
+  quantidadeParcelas?: number | null
+  previsaoExecucao?: Date | string | null
+  proximaAcao?: string | null
+  proximaAcaoEm?: Date | string | null
+  dataEntrada?: Date | string
+  dataOrcamento?: Date | string | null
+  dataAprovacao?: Date | string | null
+  dataPerda?: Date | string | null
+  motivoPerdaId?: string | null
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdBy: string
+  updatedBy?: string | null
+  archivedAt?: Date | string | null
+  currentNextActionId?: string | null
+  isTestFixture?: boolean
+  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentUncheckedCreateNestedManyWithoutOpportunityInput
+  nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
+  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
+}
+
+export type OpportunityCreateOrConnectWithoutVisitsInput = {
+  where: Prisma.OpportunityWhereUniqueInput
+  create: Prisma.XOR<Prisma.OpportunityCreateWithoutVisitsInput, Prisma.OpportunityUncheckedCreateWithoutVisitsInput>
+}
+
+export type OpportunityUpsertWithoutVisitsInput = {
+  update: Prisma.XOR<Prisma.OpportunityUpdateWithoutVisitsInput, Prisma.OpportunityUncheckedUpdateWithoutVisitsInput>
+  create: Prisma.XOR<Prisma.OpportunityCreateWithoutVisitsInput, Prisma.OpportunityUncheckedCreateWithoutVisitsInput>
+  where?: Prisma.OpportunityWhereInput
+}
+
+export type OpportunityUpdateToOneWithWhereWithoutVisitsInput = {
+  where?: Prisma.OpportunityWhereInput
+  data: Prisma.XOR<Prisma.OpportunityUpdateWithoutVisitsInput, Prisma.OpportunityUncheckedUpdateWithoutVisitsInput>
+}
+
+export type OpportunityUpdateWithoutVisitsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  titulo?: Prisma.StringFieldUpdateOperationsInput | string
+  descricao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tipoDemanda?: Prisma.StringFieldUpdateOperationsInput | string
+  origem?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  responsavelId?: Prisma.StringFieldUpdateOperationsInput | string
+  situacao?: Prisma.StringFieldUpdateOperationsInput | string
+  valorEstimado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorOrcamento?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorAprovado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  formaPagamento?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantidadeParcelas?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  previsaoExecucao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  proximaAcao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  proximaAcaoEm?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataEntrada?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataOrcamento?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataAprovacao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataPerda?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdBy?: Prisma.StringFieldUpdateOperationsInput | string
+  updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUpdateManyWithoutOpportunityNestedInput
+  cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
+  etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
+  motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
+  nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
+}
+
+export type OpportunityUncheckedUpdateWithoutVisitsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  clienteId?: Prisma.StringFieldUpdateOperationsInput | string
+  titulo?: Prisma.StringFieldUpdateOperationsInput | string
+  descricao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tipoDemanda?: Prisma.StringFieldUpdateOperationsInput | string
+  origem?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  responsavelId?: Prisma.StringFieldUpdateOperationsInput | string
+  etapaId?: Prisma.StringFieldUpdateOperationsInput | string
+  situacao?: Prisma.StringFieldUpdateOperationsInput | string
+  valorEstimado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorOrcamento?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  valorAprovado?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  formaPagamento?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantidadeParcelas?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  previsaoExecucao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  proximaAcao?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  proximaAcaoEm?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataEntrada?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataOrcamento?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataAprovacao?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataPerda?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  motivoPerdaId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdBy?: Prisma.StringFieldUpdateOperationsInput | string
+  updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUncheckedUpdateManyWithoutOpportunityNestedInput
+  nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
+  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
+}
+
+export type OpportunityCreateWithoutQuotesInput = {
+  id?: string
+  titulo: string
+  descricao?: string | null
+  tipoDemanda: string
+  origem?: string | null
+  responsavelId: string
+  situacao: string
+  valorEstimado?: number | null
+  valorOrcamento?: number | null
+  valorAprovado?: number | null
+  formaPagamento?: string | null
+  quantidadeParcelas?: number | null
+  previsaoExecucao?: Date | string | null
+  proximaAcao?: string | null
+  proximaAcaoEm?: Date | string | null
+  dataEntrada?: Date | string
+  dataOrcamento?: Date | string | null
+  dataAprovacao?: Date | string | null
+  dataPerda?: Date | string | null
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdBy: string
+  updatedBy?: string | null
+  archivedAt?: Date | string | null
+  currentNextActionId?: string | null
+  isTestFixture?: boolean
+  activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentCreateNestedManyWithoutOpportunityInput
+  cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
+  etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
+  motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
+  nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
+  visits?: Prisma.VisitCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityUncheckedCreateWithoutQuotesInput = {
@@ -1535,7 +1923,9 @@ export type OpportunityUncheckedCreateWithoutQuotesInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityCreateOrConnectWithoutQuotesInput = {
@@ -1583,10 +1973,12 @@ export type OpportunityUpdateWithoutQuotesInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutQuotesInput = {
@@ -1621,7 +2013,9 @@ export type OpportunityUncheckedUpdateWithoutQuotesInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityCreateWithoutActivitiesInput = {
@@ -1652,11 +2046,13 @@ export type OpportunityCreateWithoutActivitiesInput = {
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
   isTestFixture?: boolean
+  equipment?: Prisma.EquipmentCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   nextActions?: Prisma.NextActionCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityUncheckedCreateWithoutActivitiesInput = {
@@ -1690,8 +2086,10 @@ export type OpportunityUncheckedCreateWithoutActivitiesInput = {
   archivedAt?: Date | string | null
   currentNextActionId?: string | null
   isTestFixture?: boolean
+  equipment?: Prisma.EquipmentUncheckedCreateNestedManyWithoutOpportunityInput
   nextActions?: Prisma.NextActionUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityCreateOrConnectWithoutActivitiesInput = {
@@ -1738,11 +2136,13 @@ export type OpportunityUpdateWithoutActivitiesInput = {
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  equipment?: Prisma.EquipmentUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutActivitiesInput = {
@@ -1776,8 +2176,10 @@ export type OpportunityUncheckedUpdateWithoutActivitiesInput = {
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  equipment?: Prisma.EquipmentUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityCreateWithoutNextActionsInput = {
@@ -1809,10 +2211,12 @@ export type OpportunityCreateWithoutNextActionsInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentCreateNestedManyWithoutOpportunityInput
   cliente: Prisma.CustomerCreateNestedOneWithoutOpportunitiesInput
   etapa: Prisma.PipelineStageCreateNestedOneWithoutOpportunitiesInput
   motivoPerda?: Prisma.LossReasonCreateNestedOneWithoutOpportunitiesInput
   quotes?: Prisma.QuoteCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityUncheckedCreateWithoutNextActionsInput = {
@@ -1847,7 +2251,9 @@ export type OpportunityUncheckedCreateWithoutNextActionsInput = {
   currentNextActionId?: string | null
   isTestFixture?: boolean
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutOpportunityInput
+  equipment?: Prisma.EquipmentUncheckedCreateNestedManyWithoutOpportunityInput
   quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOportunidadeInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutOpportunityInput
 }
 
 export type OpportunityCreateOrConnectWithoutNextActionsInput = {
@@ -1895,10 +2301,12 @@ export type OpportunityUpdateWithoutNextActionsInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutNextActionsInput = {
@@ -1933,7 +2341,9 @@ export type OpportunityUncheckedUpdateWithoutNextActionsInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityCreateManyClienteInput = {
@@ -1997,10 +2407,12 @@ export type OpportunityUpdateWithoutClienteInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUpdateManyWithoutOpportunityNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutClienteInput = {
@@ -2034,8 +2446,10 @@ export type OpportunityUncheckedUpdateWithoutClienteInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateManyWithoutClienteInput = {
@@ -2131,10 +2545,12 @@ export type OpportunityUpdateWithoutEtapaInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   motivoPerda?: Prisma.LossReasonUpdateOneWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutEtapaInput = {
@@ -2168,8 +2584,10 @@ export type OpportunityUncheckedUpdateWithoutEtapaInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateManyWithoutEtapaInput = {
@@ -2265,10 +2683,12 @@ export type OpportunityUpdateWithoutMotivoPerdaInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUpdateManyWithoutOpportunityNestedInput
   cliente?: Prisma.CustomerUpdateOneRequiredWithoutOpportunitiesNestedInput
   etapa?: Prisma.PipelineStageUpdateOneRequiredWithoutOpportunitiesNestedInput
   nextActions?: Prisma.NextActionUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateWithoutMotivoPerdaInput = {
@@ -2302,8 +2722,10 @@ export type OpportunityUncheckedUpdateWithoutMotivoPerdaInput = {
   currentNextActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isTestFixture?: Prisma.BoolFieldUpdateOperationsInput | boolean
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutOpportunityNestedInput
+  equipment?: Prisma.EquipmentUncheckedUpdateManyWithoutOpportunityNestedInput
   nextActions?: Prisma.NextActionUncheckedUpdateManyWithoutOpportunityNestedInput
   quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOportunidadeNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutOpportunityNestedInput
 }
 
 export type OpportunityUncheckedUpdateManyWithoutMotivoPerdaInput = {
@@ -2345,14 +2767,18 @@ export type OpportunityUncheckedUpdateManyWithoutMotivoPerdaInput = {
 
 export type OpportunityCountOutputType = {
   activities: number
+  equipment: number
   nextActions: number
   quotes: number
+  visits: number
 }
 
 export type OpportunityCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   activities?: boolean | OpportunityCountOutputTypeCountActivitiesArgs
+  equipment?: boolean | OpportunityCountOutputTypeCountEquipmentArgs
   nextActions?: boolean | OpportunityCountOutputTypeCountNextActionsArgs
   quotes?: boolean | OpportunityCountOutputTypeCountQuotesArgs
+  visits?: boolean | OpportunityCountOutputTypeCountVisitsArgs
 }
 
 /**
@@ -2375,6 +2801,13 @@ export type OpportunityCountOutputTypeCountActivitiesArgs<ExtArgs extends runtim
 /**
  * OpportunityCountOutputType without action
  */
+export type OpportunityCountOutputTypeCountEquipmentArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.EquipmentWhereInput
+}
+
+/**
+ * OpportunityCountOutputType without action
+ */
 export type OpportunityCountOutputTypeCountNextActionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.NextActionWhereInput
 }
@@ -2384,6 +2817,13 @@ export type OpportunityCountOutputTypeCountNextActionsArgs<ExtArgs extends runti
  */
 export type OpportunityCountOutputTypeCountQuotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.QuoteWhereInput
+}
+
+/**
+ * OpportunityCountOutputType without action
+ */
+export type OpportunityCountOutputTypeCountVisitsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.VisitWhereInput
 }
 
 
@@ -2419,11 +2859,13 @@ export type OpportunitySelect<ExtArgs extends runtime.Types.Extensions.InternalA
   currentNextActionId?: boolean
   isTestFixture?: boolean
   activities?: boolean | Prisma.Opportunity$activitiesArgs<ExtArgs>
+  equipment?: boolean | Prisma.Opportunity$equipmentArgs<ExtArgs>
   cliente?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   etapa?: boolean | Prisma.PipelineStageDefaultArgs<ExtArgs>
   motivoPerda?: boolean | Prisma.Opportunity$motivoPerdaArgs<ExtArgs>
   nextActions?: boolean | Prisma.Opportunity$nextActionsArgs<ExtArgs>
   quotes?: boolean | Prisma.Opportunity$quotesArgs<ExtArgs>
+  visits?: boolean | Prisma.Opportunity$visitsArgs<ExtArgs>
   _count?: boolean | Prisma.OpportunityCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["opportunity"]>
 
@@ -2535,11 +2977,13 @@ export type OpportunitySelectScalar = {
 export type OpportunityOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clienteId" | "titulo" | "descricao" | "tipoDemanda" | "origem" | "responsavelId" | "etapaId" | "situacao" | "valorEstimado" | "valorOrcamento" | "valorAprovado" | "formaPagamento" | "quantidadeParcelas" | "previsaoExecucao" | "proximaAcao" | "proximaAcaoEm" | "dataEntrada" | "dataOrcamento" | "dataAprovacao" | "dataPerda" | "motivoPerdaId" | "status" | "createdAt" | "updatedAt" | "createdBy" | "updatedBy" | "archivedAt" | "currentNextActionId" | "isTestFixture", ExtArgs["result"]["opportunity"]>
 export type OpportunityInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   activities?: boolean | Prisma.Opportunity$activitiesArgs<ExtArgs>
+  equipment?: boolean | Prisma.Opportunity$equipmentArgs<ExtArgs>
   cliente?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   etapa?: boolean | Prisma.PipelineStageDefaultArgs<ExtArgs>
   motivoPerda?: boolean | Prisma.Opportunity$motivoPerdaArgs<ExtArgs>
   nextActions?: boolean | Prisma.Opportunity$nextActionsArgs<ExtArgs>
   quotes?: boolean | Prisma.Opportunity$quotesArgs<ExtArgs>
+  visits?: boolean | Prisma.Opportunity$visitsArgs<ExtArgs>
   _count?: boolean | Prisma.OpportunityCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type OpportunityIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2557,11 +3001,13 @@ export type $OpportunityPayload<ExtArgs extends runtime.Types.Extensions.Interna
   name: "Opportunity"
   objects: {
     activities: Prisma.$ActivityPayload<ExtArgs>[]
+    equipment: Prisma.$EquipmentPayload<ExtArgs>[]
     cliente: Prisma.$CustomerPayload<ExtArgs>
     etapa: Prisma.$PipelineStagePayload<ExtArgs>
     motivoPerda: Prisma.$LossReasonPayload<ExtArgs> | null
     nextActions: Prisma.$NextActionPayload<ExtArgs>[]
     quotes: Prisma.$QuotePayload<ExtArgs>[]
+    visits: Prisma.$VisitPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2989,11 +3435,13 @@ readonly fields: OpportunityFieldRefs;
 export interface Prisma__OpportunityClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   activities<T extends Prisma.Opportunity$activitiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Opportunity$activitiesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  equipment<T extends Prisma.Opportunity$equipmentArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Opportunity$equipmentArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EquipmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   cliente<T extends Prisma.CustomerDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CustomerDefaultArgs<ExtArgs>>): Prisma.Prisma__CustomerClient<runtime.Types.Result.GetResult<Prisma.$CustomerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   etapa<T extends Prisma.PipelineStageDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PipelineStageDefaultArgs<ExtArgs>>): Prisma.Prisma__PipelineStageClient<runtime.Types.Result.GetResult<Prisma.$PipelineStagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   motivoPerda<T extends Prisma.Opportunity$motivoPerdaArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Opportunity$motivoPerdaArgs<ExtArgs>>): Prisma.Prisma__LossReasonClient<runtime.Types.Result.GetResult<Prisma.$LossReasonPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   nextActions<T extends Prisma.Opportunity$nextActionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Opportunity$nextActionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NextActionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   quotes<T extends Prisma.Opportunity$quotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Opportunity$quotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$QuotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  visits<T extends Prisma.Opportunity$visitsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Opportunity$visitsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$VisitPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3478,6 +3926,30 @@ export type Opportunity$activitiesArgs<ExtArgs extends runtime.Types.Extensions.
 }
 
 /**
+ * Opportunity.equipment
+ */
+export type Opportunity$equipmentArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Equipment
+   */
+  select?: Prisma.EquipmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Equipment
+   */
+  omit?: Prisma.EquipmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.EquipmentInclude<ExtArgs> | null
+  where?: Prisma.EquipmentWhereInput
+  orderBy?: Prisma.EquipmentOrderByWithRelationInput | Prisma.EquipmentOrderByWithRelationInput[]
+  cursor?: Prisma.EquipmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.EquipmentScalarFieldEnum | Prisma.EquipmentScalarFieldEnum[]
+}
+
+/**
  * Opportunity.motivoPerda
  */
 export type Opportunity$motivoPerdaArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3542,6 +4014,30 @@ export type Opportunity$quotesArgs<ExtArgs extends runtime.Types.Extensions.Inte
   take?: number
   skip?: number
   distinct?: Prisma.QuoteScalarFieldEnum | Prisma.QuoteScalarFieldEnum[]
+}
+
+/**
+ * Opportunity.visits
+ */
+export type Opportunity$visitsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Visit
+   */
+  select?: Prisma.VisitSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Visit
+   */
+  omit?: Prisma.VisitOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.VisitInclude<ExtArgs> | null
+  where?: Prisma.VisitWhereInput
+  orderBy?: Prisma.VisitOrderByWithRelationInput | Prisma.VisitOrderByWithRelationInput[]
+  cursor?: Prisma.VisitWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.VisitScalarFieldEnum | Prisma.VisitScalarFieldEnum[]
 }
 
 /**

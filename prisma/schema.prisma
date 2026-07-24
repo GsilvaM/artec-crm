@@ -44,8 +44,11 @@ model Customer {
   archivedAt          DateTime?     @map("archived_at") @db.Timestamptz(6)
   isTestFixture       Boolean       @default(false) @map("is_test_fixture")
   activities          Activity[]
+  addresses           Address[]
+  equipment           Equipment[]
   nextActions         NextAction[]
   opportunities       Opportunity[]
+  visits              Visit[]
 
   @@index([telefoneNormalizado], map: "clientes_telefone_normalizado_idx")
   @@index([archivedAt, createdAt], map: "clientes_archived_created_idx")
@@ -109,11 +112,13 @@ model Opportunity {
   currentNextActionId String?       @map("current_next_action_id") @db.Uuid
   isTestFixture       Boolean       @default(false) @map("is_test_fixture")
   activities          Activity[]
+  equipment           Equipment[]
   cliente             Customer      @relation(fields: [clienteId], references: [id])
   etapa               PipelineStage @relation(fields: [etapaId], references: [id])
   motivoPerda         LossReason?   @relation(fields: [motivoPerdaId], references: [id])
   nextActions         NextAction[]
   quotes              Quote[]
+  visits              Visit[]
 
   @@index([clienteId], map: "oportunidades_cliente_idx")
   @@index([responsavelId, status], map: "oportunidades_responsavel_status_idx")
@@ -121,6 +126,113 @@ model Opportunity {
   @@index([archivedAt, status, updatedAt(sort: Desc)], map: "oportunidades_archived_status_updated_idx")
   @@index([isTestFixture], map: "oportunidades_is_test_fixture_idx")
   @@map("oportunidades")
+  @@schema("crm")
+}
+
+model Address {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId   String      @map("customer_id") @db.Uuid
+  label        String      @db.Text
+  kind         String      @default("service") @db.Text
+  street       String?     @db.Text
+  number       String?     @db.Text
+  complement   String?     @db.Text
+  neighborhood String?     @db.Text
+  city         String?     @db.Text
+  state        String?     @db.Text
+  postalCode   String?     @map("postal_code") @db.Text
+  reference    String?     @db.Text
+  accessNotes  String?     @map("access_notes") @db.Text
+  isPrimary    Boolean     @default(false) @map("is_primary")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  createdBy    String      @map("created_by") @db.Uuid
+  updatedBy    String?     @map("updated_by") @db.Uuid
+  archivedAt   DateTime?   @map("archived_at") @db.Timestamptz(6)
+  customer     Customer    @relation(fields: [customerId], references: [id])
+  equipment    Equipment[]
+  visits       Visit[]
+
+  @@index([customerId, archivedAt, updatedAt(sort: Desc)], map: "enderecos_customer_archived_idx")
+  @@index([kind], map: "enderecos_kind_idx")
+  @@map("enderecos")
+  @@schema("crm")
+}
+
+model Equipment {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId     String           @map("customer_id") @db.Uuid
+  opportunityId  String?          @map("opportunity_id") @db.Uuid
+  addressId      String?          @map("address_id") @db.Uuid
+  type           String           @default("other") @db.Text
+  brand          String?          @db.Text
+  model          String?          @db.Text
+  btus           Int?
+  voltage        String?          @db.Text
+  environment    String?          @db.Text
+  serialNumber   String?          @map("serial_number") @db.Text
+  installedAt    DateTime?        @map("installed_at") @db.Date
+  warrantyUntil  DateTime?        @map("warranty_until") @db.Date
+  notes          String?          @db.Text
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  createdBy      String           @map("created_by") @db.Uuid
+  updatedBy      String?          @map("updated_by") @db.Uuid
+  archivedAt     DateTime?        @map("archived_at") @db.Timestamptz(6)
+  address        Address?         @relation(fields: [addressId], references: [id])
+  customer       Customer         @relation(fields: [customerId], references: [id])
+  opportunity    Opportunity?     @relation(fields: [opportunityId], references: [id])
+  visitEquipment VisitEquipment[]
+
+  @@index([customerId, archivedAt, updatedAt(sort: Desc)], map: "equipamentos_customer_archived_idx")
+  @@index([opportunityId], map: "equipamentos_opportunity_idx")
+  @@index([addressId], map: "equipamentos_address_idx")
+  @@map("equipamentos")
+  @@schema("crm")
+}
+
+model Visit {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId        String           @map("customer_id") @db.Uuid
+  opportunityId     String?          @map("opportunity_id") @db.Uuid
+  addressId         String?          @map("address_id") @db.Uuid
+  scheduledStartAt  DateTime         @map("scheduled_start_at") @db.Timestamptz(6)
+  scheduledEndAt    DateTime?        @map("scheduled_end_at") @db.Timestamptz(6)
+  technicianUserId  String?          @map("technician_user_id") @db.Uuid
+  status            String           @default("awaiting_confirmation") @db.Text
+  objective         String           @db.Text
+  accessNotes       String?          @map("access_notes") @db.Text
+  confirmationNotes String?          @map("confirmation_notes") @db.Text
+  result            String?          @db.Text
+  nextSteps         String?          @map("next_steps") @db.Text
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  createdBy         String           @map("created_by") @db.Uuid
+  updatedBy         String?          @map("updated_by") @db.Uuid
+  archivedAt        DateTime?        @map("archived_at") @db.Timestamptz(6)
+  address           Address?         @relation(fields: [addressId], references: [id])
+  customer          Customer         @relation(fields: [customerId], references: [id])
+  opportunity       Opportunity?     @relation(fields: [opportunityId], references: [id])
+  visitEquipment    VisitEquipment[]
+
+  @@index([customerId, status, scheduledStartAt], map: "visitas_customer_status_start_idx")
+  @@index([opportunityId], map: "visitas_opportunity_idx")
+  @@index([addressId], map: "visitas_address_idx")
+  @@index([status, scheduledStartAt], map: "visitas_status_start_idx")
+  @@map("visitas")
+  @@schema("crm")
+}
+
+model VisitEquipment {
+  visitId     String    @map("visit_id") @db.Uuid
+  equipmentId String    @map("equipment_id") @db.Uuid
+  notes       String?   @db.Text
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  visit       Visit     @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@id([visitId, equipmentId])
+  @@index([equipmentId], map: "visitas_equipamentos_equipment_idx")
+  @@map("visitas_equipamentos")
   @@schema("crm")
 }
 
@@ -281,32 +393,93 @@ model AuvoWebhookEvent {
 }
 
 model AuvoInboxItem {
-  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  externalServiceId     String    @unique @map("external_service_id") @db.Text
-  status                String    @db.Text
-  suggestedCustomerId   String?   @map("suggested_customer_id") @db.Uuid
-  title                 String    @db.Text
-  contactName           String?   @map("contact_name") @db.Text
-  phoneNormalized       String?   @map("phone_normalized") @db.Text
-  auvoContactId         String?   @map("auvo_contact_id") @db.Text
-  email                 String?   @db.Text
-  channelType           String?   @map("channel_type") @db.Text
-  resolution            String?   @db.Text
-  resolvedOpportunityId String?   @map("resolved_opportunity_id") @db.Uuid
-  resolvedCustomerId    String?   @map("resolved_customer_id") @db.Uuid
-  resolvedBy            String?   @map("resolved_by") @db.Uuid
-  resolvedAt            DateTime? @map("resolved_at") @db.Timestamptz(6)
-  discardReason         String?   @map("discard_reason") @db.Text
-  lastEventId           String?   @map("last_event_id") @db.Uuid
-  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-  isTestFixture         Boolean   @default(false) @map("is_test_fixture")
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  externalServiceId      String    @unique @map("external_service_id") @db.Text
+  status                 String    @db.Text
+  suggestedCustomerId    String?   @map("suggested_customer_id") @db.Uuid
+  title                  String    @db.Text
+  contactName            String?   @map("contact_name") @db.Text
+  phoneNormalized        String?   @map("phone_normalized") @db.Text
+  auvoContactId          String?   @map("auvo_contact_id") @db.Text
+  email                  String?   @db.Text
+  channelType            String?   @map("channel_type") @db.Text
+  origin                 String?   @db.Text
+  utmJson                Json      @default("{}") @map("utm_json")
+  tagsJson               Json      @default("[]") @map("tags_json")
+  customFieldsJson       Json      @default("[]") @map("custom_fields_json")
+  classification         String?   @db.Text
+  departmentId           String?   @map("department_id") @db.Text
+  departmentName         String?   @map("department_name") @db.Text
+  agentId                String?   @map("agent_id") @db.Text
+  agentName              String?   @map("agent_name") @db.Text
+  sessionStartedAt       DateTime? @map("session_started_at") @db.Timestamptz(6)
+  sessionEndedAt         DateTime? @map("session_ended_at") @db.Timestamptz(6)
+  firstUserInteractionAt DateTime? @map("first_user_interaction_at") @db.Timestamptz(6)
+  firstAgentMessageAt    DateTime? @map("first_agent_message_at") @db.Timestamptz(6)
+  lastInteractionAt      DateTime? @map("last_interaction_at") @db.Timestamptz(6)
+  lastMessageText        String?   @map("last_message_text") @db.Text
+  unreadCount            Int?      @map("unread_count")
+  waitReply              Boolean?  @map("wait_reply")
+  windowStatus           String?   @map("window_status") @db.Text
+  derivedJson            Json      @default("{}") @map("derived_json")
+  parsedSignalsJson      Json      @default("{}") @map("parsed_signals_json")
+  resolution             String?   @db.Text
+  resolvedOpportunityId  String?   @map("resolved_opportunity_id") @db.Uuid
+  resolvedCustomerId     String?   @map("resolved_customer_id") @db.Uuid
+  resolvedBy             String?   @map("resolved_by") @db.Uuid
+  resolvedAt             DateTime? @map("resolved_at") @db.Timestamptz(6)
+  discardReason          String?   @map("discard_reason") @db.Text
+  lastEventId            String?   @map("last_event_id") @db.Uuid
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isTestFixture          Boolean   @default(false) @map("is_test_fixture")
 
   @@index([status, createdAt], map: "auvo_inbox_items_status_idx")
   @@index([auvoContactId], map: "auvo_inbox_items_auvo_contact_id_idx")
   @@index([phoneNormalized], map: "auvo_inbox_items_phone_normalized_idx")
   @@index([isTestFixture], map: "auvo_inbox_items_is_test_fixture_idx")
+  @@index([origin], map: "auvo_inbox_items_origin_idx")
+  @@index([departmentId], map: "auvo_inbox_items_department_idx")
   @@map("auvo_inbox_items")
+  @@schema("crm_internal")
+}
+
+model AuvoContactSignal {
+  auvoContactId          String    @id @map("auvo_contact_id") @db.Text
+  contactName            String?   @map("contact_name") @db.Text
+  phoneNormalized        String?   @map("phone_normalized") @db.Text
+  email                  String?   @db.Text
+  origin                 String?   @db.Text
+  utmJson                Json      @default("{}") @map("utm_json")
+  tagsJson               Json      @default("[]") @map("tags_json")
+  customFieldsJson       Json      @default("[]") @map("custom_fields_json")
+  classification         String?   @db.Text
+  departmentId           String?   @map("department_id") @db.Text
+  departmentName         String?   @map("department_name") @db.Text
+  agentId                String?   @map("agent_id") @db.Text
+  agentName              String?   @map("agent_name") @db.Text
+  channelType            String?   @map("channel_type") @db.Text
+  sessionStartedAt       DateTime? @map("session_started_at") @db.Timestamptz(6)
+  sessionEndedAt         DateTime? @map("session_ended_at") @db.Timestamptz(6)
+  firstUserInteractionAt DateTime? @map("first_user_interaction_at") @db.Timestamptz(6)
+  firstAgentMessageAt    DateTime? @map("first_agent_message_at") @db.Timestamptz(6)
+  lastInteractionAt      DateTime? @map("last_interaction_at") @db.Timestamptz(6)
+  lastMessageText        String?   @map("last_message_text") @db.Text
+  unreadCount            Int?      @map("unread_count")
+  waitReply              Boolean?  @map("wait_reply")
+  windowStatus           String?   @map("window_status") @db.Text
+  derivedJson            Json      @default("{}") @map("derived_json")
+  parsedSignalsJson      Json      @default("{}") @map("parsed_signals_json")
+  lastEventId            String?   @map("last_event_id") @db.Uuid
+  lastEventReceivedAt    DateTime? @map("last_event_received_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([phoneNormalized], map: "auvo_contact_signals_phone_idx")
+  @@index([origin], map: "auvo_contact_signals_origin_idx")
+  @@index([departmentId], map: "auvo_contact_signals_department_idx")
+  @@index([lastEventReceivedAt(sort: Desc)], map: "auvo_contact_signals_last_event_received_idx")
+  @@map("auvo_contact_signals")
   @@schema("crm_internal")
 }
 

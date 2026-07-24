@@ -29,13 +29,19 @@ describe("parseAuvoSessionPayload", () => {
       },
     });
 
-    expect(parsed).toEqual({
+    expect(parsed).toMatchObject({
       externalServiceId: "session-123",
       auvoContactId: "contact-456",
       contactName: "Fulano de Tal",
       phoneRaw: "+55 11 99999-0000",
       email: "fulano@example.com",
       channelType: "whatsapp",
+      signals: {
+        departmentId: null,
+        agentId: null,
+        tags: [],
+        customFields: [],
+      },
     });
   });
 
@@ -55,6 +61,58 @@ describe("parseAuvoSessionPayload", () => {
       email: null,
       channelType: null,
     });
+  });
+
+  it("extracts commercial and service signals from session payloads", () => {
+    const parsed = parseAuvoSessionPayload({
+      content: {
+        id: "session-rich",
+        contactId: "contact-rich",
+        channelType: "whatsapp",
+        classification: "orcamento",
+        departmentId: "dept-1",
+        departmentDetails: { name: "Comercial" },
+        userId: "agent-1",
+        agentDetails: { name: "Atendente 1" },
+        startAt: "2026-07-24T10:00:00.000Z",
+        endAt: "2026-07-24T10:12:00.000Z",
+        firstUserInteractionAt: "2026-07-24T10:01:00.000Z",
+        firstAgentMessageAt: "2026-07-24T10:02:00.000Z",
+        lastInteractionDate: "2026-07-24T10:11:00.000Z",
+        lastMessageText: "Cliente pediu visita tecnica",
+        unreadCount: 2,
+        waitReply: true,
+        windowStatus: "open",
+      },
+    });
+
+    expect(parsed?.signals).toMatchObject({
+      classification: "orcamento",
+      departmentId: "dept-1",
+      departmentName: "Comercial",
+      agentId: "agent-1",
+      agentName: "Atendente 1",
+      sessionStartedAt: "2026-07-24T10:00:00.000Z",
+      sessionEndedAt: "2026-07-24T10:12:00.000Z",
+      lastMessageText: "Cliente pediu visita tecnica",
+      unreadCount: 2,
+      waitReply: true,
+      windowStatus: "open",
+    });
+  });
+
+  it("coerces common API scalar strings in session signals", () => {
+    const parsed = parseAuvoSessionPayload({
+      content: {
+        id: "session-coerce",
+        unreadCount: "3",
+        waitReply: "true",
+      },
+    });
+
+    expect(parsed?.signals.unreadCount).toBe(3);
+    expect(parsed?.signals.waitReply).toBe(true);
+    expect(parsed?.signals.derived.slaState).toBe("aguardando_atendente");
   });
 
   it("returns null when the payload does not have a usable content.id", () => {
@@ -89,11 +147,16 @@ describe("parseAuvoContactPayload", () => {
       },
     });
 
-    expect(parsed).toEqual({
+    expect(parsed).toMatchObject({
       auvoContactId: "contact-456",
       contactName: "Fulano de Tal",
       phoneRaw: "(11) 99999-0000",
       email: "fulano@example.com",
+      signals: {
+        origin: null,
+        tags: [],
+        customFields: [],
+      },
     });
   });
 
@@ -102,7 +165,7 @@ describe("parseAuvoContactPayload", () => {
       content: { id: "contact-789", nameWhatsapp: "Fulano WhatsApp", phonenumber: "+55|11988880000" },
     });
 
-    expect(parsed).toEqual({
+    expect(parsed).toMatchObject({
       auvoContactId: "contact-789",
       contactName: "Fulano WhatsApp",
       phoneRaw: "+55|11988880000",

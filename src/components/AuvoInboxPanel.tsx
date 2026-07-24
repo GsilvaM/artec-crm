@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { ChevronDown, Inbox } from "lucide-react";
+import { AuvoSignalSummary } from "./AuvoSignalSummary";
 import { Avatar } from "./ui/Avatar";
 import { formatDateTime } from "../domain/format";
 import {
@@ -14,6 +15,13 @@ import {
 } from "../domain/crm";
 
 type ActionMode = "create_opportunity" | "link_opportunity" | "warranty" | "support" | "after_sales" | "customer_only" | "not_commercial" | "duplicate";
+type CustomerMatchPreview = {
+  score: number;
+  label: string;
+  description: string;
+  evidence: string[];
+  tone: "strong" | "medium" | "weak";
+};
 
 const STATUS_LABELS: Record<AuvoInboxStatus, string> = {
   novo: "Novo",
@@ -50,6 +58,19 @@ const ACTION_LABELS: Record<ActionMode, string> = {
 const SECONDARY_MENU_ACTIONS: ActionMode[] = ["warranty", "support", "after_sales", "customer_only"];
 const DISMISS_ACTIONS: ActionMode[] = ["not_commercial", "duplicate"];
 
+type AuvoInboxForm = {
+  clienteId: string;
+  opportunityId: string;
+  titulo: string;
+  tipoDemanda: string;
+  origem: string;
+  situacao: string;
+  proximaAcao: string;
+  proximaAcaoEm: string;
+  description: string;
+  reason: string;
+};
+
 export function AuvoInboxPanel({ customers, currentUserId }: { customers: Customer[]; currentUserId: string }) {
   const [items, setItems] = useState<AuvoInboxItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<AuvoInboxStatus | "">("novo");
@@ -58,11 +79,12 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
   const [mode, setMode] = useState<ActionMode | "">("");
   const [openMoreMenuItemId, setOpenMoreMenuItemId] = useState<string | null>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<AuvoInboxForm>({
     clienteId: "",
     opportunityId: "",
     titulo: "",
     tipoDemanda: "instalacao",
+    origem: "Auvo",
     situacao: "em andamento",
     proximaAcao: "",
     proximaAcaoEm: "",
@@ -106,12 +128,13 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
     setForm({
       clienteId: item.suggestedCustomerId ?? "",
       opportunityId: "",
-      titulo: item.title,
-      tipoDemanda: "instalacao",
-      situacao: "em andamento",
-      proximaAcao: "",
-      proximaAcaoEm: "",
-      description: "",
+      titulo: buildOpportunityTitle(item),
+      tipoDemanda: inferDemandType(item),
+      origem: item.auvoSignals.origin ?? "Auvo",
+      situacao: inferSituation(item),
+      proximaAcao: inferNextAction(item),
+      proximaAcaoEm: defaultNextActionDateTime(),
+      description: item.auvoSignals.derived.summary,
       reason: "",
     });
   }
@@ -133,6 +156,7 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
         clienteId: form.clienteId,
         titulo: form.titulo,
         tipoDemanda: form.tipoDemanda,
+        origem: form.origem,
         situacao: form.situacao,
         proximaAcao: form.proximaAcao,
         proximaAcaoEm: form.proximaAcaoEm,
@@ -166,11 +190,11 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
         </div>
         <div className="filter-actions">
           {(["novo", "em_analise", "processado", "descartado"] as const).map((status) => (
-            <button key={status} className={`button ${statusFilter === status ? "secondary" : "ghost"}`} type="button" onClick={() => setStatusFilter(status)}>
+            <button key={status} className={`button ${statusFilter === status ? "secondary" : "ghost"}`} type="button" aria-pressed={statusFilter === status} onClick={() => setStatusFilter(status)}>
               {STATUS_LABELS[status]}
             </button>
           ))}
-          <button className={`button ${statusFilter === "" ? "secondary" : "ghost"}`} type="button" onClick={() => setStatusFilter("")}>Todos</button>
+          <button className={`button ${statusFilter === "" ? "secondary" : "ghost"}`} type="button" aria-pressed={statusFilter === ""} onClick={() => setStatusFilter("")}>Todos</button>
         </div>
       </header>
 
@@ -182,6 +206,7 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
             const isOpen = activeItemId === item.id;
             const isResolved = item.status === "processado" || item.status === "descartado";
             const suggestedCustomer = customers.find((customer) => customer.id === item.suggestedCustomerId);
+            const matchPreview = buildCustomerMatchPreview(item, suggestedCustomer);
             const isMoreMenuOpen = openMoreMenuItemId === item.id;
             return (
               <li key={item.id} className="auvo-inbox-item">
@@ -189,16 +214,32 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
                   <Avatar name={suggestedCustomer?.nome ?? item.title} size="sm" />
                   <div>
                     <strong>{item.title}</strong>
-                    <span>{item.channelType ?? "canal desconhecido"} - {formatDateTime(item.createdAt)}</span>
+                    <span className="auvo-inbox-item-meta">{item.channelType ?? "canal desconhecido"} - {formatDateTime(item.createdAt)}</span>
                   </div>
                   <span className={`badge ${STATUS_BADGE_CLASS[item.status]}`}>{STATUS_LABELS[item.status]}</span>
                 </div>
                 <dl className="auvo-inbox-facts">
                   {item.phoneNormalized ? <div><dt>Telefone</dt><dd>{item.phoneNormalized}</dd></div> : null}
-                  {suggestedCustomer ? <div><dt>Cliente sugerido</dt><dd>{suggestedCustomer.nome}</dd></div> : <div><dt>Cliente sugerido</dt><dd>Nenhum encontrado</dd></div>}
                   {item.resolution ? <div><dt>Resolução</dt><dd>{item.resolution}</dd></div> : null}
                   {item.discardReason ? <div><dt>Motivo</dt><dd>{item.discardReason}</dd></div> : null}
                 </dl>
+                <section className={`auvo-customer-match auvo-customer-match-${matchPreview.tone}`} aria-label="Match Cliente-Auvo">
+                  <div>
+                    <span className="auvo-customer-match-kicker">Match Cliente-Auvo</span>
+                    <strong>{matchPreview.label}</strong>
+                    <p>{matchPreview.description}</p>
+                  </div>
+                  <div className="auvo-customer-match-score" aria-label={`Confianca estimada de ${matchPreview.score}%`}>
+                    <span>{matchPreview.score}%</span>
+                    <small>estimado</small>
+                  </div>
+                  <ul className="auvo-customer-match-evidence">
+                    {matchPreview.evidence.map((evidence) => <li key={evidence}>{evidence}</li>)}
+                  </ul>
+                </section>
+                <div className="auvo-inbox-summary">
+                  <AuvoSignalSummary signals={item.auvoSignals} />
+                </div>
 
                 {!isResolved ? (
                   <div className="auvo-inbox-action-bar">
@@ -213,7 +254,6 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
                         <button
                           className="button ghost"
                           type="button"
-                          aria-haspopup="true"
                           aria-expanded={isMoreMenuOpen}
                           onClick={() => setOpenMoreMenuItemId(isMoreMenuOpen ? null : item.id)}
                         >
@@ -221,10 +261,10 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
                           <ChevronDown aria-hidden="true" size={14} />
                         </button>
                         {isMoreMenuOpen ? (
-                          <ul className="dropdown-menu" role="menu">
+                          <ul className="dropdown-menu">
                             {SECONDARY_MENU_ACTIONS.map((actionMode) => (
-                              <li key={actionMode} role="none">
-                                <button role="menuitem" type="button" onClick={() => openAction(item, actionMode)}>
+                              <li key={actionMode}>
+                                <button type="button" onClick={() => openAction(item, actionMode)}>
                                   {ACTION_LABELS[actionMode]}
                                 </button>
                               </li>
@@ -257,6 +297,7 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
                     {mode === "create_opportunity" ? (
                       <>
                         <label>Título<input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
+                        <label>Origem<input required value={form.origem} onChange={(event) => setForm({ ...form, origem: event.target.value })} /></label>
                         <label>
                           Tipo de demanda
                           <select required value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
@@ -300,4 +341,124 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
       )}
     </section>
   );
+}
+
+function buildOpportunityTitle(item: AuvoInboxItem): string {
+  const intent = item.auvoSignals.derived.intent;
+  const label = TIPO_DEMANDA_OPTIONS.find((option) => option.value === inferDemandType(item))?.label ?? item.auvoSignals.derived.summary;
+  if (intent === "outro") return item.title;
+  return `${label} - ${item.contactName ?? item.title}`.slice(0, 120);
+}
+
+function inferDemandType(item: AuvoInboxItem): string {
+  const intent = item.auvoSignals.derived.intent;
+  if (intent === "manutencao" || intent === "suporte" || intent === "garantia") return "manutencao_corretiva";
+  if (intent === "higienizacao") return "higienizacao";
+  return "instalacao";
+}
+
+function inferSituation(item: AuvoInboxItem): string {
+  const derived = item.auvoSignals.derived;
+  if (derived.missingData.length) return "Aguardando dados";
+  if (derived.slaState === "aguardando_cliente") return "Aguardando cliente";
+  if (derived.urgency === "alta") return "Prioridade alta";
+  return "Em andamento";
+}
+
+function inferNextAction(item: AuvoInboxItem): string {
+  const derived = item.auvoSignals.derived;
+  if (derived.missingData.length) return `Solicitar: ${formatMissingDataForAction(derived.missingData)}`;
+  if (derived.intent === "instalacao" || derived.intent === "orcamento") return "Agendar visita tecnica";
+  if (derived.intent === "higienizacao") return "Confirmar escopo da higienizacao";
+  return "Revisar atendimento Auvo";
+}
+
+function defaultNextActionDateTime(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(9, 0, 0, 0);
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function formatMissingDataForAction(values: AuvoInboxItem["auvoSignals"]["derived"]["missingData"]): string {
+  const labels: Record<AuvoInboxItem["auvoSignals"]["derived"]["missingData"][number], string> = {
+    nome: "nome",
+    telefone: "telefone",
+    tipo_demanda: "tipo de demanda",
+    endereco: "endereco",
+    equipamento: "equipamento",
+  };
+  return values.map((value) => labels[value]).join(", ");
+}
+
+function buildCustomerMatchPreview(item: AuvoInboxItem, suggestedCustomer: Customer | undefined): CustomerMatchPreview {
+  const evidence: string[] = [];
+  const inboxPhone = normalizeDigits(item.phoneNormalized);
+  const customerPhone = normalizeDigits(suggestedCustomer?.telefoneNormalizado ?? suggestedCustomer?.telefone);
+
+  if (suggestedCustomer) {
+    let score = 78;
+    evidence.push("Cliente sugerido pelo CRM");
+    if (inboxPhone && customerPhone && inboxPhone === customerPhone) {
+      score += 14;
+      evidence.push("Telefone confere");
+    } else if (inboxPhone) {
+      evidence.push("Telefone disponivel para conferencia");
+    }
+    if (item.auvoContactId) {
+      score += 4;
+      evidence.push("Contato Auvo identificado");
+    }
+    if (item.contactName && namesLookRelated(item.contactName, suggestedCustomer.nome)) {
+      score += 4;
+      evidence.push("Nome parecido");
+    }
+
+    const boundedScore = Math.min(score, 98);
+    return {
+      score: boundedScore,
+      label: suggestedCustomer.nome,
+      description: boundedScore >= 90 ? "Vinculo forte para seguir a triagem." : "Vinculo provavel; confira antes de resolver.",
+      evidence,
+      tone: boundedScore >= 86 ? "strong" : "medium",
+    };
+  }
+
+  if (inboxPhone) {
+    return {
+      score: 42,
+      label: "Sem cliente sugerido",
+      description: "Ha telefone no atendimento, mas nenhum cliente foi vinculado ainda.",
+      evidence: ["Telefone capturado", item.auvoContactId ? "Contato Auvo identificado" : "Sem contato Auvo vinculado"],
+      tone: "weak",
+    };
+  }
+
+  return {
+    score: 18,
+    label: "Match pendente",
+    description: "Faltam dados para comparar este atendimento com a base de clientes.",
+    evidence: ["Solicitar telefone ou identificar cliente", "Revisao manual recomendada"],
+    tone: "weak",
+  };
+}
+
+function normalizeDigits(value: string | null | undefined): string {
+  return value?.replace(/\D/g, "") ?? "";
+}
+
+function namesLookRelated(left: string, right: string): boolean {
+  const leftTokens = normalizeSearchText(left).split(" ").filter((token) => token.length >= 3);
+  const rightText = normalizeSearchText(right);
+  return leftTokens.some((token) => rightText.includes(token));
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }

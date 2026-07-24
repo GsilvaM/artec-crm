@@ -27,6 +27,7 @@ export type CustomerRecord = {
   archivedAt: string | null;
   opportunitiesCount: number;
   duplicatePhoneCustomerIds: string[];
+  auvoSignals: AuvoParsedSignals | null;
 };
 
 export type CustomerListRecord = {
@@ -62,6 +63,7 @@ export type OpportunityRecord = {
   motivoPerdaNome: string | null;
   status: "rascunho" | "ativa" | "ganha" | "perdida" | "arquivada";
   currentNextActionId: string | null;
+  auvoSignals: AuvoParsedSignals | null;
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
@@ -102,6 +104,78 @@ export type ActivityRecord = {
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+  archivedAt: string | null;
+};
+
+export type AddressKind = "service" | "billing" | "pickup" | "installation" | "other";
+
+export type AddressRecord = {
+  id: string;
+  customerId: string;
+  label: string;
+  kind: AddressKind;
+  street: string | null;
+  number: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  reference: string | null;
+  accessNotes: string | null;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string | null;
+  archivedAt: string | null;
+};
+
+export type EquipmentType = "split_hi_wall" | "cassette" | "window_ac" | "floor_ceiling" | "multi_split" | "other";
+
+export type EquipmentRecord = {
+  id: string;
+  customerId: string;
+  opportunityId: string | null;
+  addressId: string | null;
+  type: EquipmentType;
+  brand: string | null;
+  model: string | null;
+  btus: number | null;
+  voltage: string | null;
+  environment: string | null;
+  serialNumber: string | null;
+  installedAt: string | null;
+  warrantyUntil: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string | null;
+  archivedAt: string | null;
+};
+
+export type VisitStatus = "draft" | "awaiting_confirmation" | "confirmed" | "completed" | "cancelled" | "no_show";
+
+export type VisitRecord = {
+  id: string;
+  customerId: string;
+  opportunityId: string | null;
+  addressId: string | null;
+  scheduledStartAt: string;
+  scheduledEndAt: string | null;
+  technicianUserId: string | null;
+  status: VisitStatus;
+  objective: string;
+  accessNotes: string | null;
+  confirmationNotes: string | null;
+  result: string | null;
+  nextSteps: string | null;
+  equipmentIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string | null;
   archivedAt: string | null;
 };
 
@@ -177,6 +251,19 @@ export type CommercialCenterOpportunityItem = {
   daysOpen: number;
 };
 
+export type CommercialCenterVisitItem = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  opportunityId: string | null;
+  opportunityTitle: string | null;
+  addressLabel: string | null;
+  scheduledStartAt: string;
+  scheduledEndAt: string | null;
+  status: VisitStatus;
+  objective: string;
+};
+
 export type CommercialCenterSummary = {
   newCustomers: number;
   newOpportunities: number;
@@ -195,7 +282,7 @@ export type CommercialCenterRecord = {
   todayActions: CommercialCenterActionItem[];
   opportunitiesWithoutNextAction: CommercialCenterOpportunityItem[];
   quotesAwaitingReturn: CommercialCenterOpportunityItem[];
-  upcomingVisits: CommercialCenterActionItem[];
+  upcomingVisits: CommercialCenterVisitItem[];
   stalledOpportunities: CommercialCenterOpportunityItem[];
   auvoInbox: {
     status: "pending" | "empty";
@@ -358,6 +445,38 @@ export type UpsertMembershipInput = {
 
 export type AuvoInboxStatus = "novo" | "em_analise" | "aguardando_dados" | "processado" | "descartado" | "erro_integracao";
 
+export type AuvoParsedSignals = {
+  origin: string | null;
+  utm: unknown;
+  tags: unknown[];
+  customFields: unknown[];
+  classification: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  agentId: string | null;
+  agentName: string | null;
+  channelType: string | null;
+  sessionStartedAt: string | null;
+  sessionEndedAt: string | null;
+  firstUserInteractionAt: string | null;
+  firstAgentMessageAt: string | null;
+  lastInteractionAt: string | null;
+  lastMessageText: string | null;
+  unreadCount: number | null;
+  waitReply: boolean | null;
+  windowStatus: string | null;
+  derived: {
+    intent: "instalacao" | "manutencao" | "higienizacao" | "garantia" | "suporte" | "pos_venda" | "orcamento" | "outro";
+    urgency: "baixa" | "normal" | "alta";
+    suggestedAction: "create_opportunity" | "link_customer" | "request_missing_data" | "register_support" | "register_warranty" | "human_review";
+    confidence: number;
+    missingData: Array<"nome" | "telefone" | "tipo_demanda" | "endereco" | "equipamento">;
+    slaState: "novo" | "aguardando_atendente" | "aguardando_cliente" | "parado" | "vencido";
+    needsHumanReview: boolean;
+    summary: string;
+  };
+};
+
 export type AuvoInboxItemRecord = {
   id: string;
   externalServiceId: string;
@@ -369,6 +488,7 @@ export type AuvoInboxItemRecord = {
   auvoContactId: string | null;
   email: string | null;
   channelType: string | null;
+  auvoSignals: AuvoParsedSignals;
   resolution: string | null;
   resolvedOpportunityId: string | null;
   resolvedCustomerId: string | null;
@@ -508,6 +628,60 @@ export type CreateActivityInput = {
 
 export type UpdateActivityInput = Partial<Omit<CreateActivityInput, "customerId" | "opportunityId" | "source">>;
 
+export type CreateAddressInput = {
+  customerId: string;
+  label: string;
+  kind?: AddressKind;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  reference?: string | null;
+  accessNotes?: string | null;
+  isPrimary?: boolean;
+};
+
+export type UpdateAddressInput = Partial<Omit<CreateAddressInput, "customerId">>;
+
+export type CreateEquipmentInput = {
+  customerId: string;
+  opportunityId?: string | null;
+  addressId?: string | null;
+  type?: EquipmentType;
+  brand?: string | null;
+  model?: string | null;
+  btus?: number | null;
+  voltage?: string | null;
+  environment?: string | null;
+  serialNumber?: string | null;
+  installedAt?: string | null;
+  warrantyUntil?: string | null;
+  notes?: string | null;
+};
+
+export type UpdateEquipmentInput = Partial<Omit<CreateEquipmentInput, "customerId">>;
+
+export type CreateVisitInput = {
+  customerId: string;
+  opportunityId?: string | null;
+  addressId?: string | null;
+  scheduledStartAt: string;
+  scheduledEndAt?: string | null;
+  technicianUserId?: string | null;
+  status?: VisitStatus;
+  objective: string;
+  accessNotes?: string | null;
+  confirmationNotes?: string | null;
+  result?: string | null;
+  nextSteps?: string | null;
+  equipmentIds?: string[];
+};
+
+export type UpdateVisitInput = Partial<Omit<CreateVisitInput, "customerId">>;
+
 export type CreateNextActionInput = {
   customerId: string;
   opportunityId?: string | null;
@@ -576,6 +750,22 @@ export type CrmDataRepository = {
   createActivity(actor: Actor, input: CreateActivityInput): Promise<ActivityRecord>;
   updateActivity(actor: Actor, id: string, input: UpdateActivityInput): Promise<ActivityRecord | null>;
   setActivityArchived(actor: Actor, id: string, archived: boolean): Promise<ActivityRecord | null>;
+  listAddresses(actor: Actor, filters: { customerId: string; archived?: boolean }): Promise<AddressRecord[]>;
+  getAddress(actor: Actor, id: string): Promise<AddressRecord | null>;
+  createAddress(actor: Actor, input: CreateAddressInput): Promise<AddressRecord>;
+  updateAddress(actor: Actor, id: string, input: UpdateAddressInput): Promise<AddressRecord | null>;
+  setAddressArchived(actor: Actor, id: string, archived: boolean): Promise<AddressRecord | null>;
+  listEquipment(actor: Actor, filters: { customerId?: string; opportunityId?: string; archived?: boolean }): Promise<EquipmentRecord[]>;
+  getEquipment(actor: Actor, id: string): Promise<EquipmentRecord | null>;
+  createEquipment(actor: Actor, input: CreateEquipmentInput): Promise<EquipmentRecord>;
+  updateEquipment(actor: Actor, id: string, input: UpdateEquipmentInput): Promise<EquipmentRecord | null>;
+  setEquipmentArchived(actor: Actor, id: string, archived: boolean): Promise<EquipmentRecord | null>;
+  listVisits(actor: Actor, filters: { customerId?: string; opportunityId?: string; from?: string; to?: string; status?: VisitStatus; archived?: boolean }): Promise<VisitRecord[]>;
+  getVisit(actor: Actor, id: string): Promise<VisitRecord | null>;
+  createVisit(actor: Actor, input: CreateVisitInput): Promise<VisitRecord>;
+  updateVisit(actor: Actor, id: string, input: UpdateVisitInput): Promise<VisitRecord | null>;
+  completeVisit(actor: Actor, id: string, input: { result: string; nextSteps?: string | null }): Promise<VisitRecord | null>;
+  cancelVisit(actor: Actor, id: string, input: { reason: string }): Promise<VisitRecord | null>;
   listNextActions(
     actor: Actor,
     filters: {
@@ -602,6 +792,7 @@ export type CrmDataRepository = {
   snoozeNotification(actor: Actor, id: string, input: SnoozeNotificationInput): Promise<NotificationRecord | null>;
   reconcileNotifications(actor: Actor): Promise<NotificationReconcileResult>;
   reconcileAuvoWebhookEvents(limit?: number): Promise<{ claimed: number; processed: number; retried: number; failed: number }>;
+  backfillAuvoParsedSignals(limit?: number): Promise<{ scanned: number; applied: number; skipped: number; failed: number }>;
   receiveAuvoWebhookEvent(input: ReceiveAuvoWebhookEventInput): Promise<ReceiveAuvoWebhookEventResult>;
   listAuvoWebhookEvents(actor: Actor, filters: AuvoWebhookEventFilters): Promise<AuvoWebhookEventListRecord>;
   getAuvoWebhookEvent(actor: Actor, id: string): Promise<AuvoWebhookEventRecord | null>;

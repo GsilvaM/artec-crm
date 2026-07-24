@@ -67,6 +67,26 @@ export type LossReason = Prisma.LossReasonModel
  */
 export type Opportunity = Prisma.OpportunityModel
 /**
+ * Model Address
+ * 
+ */
+export type Address = Prisma.AddressModel
+/**
+ * Model Equipment
+ * 
+ */
+export type Equipment = Prisma.EquipmentModel
+/**
+ * Model Visit
+ * 
+ */
+export type Visit = Prisma.VisitModel
+/**
+ * Model VisitEquipment
+ * 
+ */
+export type VisitEquipment = Prisma.VisitEquipmentModel
+/**
  * Model Quote
  * 
  */
@@ -101,6 +121,11 @@ export type AuvoWebhookEvent = Prisma.AuvoWebhookEventModel
  * 
  */
 export type AuvoInboxItem = Prisma.AuvoInboxItemModel
+/**
+ * Model AuvoContactSignal
+ * 
+ */
+export type AuvoContactSignal = Prisma.AuvoContactSignalModel
 /**
  * Model MigrationHistory
  * 

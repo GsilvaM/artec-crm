@@ -56,24 +56,24 @@ test("creates a customer, creates an opportunity for it, and sees it on the pipe
   await page.getByRole("link", { name: "Clientes" }).click();
   await page.waitForURL(/\/clientes$/);
 
-  await page.getByRole("heading", { name: "Novo cliente" }).scrollIntoViewIfNeeded();
+  await page.getByRole("button", { name: "Novo cliente" }).click();
   const customerForm = page.locator("form", { has: page.getByRole("heading", { name: "Novo cliente" }) });
   await customerForm.getByLabel("Nome").fill(customerName);
   await customerForm.getByLabel("Telefone").fill("11999990000");
   await customerForm.getByRole("button", { name: /Salvar cliente/i }).click();
-  const customersTable = page.locator("table", { has: page.getByRole("columnheader", { name: "Telefone" }) });
-  await expect(customersTable.getByText(customerName)).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator("#clientes-section .customer-card").filter({ hasText: customerName })).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("link", { name: "Oportunidades" }).click();
   await page.waitForURL(/\/oportunidades$/);
 
+  await page.getByRole("button", { name: "Nova oportunidade" }).click();
   const opportunityForm = page.locator("form", { has: page.getByRole("heading", { name: "Nova oportunidade" }) });
   await opportunityForm.getByLabel("Cliente").selectOption({ label: customerName });
-  await opportunityForm.getByLabel("Título").fill(opportunityTitle);
+  await opportunityForm.getByLabel("Titulo").fill(opportunityTitle);
   await opportunityForm.getByLabel("Tipo de demanda").selectOption("instalacao");
-  await opportunityForm.getByLabel("Situação").fill("em andamento");
-  await opportunityForm.getByLabel("Próxima ação", { exact: true }).fill("Ligar para o cliente");
-  await opportunityForm.getByLabel("Data da próxima ação").fill("2026-08-01T10:00");
+  await opportunityForm.getByLabel("Situacao").fill("em andamento");
+  await opportunityForm.getByLabel("Proxima acao", { exact: true }).fill("Ligar para o cliente");
+  await opportunityForm.getByLabel("Data da proxima acao").fill("2026-08-01T10:00");
   await opportunityForm.getByRole("button", { name: /Salvar oportunidade/i }).click();
   await expect(page.locator("#oportunidades-section").getByText(opportunityTitle)).toBeVisible({ timeout: 15_000 });
 

@@ -7,6 +7,7 @@ import type { AuthVerifier, Membership, MembershipRepository, VerifiedTokenUser 
 import type {
   Actor,
   ActivityRecord,
+  AddressRecord,
   ApproveOpportunityInput,
   AuvoIntegrationStatusRecord,
   AuvoWebhookEventFilters,
@@ -19,15 +20,20 @@ import type {
   CommercialReportRecord,
   CompleteNextActionInput,
   CreateActivityInput,
+  CreateAddressInput,
   CreateCustomerInput,
+  CreateEquipmentInput,
   CreateLossReasonInput,
   CreateNextActionInput,
   CreateOpportunityInput,
   CreatePipelineStageInput,
+  CreateVisitInput,
   CrmDataRepository,
   AuvoInboxItemRecord,
   AuvoInboxStatus,
+  AuvoParsedSignals,
   CustomerRecord,
+  EquipmentRecord,
   GlobalSearchResult,
   LossReasonAdminRecord,
   LossReasonRecord,
@@ -49,14 +55,19 @@ import type {
   ResolveAuvoInboxItemInput,
   SnoozeNotificationInput,
   UpdateActivityInput,
+  UpdateAddressInput,
   UpdateCustomerInput,
+  UpdateEquipmentInput,
   UpdateNextActionInput,
   UpdateOpportunityInput,
   UpdatePipelineStageInput,
+  UpdateVisitInput,
   UpsertMembershipInput,
+  VisitRecord,
+  VisitStatus,
 } from "./crm/types.js";
 import { createWebhookPayloadHash, sanitizeWebhookPayload } from "./crm/auvo-webhook.js";
-import { isAuvoSessionEventType, parseAuvoSessionPayload } from "./crm/auvo-parser.js";
+import { isAuvoContactEventType, isAuvoSessionEventType, parseAuvoContactPayload, parseAuvoSessionPayload } from "./crm/auvo-parser.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./crm/validation.js";
 
 const now = "2026-07-20T10:00:00.000Z";
@@ -68,6 +79,41 @@ const lostStageId = "55555555-5555-4555-8555-555555555555";
 const lossReasonId = "66666666-6666-4666-8666-666666666666";
 const auvoSecret = "local-auvo-secret";
 const cronSecret = "local-cron-secret";
+
+function defaultAuvoSignals(overrides: Partial<AuvoParsedSignals> = {}): AuvoParsedSignals {
+  return {
+    origin: null,
+    utm: {},
+    tags: [],
+    customFields: [],
+    classification: null,
+    departmentId: null,
+    departmentName: null,
+    agentId: null,
+    agentName: null,
+    channelType: null,
+    sessionStartedAt: null,
+    sessionEndedAt: null,
+    firstUserInteractionAt: null,
+    firstAgentMessageAt: null,
+    lastInteractionAt: null,
+    lastMessageText: null,
+    unreadCount: null,
+    waitReply: null,
+    windowStatus: null,
+    derived: {
+      intent: "outro",
+      urgency: "normal",
+      suggestedAction: "human_review",
+      confidence: 0,
+      missingData: ["tipo_demanda"],
+      slaState: "novo",
+      needsHumanReview: true,
+      summary: "Atendimento aguardando triagem",
+    },
+    ...overrides,
+  };
+}
 
 function createTestServer(options: {
   verifiedUser?: VerifiedTokenUser;
@@ -190,6 +236,12 @@ describe("CRM API auth and RBAC", () => {
         "opportunities:write",
         "activities:read",
         "activities:write",
+        "addresses:read",
+        "addresses:write",
+        "equipment:read",
+        "equipment:write",
+        "visits:read",
+        "visits:write",
         "next_actions:read",
         "next_actions:write",
         "notifications:read",
@@ -556,6 +608,54 @@ describe("CRM activities and next actions API", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("creates address, equipment and completes a visit through the structural CRM routes", async () => {
+    const repository = new FakeCrmRepository();
+    const opportunity = await repository.createOpportunity({ id: actorId, role: "gestor" }, makeCreateOpportunityInput());
+    const app = createTestServer({ crmRepository: repository });
+    const address = await app.inject({
+      method: "POST",
+      url: `/api/customers/${customerId}/addresses`,
+      headers: { authorization: "Bearer valid" },
+      payload: { label: "Apartamento", kind: "service", street: "Rua Central", number: "123", isPrimary: true },
+    });
+    const equipment = await app.inject({
+      method: "POST",
+      url: `/api/customers/${customerId}/equipment`,
+      headers: { authorization: "Bearer valid" },
+      payload: { opportunityId: opportunity.id, addressId: address.json().address.id, type: "split_hi_wall", brand: "Daikin", btus: 12000 },
+    });
+    const visit = await app.inject({
+      method: "POST",
+      url: "/api/visits",
+      headers: { authorization: "Bearer valid" },
+      payload: {
+        customerId,
+        opportunityId: opportunity.id,
+        addressId: address.json().address.id,
+        scheduledStartAt: "2026-07-22T13:00:00.000Z",
+        objective: "Vistoria para instalacao",
+        equipmentIds: [equipment.json().equipment.id],
+      },
+    });
+    const completed = await app.inject({
+      method: "POST",
+      url: `/api/visits/${visit.json().visit.id}/complete`,
+      headers: { authorization: "Bearer valid" },
+      payload: { result: "Ambiente vistoriado e ponto eletrico confirmado.", nextSteps: "Enviar orcamento final." },
+    });
+    const list = await app.inject({ method: "GET", url: `/api/visits?customerId=${customerId}&status=completed`, headers: { authorization: "Bearer valid" } });
+    const invalidQuery = await app.inject({ method: "GET", url: `/api/visits?customerId=${customerId}&status=invalid`, headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(address.statusCode).toBe(201);
+    expect(equipment.statusCode).toBe(201);
+    expect(visit.statusCode).toBe(201);
+    expect(visit.json().visit.equipmentIds).toEqual([equipment.json().equipment.id]);
+    expect(completed.json().visit.status).toBe("completed");
+    expect(list.json().visits).toHaveLength(1);
+    expect(invalidQuery.statusCode).toBe(400);
+  });
+
   it("rejects next action for invalid responsible user", async () => {
     const app = createTestServer({});
     const response = await app.inject({
@@ -775,6 +875,7 @@ describe("CRM activities and next actions API", () => {
   it("returns commercial center work blocks and summary", async () => {
     const repository = new FakeCrmRepository();
     await repository.createOpportunity({ id: actorId, role: "gestor" }, { ...makeCreateOpportunityInput(), proximaAcao: "Visita tecnica", proximaAcaoEm: "2026-07-20T13:00:00.000Z" });
+    await repository.createVisit({ id: actorId, role: "gestor" }, { customerId, scheduledStartAt: "2026-07-22T13:00:00.000Z", objective: "Vistoria tecnica" });
     await repository.createNextAction({ id: actorId, role: "gestor" }, { customerId, responsibleUserId: actorId, category: "support", title: "Acao vencida", dueAt: "2026-07-19T13:00:00.000Z", priority: "high" });
     const app = createTestServer({ crmRepository: repository });
     const response = await app.inject({ method: "GET", url: "/api/commercial-center?category=support", headers: { authorization: "Bearer valid" } });
@@ -783,6 +884,8 @@ describe("CRM activities and next actions API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().commercialCenter.overdueActions).toHaveLength(1);
     expect(response.json().commercialCenter.todayActions).toHaveLength(0);
+    expect(response.json().commercialCenter.upcomingVisits).toHaveLength(1);
+    expect(response.json().commercialCenter.upcomingVisits[0].objective).toBe("Vistoria tecnica");
     expect(response.json().commercialCenter.auvoInbox.status).toBe("empty");
     expect(response.json().commercialCenter.summary.newOpportunities).toBeGreaterThan(0);
   });
@@ -992,6 +1095,7 @@ describe("CRM activities and next actions API", () => {
         auvoContactId: "contact-1",
         email: null,
         channelType: "whatsapp",
+        auvoSignals: defaultAuvoSignals({ channelType: "whatsapp" }),
         resolution: null,
         resolvedOpportunityId: null,
         resolvedCustomerId: null,
@@ -1013,6 +1117,7 @@ describe("CRM activities and next actions API", () => {
         auvoContactId: null,
         email: null,
         channelType: "instagram",
+        auvoSignals: defaultAuvoSignals({ channelType: "instagram" }),
         resolution: null,
         resolvedOpportunityId: null,
         resolvedCustomerId: null,
@@ -1081,6 +1186,11 @@ describe("CRM activities and next actions API", () => {
         id: "session-real-1",
         contactId: "contact-real-1",
         channelType: "whatsapp",
+        origin: "instagram_ads",
+        classification: "orcamento",
+        departmentDetails: { name: "Comercial" },
+        agentDetails: { name: "Atendente Auvo" },
+        lastMessageText: "Quero orçamento para instalação de ar condicionado",
         contactDetails: { name: "Novo Contato", phonenumberFormatted: "27888883627", email: null },
       },
     };
@@ -1102,6 +1212,13 @@ describe("CRM activities and next actions API", () => {
       auvoContactId: "contact-real-1",
       phoneNormalized: "5527888883627",
       suggestedCustomerId: knownPhoneCustomer.id,
+      auvoSignals: {
+        origin: "instagram_ads",
+        classification: "orcamento",
+        departmentName: "Comercial",
+        agentName: "Atendente Auvo",
+        derived: { intent: "orcamento", suggestedAction: "create_opportunity" },
+      },
     });
   });
 
@@ -1312,6 +1429,9 @@ class FakeCrmRepository implements CrmDataRepository {
   ];
   opportunities: OpportunityRecord[] = [];
   private activities: ActivityRecord[] = [];
+  private addresses: AddressRecord[] = [];
+  private equipment: EquipmentRecord[] = [];
+  private visits: VisitRecord[] = [];
   private nextActions: NextActionRecord[] = [];
   notifications: NotificationRecord[] = [];
   auvoEvents: AuvoWebhookEventRecord[] = [];
@@ -1339,7 +1459,7 @@ class FakeCrmRepository implements CrmDataRepository {
     const limit = filters.limit ?? 100;
     const startIndex = filters.cursor ? all.findIndex((customer) => customer.id === filters.cursor) + 1 : 0;
     const page = all.slice(startIndex, startIndex + limit);
-    return { customers: page, nextCursor: startIndex + limit < all.length ? page.at(-1)?.id ?? null : null };
+    return { customers: page, nextCursor: startIndex + limit < all.length ? page[page.length - 1]?.id ?? null : null };
   }
 
   async getCustomer(_actor: Actor, id: string): Promise<CustomerRecord | null> {
@@ -1382,7 +1502,7 @@ class FakeCrmRepository implements CrmDataRepository {
     const limit = filters.limit ?? 100;
     const startIndex = filters.cursor ? all.findIndex((opportunity) => opportunity.id === filters.cursor) + 1 : 0;
     const page = all.slice(startIndex, startIndex + limit);
-    return { opportunities: page, nextCursor: startIndex + limit < all.length ? page.at(-1)?.id ?? null : null };
+    return { opportunities: page, nextCursor: startIndex + limit < all.length ? page[page.length - 1]?.id ?? null : null };
   }
 
   filterOpportunities(actor: Actor, filters: { search?: string; status?: string; etapaId?: string; responsavelId?: string; clienteId?: string; situation?: string; demandType?: string; from?: string; to?: string }): OpportunityRecord[] {
@@ -1536,6 +1656,196 @@ class FakeCrmRepository implements CrmDataRepository {
     return activity;
   }
 
+  async listAddresses(_actor: Actor, filters: { customerId: string; archived?: boolean }): Promise<AddressRecord[]> {
+    return this.addresses.filter((address) => address.customerId === filters.customerId && (filters.archived ? Boolean(address.archivedAt) : !address.archivedAt));
+  }
+
+  async getAddress(_actor: Actor, id: string): Promise<AddressRecord | null> {
+    return this.addresses.find((address) => address.id === id) ?? null;
+  }
+
+  async createAddress(actor: Actor, input: CreateAddressInput): Promise<AddressRecord> {
+    this.assertCustomerExists(input.customerId);
+    const address = makeAddress({
+      id: randomUUID(),
+      customerId: input.customerId,
+      label: input.label,
+      kind: input.kind ?? "service",
+      street: input.street ?? null,
+      number: input.number ?? null,
+      complement: input.complement ?? null,
+      neighborhood: input.neighborhood ?? null,
+      city: input.city ?? null,
+      state: input.state ?? null,
+      postalCode: input.postalCode ?? null,
+      reference: input.reference ?? null,
+      accessNotes: input.accessNotes ?? null,
+      isPrimary: input.isPrimary ?? false,
+      createdBy: actor.id,
+      updatedBy: actor.id,
+    });
+    this.addresses.push(address);
+    return address;
+  }
+
+  async updateAddress(actor: Actor, id: string, input: UpdateAddressInput): Promise<AddressRecord | null> {
+    const address = this.addresses.find((item) => item.id === id);
+    if (!address) return null;
+    Object.assign(address, input, { updatedBy: actor.id, updatedAt: now });
+    return address;
+  }
+
+  async setAddressArchived(actor: Actor, id: string, archived: boolean): Promise<AddressRecord | null> {
+    const address = this.addresses.find((item) => item.id === id);
+    if (!address) return null;
+    address.archivedAt = archived ? now : null;
+    address.updatedBy = actor.id;
+    address.updatedAt = now;
+    return address;
+  }
+
+  async listEquipment(actor: Actor, filters: { customerId?: string; opportunityId?: string; archived?: boolean }): Promise<EquipmentRecord[]> {
+    if (filters.opportunityId && !(await this.getOpportunity(actor, filters.opportunityId))) return [];
+    return this.equipment.filter((equipment) => {
+      if (filters.customerId && equipment.customerId !== filters.customerId) return false;
+      if (filters.opportunityId && equipment.opportunityId !== filters.opportunityId) return false;
+      if (filters.archived ? !equipment.archivedAt : equipment.archivedAt) return false;
+      return true;
+    });
+  }
+
+  async getEquipment(actor: Actor, id: string): Promise<EquipmentRecord | null> {
+    const equipment = this.equipment.find((item) => item.id === id) ?? null;
+    if (actor.role === "vendedor" && equipment?.opportunityId) {
+      const opportunity = await this.getOpportunity(actor, equipment.opportunityId);
+      if (!opportunity) return null;
+    }
+    return equipment;
+  }
+
+  async createEquipment(actor: Actor, input: CreateEquipmentInput): Promise<EquipmentRecord> {
+    this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
+    this.assertAddressBelongsToCustomer(input.addressId ?? null, input.customerId);
+    const equipment = makeEquipment({
+      id: randomUUID(),
+      customerId: input.customerId,
+      opportunityId: input.opportunityId ?? null,
+      addressId: input.addressId ?? null,
+      type: input.type ?? "other",
+      brand: input.brand ?? null,
+      model: input.model ?? null,
+      btus: input.btus ?? null,
+      voltage: input.voltage ?? null,
+      environment: input.environment ?? null,
+      serialNumber: input.serialNumber ?? null,
+      installedAt: input.installedAt ?? null,
+      warrantyUntil: input.warrantyUntil ?? null,
+      notes: input.notes ?? null,
+      createdBy: actor.id,
+      updatedBy: actor.id,
+    });
+    this.equipment.push(equipment);
+    return equipment;
+  }
+
+  async updateEquipment(actor: Actor, id: string, input: UpdateEquipmentInput): Promise<EquipmentRecord | null> {
+    const equipment = await this.getEquipment(actor, id);
+    if (!equipment) return null;
+    const addressId = input.addressId === undefined ? equipment.addressId : input.addressId;
+    const opportunityId = input.opportunityId === undefined ? equipment.opportunityId : input.opportunityId;
+    this.assertCustomerOpportunityMatch(equipment.customerId, opportunityId ?? null);
+    this.assertAddressBelongsToCustomer(addressId ?? null, equipment.customerId);
+    Object.assign(equipment, input, { updatedBy: actor.id, updatedAt: now });
+    return equipment;
+  }
+
+  async setEquipmentArchived(actor: Actor, id: string, archived: boolean): Promise<EquipmentRecord | null> {
+    const equipment = await this.getEquipment(actor, id);
+    if (!equipment) return null;
+    equipment.archivedAt = archived ? now : null;
+    equipment.updatedBy = actor.id;
+    equipment.updatedAt = now;
+    return equipment;
+  }
+
+  async listVisits(actor: Actor, filters: { customerId?: string; opportunityId?: string; from?: string; to?: string; status?: VisitStatus; archived?: boolean }): Promise<VisitRecord[]> {
+    return this.visits.filter((visit) => {
+      if (actor.role === "vendedor" && visit.technicianUserId !== actor.id && visit.createdBy !== actor.id) {
+        const opportunity = visit.opportunityId ? this.opportunities.find((item) => item.id === visit.opportunityId) : null;
+        if (opportunity?.responsavelId !== actor.id) return false;
+      }
+      if (filters.customerId && visit.customerId !== filters.customerId) return false;
+      if (filters.opportunityId && visit.opportunityId !== filters.opportunityId) return false;
+      if (filters.status && visit.status !== filters.status) return false;
+      if (filters.from && visit.scheduledStartAt.slice(0, 10) < filters.from) return false;
+      if (filters.to && visit.scheduledStartAt.slice(0, 10) > filters.to) return false;
+      if (filters.archived ? !visit.archivedAt : visit.archivedAt) return false;
+      return true;
+    });
+  }
+
+  async getVisit(actor: Actor, id: string): Promise<VisitRecord | null> {
+    return (await this.listVisits(actor, {})).find((visit) => visit.id === id) ?? null;
+  }
+
+  async createVisit(actor: Actor, input: CreateVisitInput): Promise<VisitRecord> {
+    this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
+    this.assertAddressBelongsToCustomer(input.addressId ?? null, input.customerId);
+    this.assertEquipmentBelongsToCustomer(input.equipmentIds ?? [], input.customerId);
+    const visit = makeVisit({
+      id: randomUUID(),
+      customerId: input.customerId,
+      opportunityId: input.opportunityId ?? null,
+      addressId: input.addressId ?? null,
+      scheduledStartAt: input.scheduledStartAt,
+      scheduledEndAt: input.scheduledEndAt ?? null,
+      technicianUserId: input.technicianUserId ?? null,
+      status: input.status ?? "awaiting_confirmation",
+      objective: input.objective,
+      accessNotes: input.accessNotes ?? null,
+      confirmationNotes: input.confirmationNotes ?? null,
+      result: input.result ?? null,
+      nextSteps: input.nextSteps ?? null,
+      equipmentIds: input.equipmentIds ?? [],
+      createdBy: actor.id,
+      updatedBy: actor.id,
+    });
+    this.visits.push(visit);
+    return visit;
+  }
+
+  async updateVisit(actor: Actor, id: string, input: UpdateVisitInput): Promise<VisitRecord | null> {
+    const visit = await this.getVisit(actor, id);
+    if (!visit) return null;
+    this.assertAddressBelongsToCustomer(input.addressId === undefined ? visit.addressId : input.addressId ?? null, visit.customerId);
+    this.assertEquipmentBelongsToCustomer(input.equipmentIds ?? visit.equipmentIds, visit.customerId);
+    Object.assign(visit, input, { updatedBy: actor.id, updatedAt: now });
+    return visit;
+  }
+
+  async completeVisit(actor: Actor, id: string, input: { result: string; nextSteps?: string | null }): Promise<VisitRecord | null> {
+    const visit = await this.getVisit(actor, id);
+    if (!visit) return null;
+    visit.status = "completed";
+    visit.result = input.result;
+    visit.nextSteps = input.nextSteps ?? visit.nextSteps;
+    visit.updatedBy = actor.id;
+    visit.updatedAt = now;
+    this.activities.push(makeActivity({ customerId: visit.customerId, opportunityId: visit.opportunityId, type: "visit", title: "Visita concluida", description: input.result, createdBy: actor.id, source: "system" }));
+    return visit;
+  }
+
+  async cancelVisit(actor: Actor, id: string, input: { reason: string }): Promise<VisitRecord | null> {
+    const visit = await this.getVisit(actor, id);
+    if (!visit) return null;
+    visit.status = "cancelled";
+    visit.confirmationNotes = input.reason;
+    visit.updatedBy = actor.id;
+    visit.updatedAt = now;
+    this.activities.push(makeActivity({ customerId: visit.customerId, opportunityId: visit.opportunityId, type: "visit", title: "Visita cancelada", description: input.reason, createdBy: actor.id, source: "system" }));
+    return visit;
+  }
+
   async listNextActions(actor: Actor, filters: { responsibleUserId?: string; status?: "pending" | "completed" | "cancelled"; category?: "commercial" | "warranty" | "support" | "after_sales"; overdue?: boolean; today?: boolean; future?: boolean; customerId?: string; opportunityId?: string; priority?: "low" | "normal" | "high" }): Promise<NextActionRecord[]> {
     return this.nextActions.filter((action) => {
       if (actor.role === "vendedor" && action.responsibleUserId !== actor.id) return false;
@@ -1599,7 +1909,20 @@ class FakeCrmRepository implements CrmDataRepository {
       todayActions: actionItems.filter((action) => action.dueAt.startsWith("2026-07-20")),
       opportunitiesWithoutNextAction: opportunityItems.filter((opportunity) => !opportunity.nextActionTitle || !opportunity.nextActionDueAt),
       quotesAwaitingReturn: opportunityItems.filter((opportunity) => ["Orcamento enviado", "Negociacao"].includes(opportunity.stageName)),
-      upcomingVisits: actionItems.filter((action) => /visita/i.test(action.title)),
+      upcomingVisits: this.visits
+        .filter((visit) => !visit.archivedAt && ["awaiting_confirmation", "confirmed"].includes(visit.status) && visit.scheduledStartAt >= "2026-07-20T00:00:00.000Z")
+        .map((visit) => ({
+          id: visit.id,
+          customerId: visit.customerId,
+          customerName: this.customers.find((customer) => customer.id === visit.customerId)?.nome ?? "Cliente",
+          opportunityId: visit.opportunityId,
+          opportunityTitle: this.opportunities.find((opportunity) => opportunity.id === visit.opportunityId)?.titulo ?? null,
+          addressLabel: this.addresses.find((address) => address.id === visit.addressId)?.label ?? null,
+          scheduledStartAt: visit.scheduledStartAt,
+          scheduledEndAt: visit.scheduledEndAt,
+          status: visit.status,
+          objective: visit.objective,
+        })),
       stalledOpportunities: opportunityItems.filter((opportunity) => opportunity.daysOpen >= 3 && !opportunity.nextActionDueAt),
       auvoInbox: { status: "empty", pending: 0, message: "Nenhum atendimento do Auvo aguardando triagem." },
       summary: {
@@ -1792,6 +2115,63 @@ class FakeCrmRepository implements CrmDataRepository {
     return { claimed: 0, processed: 0, retried: 0, failed: 0 };
   }
 
+  async backfillAuvoParsedSignals(limit = 500): Promise<{ scanned: number; applied: number; skipped: number; failed: number }> {
+    const events = this.auvoEvents
+      .filter((event) => event.status !== "ignored")
+      .filter((event) => isAuvoSessionEventType(event.eventType) || isAuvoContactEventType(event.eventType))
+      .slice(0, limit);
+    let applied = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const event of events) {
+      try {
+        if (isAuvoSessionEventType(event.eventType)) {
+          const parsed = parseAuvoSessionPayload(event.payload);
+          if (!parsed) {
+            skipped += 1;
+            continue;
+          }
+          const phoneNormalized = normalizePhone(parsed.phoneRaw);
+          const existingItem = this.auvoInboxItems.find((item) => item.externalServiceId === parsed.externalServiceId);
+          if (existingItem) {
+            existingItem.contactName = parsed.contactName ?? existingItem.contactName;
+            existingItem.phoneNormalized = phoneNormalized ?? existingItem.phoneNormalized;
+            existingItem.auvoContactId = parsed.auvoContactId ?? existingItem.auvoContactId;
+            existingItem.email = parsed.email ?? existingItem.email;
+            existingItem.channelType = parsed.channelType ?? existingItem.channelType;
+            existingItem.auvoSignals = { ...parsed.signals, channelType: parsed.channelType };
+            existingItem.lastEventId = event.id;
+            existingItem.updatedAt = now;
+          }
+          applied += 1;
+          continue;
+        }
+
+        const parsed = parseAuvoContactPayload(event.payload);
+        if (!parsed) {
+          skipped += 1;
+          continue;
+        }
+        const phoneNormalized = normalizePhone(parsed.phoneRaw);
+        const relatedItems = this.auvoInboxItems.filter((item) => item.auvoContactId === parsed.auvoContactId);
+        for (const item of relatedItems) {
+          item.contactName = parsed.contactName ?? item.contactName;
+          item.phoneNormalized = phoneNormalized ?? item.phoneNormalized;
+          item.email = parsed.email ?? item.email;
+          item.auvoSignals = { ...parsed.signals, channelType: item.channelType };
+          item.lastEventId = event.id;
+          item.updatedAt = now;
+        }
+        applied += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    return { scanned: events.length, applied, skipped, failed };
+  }
+
   async receiveAuvoWebhookEvent(input: ReceiveAuvoWebhookEventInput): Promise<ReceiveAuvoWebhookEventResult> {
     const payloadHash = createWebhookPayloadHash(input.payload);
     const existing = this.auvoEvents.find((event) => event.payloadHash === payloadHash);
@@ -1847,6 +2227,7 @@ class FakeCrmRepository implements CrmDataRepository {
             auvoContactId: parsed.auvoContactId,
             email: parsed.email,
             channelType: parsed.channelType,
+            auvoSignals: { ...parsed.signals, channelType: parsed.channelType },
             resolution: null,
             resolvedOpportunityId: null,
             resolvedCustomerId: null,
@@ -2166,6 +2547,12 @@ class FakeCrmRepository implements CrmDataRepository {
     if (!this.activeUsers.has(userId)) throw new ApiError(422, "bad_request", "Informe um responsavel ativo no CRM.");
   }
 
+  private assertCustomerExists(customerId: string): void {
+    if (!this.customers.some((item) => item.id === customerId)) {
+      throw new ApiError(422, "bad_request", "Cliente informado nao existe.");
+    }
+  }
+
   private assertCustomerOpportunityMatch(customerId: string, opportunityId: string | null): void {
     if (!this.customers.some((item) => item.id === customerId)) {
       throw new ApiError(422, "bad_request", "Cliente informado nao existe.");
@@ -2173,6 +2560,20 @@ class FakeCrmRepository implements CrmDataRepository {
     if (!opportunityId) return;
     const opportunity = this.opportunities.find((item) => item.id === opportunityId && item.clienteId === customerId);
     if (!opportunity) throw new ApiError(400, "bad_request", "A oportunidade informada nao pertence ao cliente.");
+  }
+
+  private assertAddressBelongsToCustomer(addressId: string | null, customerId: string): void {
+    if (!addressId) return;
+    if (!this.addresses.some((address) => address.id === addressId && address.customerId === customerId && !address.archivedAt)) {
+      throw new ApiError(400, "bad_request", "O endereco informado nao pertence ao cliente.");
+    }
+  }
+
+  private assertEquipmentBelongsToCustomer(equipmentIds: string[], customerId: string): void {
+    const uniqueIds = Array.from(new Set(equipmentIds));
+    if (!uniqueIds.every((id) => this.equipment.some((equipment) => equipment.id === id && equipment.customerId === customerId && !equipment.archivedAt))) {
+      throw new ApiError(400, "bad_request", "Um ou mais equipamentos nao pertencem ao cliente.");
+    }
   }
 
   private assertCustomerCanReceiveOpportunity(customerId: string): void {
@@ -2248,6 +2649,7 @@ function makeCustomer(overrides: Partial<CustomerRecord>): CustomerRecord {
     archivedAt: null,
     opportunitiesCount: 0,
     duplicatePhoneCustomerIds: [],
+    auvoSignals: null,
   };
 }
 
@@ -2280,6 +2682,7 @@ function makeOpportunity(overrides: Partial<OpportunityRecord> & { createdBy?: s
     motivoPerdaNome: null,
     status: overrides.status ?? "ativa",
     currentNextActionId: overrides.currentNextActionId ?? null,
+    auvoSignals: overrides.auvoSignals ?? null,
     createdAt: now,
     updatedAt: now,
     archivedAt: null,
@@ -2329,6 +2732,78 @@ function makeNextAction(overrides: Partial<NextActionRecord>): NextActionRecord 
     cancelledBy: null,
     cancellationReason: null,
     archivedAt: null,
+  };
+}
+
+function makeAddress(overrides: Partial<AddressRecord>): AddressRecord {
+  return {
+    id: overrides.id ?? randomUUID(),
+    customerId: overrides.customerId ?? customerId,
+    label: overrides.label ?? "Endereco principal",
+    kind: overrides.kind ?? "service",
+    street: overrides.street ?? null,
+    number: overrides.number ?? null,
+    complement: overrides.complement ?? null,
+    neighborhood: overrides.neighborhood ?? null,
+    city: overrides.city ?? null,
+    state: overrides.state ?? null,
+    postalCode: overrides.postalCode ?? null,
+    reference: overrides.reference ?? null,
+    accessNotes: overrides.accessNotes ?? null,
+    isPrimary: overrides.isPrimary ?? false,
+    createdAt: overrides.createdAt ?? now,
+    updatedAt: overrides.updatedAt ?? now,
+    createdBy: overrides.createdBy ?? actorId,
+    updatedBy: overrides.updatedBy ?? null,
+    archivedAt: overrides.archivedAt ?? null,
+  };
+}
+
+function makeEquipment(overrides: Partial<EquipmentRecord>): EquipmentRecord {
+  return {
+    id: overrides.id ?? randomUUID(),
+    customerId: overrides.customerId ?? customerId,
+    opportunityId: overrides.opportunityId ?? null,
+    addressId: overrides.addressId ?? null,
+    type: overrides.type ?? "other",
+    brand: overrides.brand ?? null,
+    model: overrides.model ?? null,
+    btus: overrides.btus ?? null,
+    voltage: overrides.voltage ?? null,
+    environment: overrides.environment ?? null,
+    serialNumber: overrides.serialNumber ?? null,
+    installedAt: overrides.installedAt ?? null,
+    warrantyUntil: overrides.warrantyUntil ?? null,
+    notes: overrides.notes ?? null,
+    createdAt: overrides.createdAt ?? now,
+    updatedAt: overrides.updatedAt ?? now,
+    createdBy: overrides.createdBy ?? actorId,
+    updatedBy: overrides.updatedBy ?? null,
+    archivedAt: overrides.archivedAt ?? null,
+  };
+}
+
+function makeVisit(overrides: Partial<VisitRecord>): VisitRecord {
+  return {
+    id: overrides.id ?? randomUUID(),
+    customerId: overrides.customerId ?? customerId,
+    opportunityId: overrides.opportunityId ?? null,
+    addressId: overrides.addressId ?? null,
+    scheduledStartAt: overrides.scheduledStartAt ?? "2026-07-21T13:00:00.000Z",
+    scheduledEndAt: overrides.scheduledEndAt ?? null,
+    technicianUserId: overrides.technicianUserId ?? null,
+    status: overrides.status ?? "awaiting_confirmation",
+    objective: overrides.objective ?? "Visita tecnica",
+    accessNotes: overrides.accessNotes ?? null,
+    confirmationNotes: overrides.confirmationNotes ?? null,
+    result: overrides.result ?? null,
+    nextSteps: overrides.nextSteps ?? null,
+    equipmentIds: overrides.equipmentIds ?? [],
+    createdAt: overrides.createdAt ?? now,
+    updatedAt: overrides.updatedAt ?? now,
+    createdBy: overrides.createdBy ?? actorId,
+    updatedBy: overrides.updatedBy ?? null,
+    archivedAt: overrides.archivedAt ?? null,
   };
 }
 

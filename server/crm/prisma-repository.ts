@@ -4,9 +4,11 @@ import type { CrmPrismaClient } from "../database/prisma.js";
 import type {
   Actor,
   ActivityRecord,
+  AddressRecord,
   ApproveOpportunityInput,
   AuvoInboxItemRecord,
   AuvoInboxStatus,
+  AuvoParsedSignals,
   AuvoIntegrationStatusRecord,
   AuvoWebhookEventFilters,
   AuvoWebhookEventListRecord,
@@ -14,18 +16,23 @@ import type {
   CancelNextActionInput,
   CommercialCenterFilters,
   CommercialCenterRecord,
+  CommercialCenterVisitItem,
   CommercialReportFilters,
   CommercialReportRecord,
   CompleteNextActionInput,
   CreateActivityInput,
+  CreateAddressInput,
+  CreateEquipmentInput,
   CreateCustomerInput,
   CreateLossReasonInput,
   CreateNextActionInput,
   CreateOpportunityInput,
   CreatePipelineStageInput,
+  CreateVisitInput,
   CrmDataRepository,
   CustomerListRecord,
   CustomerRecord,
+  EquipmentRecord,
   GlobalSearchResult,
   LossReasonAdminRecord,
   LossReasonRecord,
@@ -49,23 +56,35 @@ import type {
   ResolveAuvoInboxItemInput,
   SnoozeNotificationInput,
   UpdateActivityInput,
+  UpdateAddressInput,
   UpdateCustomerInput,
+  UpdateEquipmentInput,
   UpdateNextActionInput,
   UpdateOpportunityInput,
   UpdatePipelineStageInput,
+  UpdateVisitInput,
   UpsertMembershipInput,
+  VisitRecord,
+  VisitStatus,
 } from "./types.js";
 import type { CrmRole } from "../auth/rbac.js";
 import { createWebhookPayloadHash, normalizeAuvoWebhookStatus, sanitizeWebhookPayload } from "./auvo-webhook.js";
-import { isAuvoContactEventType, isAuvoSessionEventType, parseAuvoContactPayload, parseAuvoSessionPayload } from "./auvo-parser.js";
+import { isAuvoContactEventType, isAuvoSessionEventType, parseAuvoContactPayload, parseAuvoSessionPayload, type ParsedAuvoSignals } from "./auvo-parser.js";
 import { assertActiveOpportunityHasNextAction, normalizePhone } from "./validation.js";
 
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 200;
+const DEFAULT_AUVO_BACKFILL_LIMIT = 500;
+const MAX_AUVO_BACKFILL_LIMIT = 1000;
 
 function clampLimit(limit: number | undefined): number {
   if (!limit || !Number.isFinite(limit) || limit <= 0) return DEFAULT_LIST_LIMIT;
   return Math.min(Math.trunc(limit), MAX_LIST_LIMIT);
+}
+
+function clampAuvoBackfillLimit(limit: number | undefined): number {
+  if (!limit || !Number.isFinite(limit) || limit <= 0) return DEFAULT_AUVO_BACKFILL_LIMIT;
+  return Math.min(Math.trunc(limit), MAX_AUVO_BACKFILL_LIMIT);
 }
 
 type PrismaExecutor = Pick<
@@ -80,12 +99,23 @@ type CustomerWithCount = Awaited<ReturnType<CrmPrismaClient["customer"]["findFir
 type OpportunityWithRelations = NonNullable<
   Awaited<ReturnType<CrmPrismaClient["opportunity"]["findFirst"]>>
 > & {
-  cliente: { nome: string };
+  cliente: { nome: string; auvoContactId: string | null };
   etapa: { nome: string };
   motivoPerda: { nome: string } | null;
 };
 
 type ActivityEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["activity"]["findFirst"]>>>;
+type AddressEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["address"]["findFirst"]>>>;
+type EquipmentEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["equipment"]["findFirst"]>>>;
+type VisitEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["visit"]["findFirst"]>>> & {
+  visitEquipment?: Array<{ equipmentId: string }>;
+};
+
+type CommercialVisitWithRelations = NonNullable<Awaited<ReturnType<CrmPrismaClient["visit"]["findFirst"]>>> & {
+  customer: { nome: string };
+  opportunity: { titulo: string; situacao: string } | null;
+  address: { label: string } | null;
+};
 
 type NextActionWithRelations = NonNullable<Awaited<ReturnType<CrmPrismaClient["nextAction"]["findFirst"]>>> & {
   customer: { nome: string };
@@ -111,7 +141,7 @@ type NotificationPayload = {
 };
 
 const opportunityInclude = {
-  cliente: { select: { nome: true } },
+  cliente: { select: { nome: true, auvoContactId: true } },
   etapa: { select: { nome: true } },
   motivoPerda: { select: { nome: true } },
 } as const;
@@ -199,7 +229,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     const page = customers.slice(0, limit);
     return {
       customers: await Promise.all(page.map((customer) => this.mapCustomer(customer))),
-      nextCursor: customers.length > limit ? page.at(-1)?.id ?? null : null,
+      nextCursor: customers.length > limit ? page[page.length - 1]?.id ?? null : null,
     };
   }
 
@@ -306,7 +336,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     const page = opportunities.slice(0, limit);
     return {
       opportunities: page.map(mapOpportunity),
-      nextCursor: opportunities.length > limit ? page.at(-1)?.id ?? null : null,
+      nextCursor: opportunities.length > limit ? page[page.length - 1]?.id ?? null : null,
     };
   }
 
@@ -318,7 +348,9 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       },
       include: opportunityInclude,
     });
-    return opportunity ? mapOpportunity(opportunity) : null;
+    if (!opportunity) return null;
+    const auvoSignals = opportunity.cliente.auvoContactId ? await this.prisma.auvoContactSignal.findUnique({ where: { auvoContactId: opportunity.cliente.auvoContactId } }) : null;
+    return { ...mapOpportunity(opportunity), auvoSignals: auvoSignals ? mapAuvoSignals(auvoSignals) : null };
   }
 
   async createOpportunity(actor: Actor, input: CreateOpportunityInput): Promise<OpportunityRecord> {
@@ -665,6 +697,348 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     return mapActivity(activity);
   }
 
+  async listAddresses(_actor: Actor, filters: { customerId: string; archived?: boolean }): Promise<AddressRecord[]> {
+    await this.assertCustomerExists(filters.customerId);
+    const addresses = await this.prisma.address.findMany({
+      where: {
+        customerId: filters.customerId,
+        archivedAt: filters.archived ? { not: null } : null,
+      },
+      orderBy: [{ isPrimary: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+    });
+    return addresses.map(mapAddress);
+  }
+
+  async getAddress(_actor: Actor, id: string): Promise<AddressRecord | null> {
+    const address = await this.prisma.address.findUnique({ where: { id } });
+    return address ? mapAddress(address) : null;
+  }
+
+  async createAddress(actor: Actor, input: CreateAddressInput): Promise<AddressRecord> {
+    await this.assertCustomerExists(input.customerId);
+    const address = await this.prisma.address.create({
+      data: {
+        customerId: input.customerId,
+        label: input.label,
+        kind: input.kind ?? "service",
+        street: input.street ?? null,
+        number: input.number ?? null,
+        complement: input.complement ?? null,
+        neighborhood: input.neighborhood ?? null,
+        city: input.city ?? null,
+        state: input.state ?? null,
+        postalCode: input.postalCode ?? null,
+        reference: input.reference ?? null,
+        accessNotes: input.accessNotes ?? null,
+        isPrimary: input.isPrimary ?? false,
+        createdBy: actor.id,
+        updatedBy: actor.id,
+      },
+    });
+    return mapAddress(address);
+  }
+
+  async updateAddress(actor: Actor, id: string, input: UpdateAddressInput): Promise<AddressRecord | null> {
+    const current = await this.prisma.address.findUnique({ where: { id }, select: { id: true } });
+    if (!current) return null;
+    const address = await this.prisma.address.update({
+      where: { id },
+      data: {
+        ...(input.label !== undefined ? { label: input.label } : {}),
+        ...(input.kind !== undefined ? { kind: input.kind } : {}),
+        ...(input.street !== undefined ? { street: input.street } : {}),
+        ...(input.number !== undefined ? { number: input.number } : {}),
+        ...(input.complement !== undefined ? { complement: input.complement } : {}),
+        ...(input.neighborhood !== undefined ? { neighborhood: input.neighborhood } : {}),
+        ...(input.city !== undefined ? { city: input.city } : {}),
+        ...(input.state !== undefined ? { state: input.state } : {}),
+        ...(input.postalCode !== undefined ? { postalCode: input.postalCode } : {}),
+        ...(input.reference !== undefined ? { reference: input.reference } : {}),
+        ...(input.accessNotes !== undefined ? { accessNotes: input.accessNotes } : {}),
+        ...(input.isPrimary !== undefined ? { isPrimary: input.isPrimary } : {}),
+        updatedBy: actor.id,
+      },
+    });
+    return mapAddress(address);
+  }
+
+  async setAddressArchived(actor: Actor, id: string, archived: boolean): Promise<AddressRecord | null> {
+    const current = await this.prisma.address.findUnique({ where: { id }, select: { id: true } });
+    if (!current) return null;
+    const address = await this.prisma.address.update({
+      where: { id },
+      data: { archivedAt: archived ? new Date() : null, updatedBy: actor.id },
+    });
+    return mapAddress(address);
+  }
+
+  async listEquipment(actor: Actor, filters: { customerId?: string; opportunityId?: string; archived?: boolean }): Promise<EquipmentRecord[]> {
+    if (filters.customerId) await this.assertCustomerExists(filters.customerId);
+    if (filters.opportunityId) await this.assertCanAccessOpportunity(actor, filters.opportunityId);
+    const equipment = await this.prisma.equipment.findMany({
+      where: {
+        ...(filters.customerId ? { customerId: filters.customerId } : {}),
+        ...(filters.opportunityId ? { opportunityId: filters.opportunityId } : {}),
+        archivedAt: filters.archived ? { not: null } : null,
+      },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    });
+    return equipment.map(mapEquipment);
+  }
+
+  async getEquipment(actor: Actor, id: string): Promise<EquipmentRecord | null> {
+    const equipment = await this.prisma.equipment.findUnique({ where: { id } });
+    if (!equipment) return null;
+    if (equipment.opportunityId) await this.assertCanAccessOpportunity(actor, equipment.opportunityId);
+    return mapEquipment(equipment);
+  }
+
+  async createEquipment(actor: Actor, input: CreateEquipmentInput): Promise<EquipmentRecord> {
+    await this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
+    await this.assertAddressBelongsToCustomer(input.addressId ?? null, input.customerId);
+    const equipment = await this.prisma.equipment.create({
+      data: {
+        customerId: input.customerId,
+        opportunityId: input.opportunityId ?? null,
+        addressId: input.addressId ?? null,
+        type: input.type ?? "other",
+        brand: input.brand ?? null,
+        model: input.model ?? null,
+        btus: input.btus ?? null,
+        voltage: input.voltage ?? null,
+        environment: input.environment ?? null,
+        serialNumber: input.serialNumber ?? null,
+        installedAt: input.installedAt ? new Date(input.installedAt) : null,
+        warrantyUntil: input.warrantyUntil ? new Date(input.warrantyUntil) : null,
+        notes: input.notes ?? null,
+        createdBy: actor.id,
+        updatedBy: actor.id,
+      },
+    });
+    return mapEquipment(equipment);
+  }
+
+  async updateEquipment(actor: Actor, id: string, input: UpdateEquipmentInput): Promise<EquipmentRecord | null> {
+    const current = await this.getEquipment(actor, id);
+    if (!current) return null;
+    const finalCustomerId = current.customerId;
+    const finalOpportunityId = input.opportunityId === undefined ? current.opportunityId : input.opportunityId;
+    const finalAddressId = input.addressId === undefined ? current.addressId : input.addressId;
+    await this.assertCustomerOpportunityMatch(finalCustomerId, finalOpportunityId ?? null);
+    await this.assertAddressBelongsToCustomer(finalAddressId ?? null, finalCustomerId);
+    const equipment = await this.prisma.equipment.update({
+      where: { id },
+      data: {
+        ...(input.opportunityId !== undefined ? { opportunityId: input.opportunityId } : {}),
+        ...(input.addressId !== undefined ? { addressId: input.addressId } : {}),
+        ...(input.type !== undefined ? { type: input.type } : {}),
+        ...(input.brand !== undefined ? { brand: input.brand } : {}),
+        ...(input.model !== undefined ? { model: input.model } : {}),
+        ...(input.btus !== undefined ? { btus: input.btus } : {}),
+        ...(input.voltage !== undefined ? { voltage: input.voltage } : {}),
+        ...(input.environment !== undefined ? { environment: input.environment } : {}),
+        ...(input.serialNumber !== undefined ? { serialNumber: input.serialNumber } : {}),
+        ...(input.installedAt !== undefined ? { installedAt: input.installedAt ? new Date(input.installedAt) : null } : {}),
+        ...(input.warrantyUntil !== undefined ? { warrantyUntil: input.warrantyUntil ? new Date(input.warrantyUntil) : null } : {}),
+        ...(input.notes !== undefined ? { notes: input.notes } : {}),
+        updatedBy: actor.id,
+      },
+    });
+    return mapEquipment(equipment);
+  }
+
+  async setEquipmentArchived(actor: Actor, id: string, archived: boolean): Promise<EquipmentRecord | null> {
+    const current = await this.getEquipment(actor, id);
+    if (!current) return null;
+    const equipment = await this.prisma.equipment.update({
+      where: { id },
+      data: { archivedAt: archived ? new Date() : null, updatedBy: actor.id },
+    });
+    return mapEquipment(equipment);
+  }
+
+  async listVisits(actor: Actor, filters: { customerId?: string; opportunityId?: string; from?: string; to?: string; status?: VisitStatus; archived?: boolean }): Promise<VisitRecord[]> {
+    if (filters.customerId) await this.assertCustomerExists(filters.customerId);
+    if (filters.opportunityId) await this.assertCanAccessOpportunity(actor, filters.opportunityId);
+    const visits = await this.prisma.visit.findMany({
+      where: {
+        ...(filters.customerId ? { customerId: filters.customerId } : {}),
+        ...(filters.opportunityId ? { opportunityId: filters.opportunityId } : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+        archivedAt: filters.archived ? { not: null } : null,
+        ...(filters.from || filters.to
+          ? {
+              scheduledStartAt: {
+                ...(filters.from ? { gte: toDateOnly(filters.from) } : {}),
+                ...(filters.to ? { lte: toEndOfDateOnly(filters.to) } : {}),
+              },
+            }
+          : {}),
+        ...(actor.role === "vendedor"
+          ? {
+              OR: [
+                { technicianUserId: actor.id },
+                { createdBy: actor.id },
+                { opportunity: { responsavelId: actor.id } },
+              ],
+            }
+          : {}),
+      },
+      include: { visitEquipment: { select: { equipmentId: true } } },
+      orderBy: [{ scheduledStartAt: "asc" }, { id: "asc" }],
+    });
+    return visits.map(mapVisit);
+  }
+
+  async getVisit(actor: Actor, id: string): Promise<VisitRecord | null> {
+    const visit = await this.prisma.visit.findFirst({
+      where: {
+        id,
+        ...(actor.role === "vendedor"
+          ? {
+              OR: [
+                { technicianUserId: actor.id },
+                { createdBy: actor.id },
+                { opportunity: { responsavelId: actor.id } },
+              ],
+            }
+          : {}),
+      },
+      include: { visitEquipment: { select: { equipmentId: true } } },
+    });
+    return visit ? mapVisit(visit) : null;
+  }
+
+  async createVisit(actor: Actor, input: CreateVisitInput): Promise<VisitRecord> {
+    await this.assertCustomerOpportunityMatch(input.customerId, input.opportunityId ?? null);
+    await this.assertAddressBelongsToCustomer(input.addressId ?? null, input.customerId);
+    await this.assertEquipmentBelongsToCustomer(input.equipmentIds ?? [], input.customerId);
+    if (input.technicianUserId) await this.assertActiveResponsibleUser(input.technicianUserId);
+    const id = await this.prisma.$transaction(async (tx) => {
+      const visit = await tx.visit.create({
+        data: {
+          customerId: input.customerId,
+          opportunityId: input.opportunityId ?? null,
+          addressId: input.addressId ?? null,
+          scheduledStartAt: new Date(input.scheduledStartAt),
+          scheduledEndAt: input.scheduledEndAt ? new Date(input.scheduledEndAt) : null,
+          technicianUserId: input.technicianUserId ?? null,
+          status: input.status ?? "awaiting_confirmation",
+          objective: input.objective,
+          accessNotes: input.accessNotes ?? null,
+          confirmationNotes: input.confirmationNotes ?? null,
+          result: input.result ?? null,
+          nextSteps: input.nextSteps ?? null,
+          createdBy: actor.id,
+          updatedBy: actor.id,
+        },
+        select: { id: true },
+      });
+      if (input.equipmentIds?.length) {
+        await tx.visitEquipment.createMany({
+          data: input.equipmentIds.map((equipmentId) => ({ visitId: visit.id, equipmentId })),
+          skipDuplicates: true,
+        });
+      }
+      return visit.id;
+    });
+    return (await this.getVisit(actor, id)) as VisitRecord;
+  }
+
+  async updateVisit(actor: Actor, id: string, input: UpdateVisitInput): Promise<VisitRecord | null> {
+    const current = await this.getVisit(actor, id);
+    if (!current) return null;
+    const finalCustomerId = current.customerId;
+    const finalOpportunityId = input.opportunityId === undefined ? current.opportunityId : input.opportunityId;
+    const finalAddressId = input.addressId === undefined ? current.addressId : input.addressId;
+    const finalEquipmentIds = input.equipmentIds === undefined ? current.equipmentIds : input.equipmentIds;
+    await this.assertCustomerOpportunityMatch(finalCustomerId, finalOpportunityId ?? null);
+    await this.assertAddressBelongsToCustomer(finalAddressId ?? null, finalCustomerId);
+    await this.assertEquipmentBelongsToCustomer(finalEquipmentIds, finalCustomerId);
+    if (input.technicianUserId) await this.assertActiveResponsibleUser(input.technicianUserId);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.visit.update({
+        where: { id },
+        data: {
+          ...(input.opportunityId !== undefined ? { opportunityId: input.opportunityId } : {}),
+          ...(input.addressId !== undefined ? { addressId: input.addressId } : {}),
+          ...(input.scheduledStartAt !== undefined ? { scheduledStartAt: new Date(input.scheduledStartAt) } : {}),
+          ...(input.scheduledEndAt !== undefined ? { scheduledEndAt: input.scheduledEndAt ? new Date(input.scheduledEndAt) : null } : {}),
+          ...(input.technicianUserId !== undefined ? { technicianUserId: input.technicianUserId } : {}),
+          ...(input.status !== undefined ? { status: input.status } : {}),
+          ...(input.objective !== undefined ? { objective: input.objective } : {}),
+          ...(input.accessNotes !== undefined ? { accessNotes: input.accessNotes } : {}),
+          ...(input.confirmationNotes !== undefined ? { confirmationNotes: input.confirmationNotes } : {}),
+          ...(input.result !== undefined ? { result: input.result } : {}),
+          ...(input.nextSteps !== undefined ? { nextSteps: input.nextSteps } : {}),
+          updatedBy: actor.id,
+        },
+      });
+      if (input.equipmentIds !== undefined) {
+        await tx.visitEquipment.deleteMany({ where: { visitId: id } });
+        if (input.equipmentIds.length) {
+          await tx.visitEquipment.createMany({
+            data: input.equipmentIds.map((equipmentId) => ({ visitId: id, equipmentId })),
+            skipDuplicates: true,
+          });
+        }
+      }
+    });
+    return this.getVisit(actor, id);
+  }
+
+  async completeVisit(actor: Actor, id: string, input: { result: string; nextSteps?: string | null }): Promise<VisitRecord | null> {
+    const current = await this.getVisit(actor, id);
+    if (!current) return null;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.visit.update({
+        where: { id },
+        data: { status: "completed", result: input.result, nextSteps: input.nextSteps ?? current.nextSteps, updatedBy: actor.id },
+      });
+      await tx.activity.create({
+        data: {
+          clienteId: current.customerId,
+          oportunidadeId: current.opportunityId,
+          tipo: "visit",
+          title: "Visita concluida",
+          corpo: input.result,
+          occurredAt: new Date(),
+          createdBy: actor.id,
+          updatedBy: actor.id,
+          source: "system",
+          metadata: { visitId: id },
+        },
+      });
+    });
+    return this.getVisit(actor, id);
+  }
+
+  async cancelVisit(actor: Actor, id: string, input: { reason: string }): Promise<VisitRecord | null> {
+    const current = await this.getVisit(actor, id);
+    if (!current) return null;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.visit.update({
+        where: { id },
+        data: { status: "cancelled", confirmationNotes: input.reason, updatedBy: actor.id },
+      });
+      await tx.activity.create({
+        data: {
+          clienteId: current.customerId,
+          oportunidadeId: current.opportunityId,
+          tipo: "visit",
+          title: "Visita cancelada",
+          corpo: input.reason,
+          occurredAt: new Date(),
+          createdBy: actor.id,
+          updatedBy: actor.id,
+          source: "system",
+          metadata: { visitId: id },
+        },
+      });
+    });
+    return this.getVisit(actor, id);
+  }
+
   async listNextActions(
     actor: Actor,
     filters: {
@@ -744,7 +1118,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       ...(filters.demandType ? { tipoDemanda: filters.demandType } : {}),
     };
 
-    const [pendingActions, activeOpportunities, periodOpportunities, newCustomers, auvoInboxPendingCount] = await Promise.all([
+    const [pendingActions, upcomingVisits, activeOpportunities, periodOpportunities, newCustomers, auvoInboxPendingCount] = await Promise.all([
       this.prisma.nextAction.findMany({
         where: {
           archivedAt: null,
@@ -757,6 +1131,37 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         include: nextActionInclude,
         orderBy: { dueAt: "asc" },
         take: 200,
+      }),
+      this.prisma.visit.findMany({
+        where: {
+          archivedAt: null,
+          scheduledStartAt: { gte: startOfToday },
+          status: { in: ["awaiting_confirmation", "confirmed"] },
+          ...(filters.includeTestFixtures ? {} : { customer: { isTestFixture: false } }),
+          ...(actor.role === "vendedor"
+            ? {
+                OR: [
+                  { technicianUserId: actor.id },
+                  { createdBy: actor.id },
+                  { opportunity: { responsavelId: actor.id } },
+                ],
+              }
+            : actor.role === "gestor" && filters.responsibleUserId
+              ? {
+                  OR: [
+                    { technicianUserId: filters.responsibleUserId },
+                    { opportunity: { responsavelId: filters.responsibleUserId } },
+                  ],
+                }
+              : {}),
+        },
+        include: {
+          customer: { select: { nome: true } },
+          opportunity: { select: { titulo: true, situacao: true } },
+          address: { select: { label: true } },
+        },
+        orderBy: { scheduledStartAt: "asc" },
+        take: 50,
       }),
       this.prisma.opportunity.findMany({
         where: { ...opportunityFilters, status: "ativa" },
@@ -806,7 +1211,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         .filter((opportunity) => !opportunity.currentNextActionId || !pendingById.has(opportunity.currentNextActionId))
         .map((opportunity) => mapCommercialOpportunity(opportunity, now)),
       quotesAwaitingReturn: activeItems.filter((opportunity) => ["Orcamento enviado", "Negociacao"].includes(opportunity.stageName)),
-      upcomingVisits: actionItems.filter((action) => /visita/i.test(`${action.title} ${action.opportunitySituation ?? ""}`) && new Date(action.dueAt) >= startOfToday),
+      upcomingVisits: upcomingVisits.map(mapCommercialVisit),
       stalledOpportunities: activeOpportunities
         .filter((opportunity) => {
           if (opportunity.updatedAt > stalledCutoff) return false;
@@ -1197,24 +1602,43 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     }
 
     if (!outOfScope && isAuvoSessionEventType(eventType)) {
-      await this.upsertInboxItemFromSessionEvent(event.id, input.payload).catch(() => {
+      await this.upsertInboxItemFromSessionEvent(event.id, event.receivedAt, input.payload).catch(() => {
         // A falha ao processar a Caixa de Entrada nao pode derrubar a resposta rapida do webhook.
         // O payload bruto ja esta persistido em auvo_webhook_events; o item pode ser reconciliado depois.
+      });
+    } else if (!outOfScope && isAuvoContactEventType(eventType)) {
+      await this.upsertContactSnapshotFromContactEvent(event.id, event.receivedAt, input.payload).catch(() => {
+        // Mesmo principio do SESSION_*: contato canonico pode ser reconciliado depois.
       });
     }
 
     return { event: mapAuvoWebhookEvent(event), duplicate: false };
   }
 
-  private async upsertInboxItemFromSessionEvent(eventId: string, payload: unknown): Promise<void> {
+  private async upsertInboxItemFromSessionEvent(eventId: string, eventReceivedAt: Date, payload: unknown): Promise<void> {
     const parsed = parseAuvoSessionPayload(payload);
     if (!parsed) return;
 
+    if (parsed.auvoContactId) {
+      await this.upsertAuvoContactSignals(eventId, eventReceivedAt, {
+        auvoContactId: parsed.auvoContactId,
+        contactName: parsed.contactName,
+        phoneNormalized: normalizePhone(parsed.phoneRaw),
+        email: parsed.email,
+        channelType: parsed.channelType,
+        signals: parsed.signals,
+      });
+    }
+
     const existing = await this.prisma.auvoInboxItem.findUnique({ where: { externalServiceId: parsed.externalServiceId } });
     if (existing) {
+      if (await this.isInboxItemNewerThanEvent(existing.lastEventId, eventReceivedAt)) return;
       await this.prisma.auvoInboxItem.update({
         where: { id: existing.id },
-        data: { lastEventId: eventId },
+        data: {
+          lastEventId: eventId,
+          ...toAuvoSignalColumns(parsed.signals, parsed.channelType),
+        },
       });
       return;
     }
@@ -1232,33 +1656,93 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
         phoneNormalized,
         auvoContactId: parsed.auvoContactId,
         email: parsed.email,
-        channelType: parsed.channelType,
+        ...toAuvoSignalColumns(parsed.signals, parsed.channelType),
         lastEventId: eventId,
         isTestFixture: isHomologationPayload(payload),
       },
     });
   }
 
-  private async upsertContactSnapshotFromContactEvent(payload: unknown): Promise<void> {
+  private async upsertContactSnapshotFromContactEvent(eventId: string, eventReceivedAt: Date, payload: unknown): Promise<void> {
     const parsed = parseAuvoContactPayload(payload);
     if (!parsed) return;
 
+    const phoneNormalized = normalizePhone(parsed.phoneRaw);
+    await this.upsertAuvoContactSignals(eventId, eventReceivedAt, {
+      auvoContactId: parsed.auvoContactId,
+      contactName: parsed.contactName,
+      phoneNormalized,
+      email: parsed.email,
+      channelType: null,
+      signals: parsed.signals,
+    });
+
     const existing = await this.prisma.auvoInboxItem.findFirst({ where: { auvoContactId: parsed.auvoContactId } });
     if (!existing) return;
+    if (await this.isInboxItemNewerThanEvent(existing.lastEventId, eventReceivedAt)) return;
 
-    const phoneNormalized = normalizePhone(parsed.phoneRaw) ?? existing.phoneNormalized;
+    const finalPhoneNormalized = phoneNormalized ?? existing.phoneNormalized;
     const contactName = parsed.contactName ?? existing.contactName;
     const suggestedCustomerId =
-      existing.suggestedCustomerId ?? (await this.suggestCustomerForInboxItem(parsed.auvoContactId, phoneNormalized, parsed.email ?? existing.email));
+      existing.suggestedCustomerId ?? (await this.suggestCustomerForInboxItem(parsed.auvoContactId, finalPhoneNormalized, parsed.email ?? existing.email));
 
     await this.prisma.auvoInboxItem.update({
       where: { id: existing.id },
       data: {
         contactName,
-        phoneNormalized,
+        phoneNormalized: finalPhoneNormalized,
         email: parsed.email ?? existing.email,
         suggestedCustomerId,
-        title: buildCanonicalContactTitle(contactName, phoneNormalized),
+        title: buildCanonicalContactTitle(contactName, finalPhoneNormalized),
+        ...toAuvoSignalColumns(parsed.signals, existing.channelType),
+      },
+    });
+  }
+
+  private async isInboxItemNewerThanEvent(lastEventId: string | null, eventReceivedAt: Date): Promise<boolean> {
+    if (!lastEventId) return false;
+    const lastEvent = await this.prisma.auvoWebhookEvent.findUnique({
+      where: { id: lastEventId },
+      select: { receivedAt: true },
+    });
+    return Boolean(lastEvent?.receivedAt && lastEvent.receivedAt > eventReceivedAt);
+  }
+
+  private async upsertAuvoContactSignals(
+    eventId: string | null,
+    eventReceivedAt: Date | null,
+    input: {
+      auvoContactId: string;
+      contactName: string | null;
+      phoneNormalized: string | null;
+      email: string | null;
+      channelType: string | null;
+      signals: ParsedAuvoSignals;
+    },
+  ): Promise<void> {
+    const data = {
+      contactName: input.contactName,
+      phoneNormalized: input.phoneNormalized,
+      email: input.email,
+      ...toAuvoSignalColumns(input.signals, input.channelType),
+      lastEventId: eventId,
+      lastEventReceivedAt: eventReceivedAt,
+    };
+    const current = await this.prisma.auvoContactSignal.findUnique({
+      where: { auvoContactId: input.auvoContactId },
+      select: { auvoContactId: true, lastEventReceivedAt: true },
+    });
+    if (current?.lastEventReceivedAt && eventReceivedAt && current.lastEventReceivedAt > eventReceivedAt) return;
+    if (!current) {
+      await this.prisma.auvoContactSignal.create({ data: { auvoContactId: input.auvoContactId, ...data } });
+      return;
+    }
+    await this.prisma.auvoContactSignal.update({
+      where: { auvoContactId: input.auvoContactId },
+      data: {
+        ...compactNullableUpdate(data),
+        lastEventId: eventId,
+        lastEventReceivedAt: eventReceivedAt,
       },
     });
   }
@@ -1429,7 +1913,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     const page = events.slice(0, limit);
     return {
       events: page.map(mapAuvoWebhookEvent),
-      nextCursor: events.length > limit ? page.at(-1)?.id ?? null : null,
+      nextCursor: events.length > limit ? page[page.length - 1]?.id ?? null : null,
     };
   }
 
@@ -1519,18 +2003,53 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     return { claimed: batch.length, processed, retried, failed };
   }
 
+  async backfillAuvoParsedSignals(limit = DEFAULT_AUVO_BACKFILL_LIMIT): Promise<{ scanned: number; applied: number; skipped: number; failed: number }> {
+    const batch = await this.prisma.auvoWebhookEvent.findMany({
+      where: {
+        status: { not: "ignored" },
+        OR: [{ eventType: { startsWith: "SESSION_" } }, { eventType: { startsWith: "CONTACT_" } }],
+      },
+      orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+      take: clampAuvoBackfillLimit(limit),
+    });
+
+    let applied = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const event of batch) {
+      try {
+        if (isAuvoSessionEventType(event.eventType)) {
+          await this.upsertInboxItemFromSessionEvent(event.id, event.receivedAt, event.rawPayloadJson);
+          applied += 1;
+          continue;
+        }
+        if (isAuvoContactEventType(event.eventType)) {
+          await this.upsertContactSnapshotFromContactEvent(event.id, event.receivedAt, event.rawPayloadJson);
+          applied += 1;
+          continue;
+        }
+        skipped += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    return { scanned: batch.length, applied, skipped, failed };
+  }
+
   /** Processa um evento ja reivindicado (status="processing") e grava o resultado real. Usado
    * tanto pelo reconcile em lote quanto pelo botao "Reprocessar" (execucao imediata, sincrona). */
   private async processClaimedAuvoWebhookEvent(
-    event: { id: string; eventType: string | null; rawPayloadJson: Prisma.JsonValue; attemptCount: number },
+    event: { id: string; eventType: string | null; rawPayloadJson: Prisma.JsonValue; attemptCount: number; receivedAt: Date },
     maxAttempts: number,
   ): Promise<"processed" | "retried" | "failed"> {
     const now = new Date();
     try {
       if (isAuvoSessionEventType(event.eventType)) {
-        await this.upsertInboxItemFromSessionEvent(event.id, event.rawPayloadJson);
+        await this.upsertInboxItemFromSessionEvent(event.id, event.receivedAt, event.rawPayloadJson);
       } else if (isAuvoContactEventType(event.eventType)) {
-        await this.upsertContactSnapshotFromContactEvent(event.rawPayloadJson);
+        await this.upsertContactSnapshotFromContactEvent(event.id, event.receivedAt, event.rawPayloadJson);
       }
       await this.prisma.auvoWebhookEvent.update({
         where: { id: event.id },
@@ -1949,6 +2468,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
           select: { id: true },
         })
       : [];
+    const auvoSignals = customer.auvoContactId ? await this.prisma.auvoContactSignal.findUnique({ where: { auvoContactId: customer.auvoContactId } }) : null;
     return {
       id: customer.id,
       tipoPessoa: customer.tipoPessoa as CustomerRecord["tipoPessoa"],
@@ -1971,6 +2491,7 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       archivedAt: customer.archivedAt?.toISOString() ?? null,
       opportunitiesCount: customer._count?.opportunities ?? 0,
       duplicatePhoneCustomerIds: duplicates.map((duplicate) => duplicate.id),
+      auvoSignals: auvoSignals ? mapAuvoSignals(auvoSignals) : null,
     };
   }
 
@@ -1999,6 +2520,24 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       select: { id: true },
     });
     if (!opportunity) throw new ApiError(400, "bad_request", "A oportunidade informada nao pertence ao cliente.");
+  }
+
+  private async assertAddressBelongsToCustomer(addressId: string | null, customerId: string): Promise<void> {
+    if (!addressId) return;
+    const address = await this.prisma.address.findFirst({
+      where: { id: addressId, customerId, archivedAt: null },
+      select: { id: true },
+    });
+    if (!address) throw new ApiError(400, "bad_request", "O endereco informado nao pertence ao cliente.");
+  }
+
+  private async assertEquipmentBelongsToCustomer(equipmentIds: string[], customerId: string): Promise<void> {
+    if (!equipmentIds.length) return;
+    const uniqueIds = Array.from(new Set(equipmentIds));
+    const count = await this.prisma.equipment.count({
+      where: { id: { in: uniqueIds }, customerId, archivedAt: null },
+    });
+    if (count !== uniqueIds.length) throw new ApiError(400, "bad_request", "Um ou mais equipamentos nao pertencem ao cliente.");
   }
 
   private async assertCustomerExists(customerId: string): Promise<void> {
@@ -2254,6 +2793,135 @@ function toPrismaJson(value: Record<string, unknown> | undefined): Prisma.InputJ
   return (value ?? {}) as Prisma.InputJsonValue;
 }
 
+function toAuvoSignalColumns(signals: ParsedAuvoSignals, channelType: string | null): {
+  origin: string | null;
+  utmJson: Prisma.InputJsonValue;
+  tagsJson: Prisma.InputJsonValue;
+  customFieldsJson: Prisma.InputJsonValue;
+  classification: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  agentId: string | null;
+  agentName: string | null;
+  channelType: string | null;
+  sessionStartedAt: Date | null;
+  sessionEndedAt: Date | null;
+  firstUserInteractionAt: Date | null;
+  firstAgentMessageAt: Date | null;
+  lastInteractionAt: Date | null;
+  lastMessageText: string | null;
+  unreadCount: number | null;
+  waitReply: boolean | null;
+  windowStatus: string | null;
+  derivedJson: Prisma.InputJsonValue;
+  parsedSignalsJson: Prisma.InputJsonValue;
+} {
+  return {
+    origin: signals.origin,
+    utmJson: signals.utm as Prisma.InputJsonValue,
+    tagsJson: signals.tags as Prisma.InputJsonValue,
+    customFieldsJson: signals.customFields as Prisma.InputJsonValue,
+    classification: signals.classification,
+    departmentId: signals.departmentId,
+    departmentName: signals.departmentName,
+    agentId: signals.agentId,
+    agentName: signals.agentName,
+    channelType,
+    sessionStartedAt: toNullableDate(signals.sessionStartedAt),
+    sessionEndedAt: toNullableDate(signals.sessionEndedAt),
+    firstUserInteractionAt: toNullableDate(signals.firstUserInteractionAt),
+    firstAgentMessageAt: toNullableDate(signals.firstAgentMessageAt),
+    lastInteractionAt: toNullableDate(signals.lastInteractionAt),
+    lastMessageText: signals.lastMessageText,
+    unreadCount: signals.unreadCount,
+    waitReply: signals.waitReply,
+    windowStatus: signals.windowStatus,
+    derivedJson: signals.derived as Prisma.InputJsonValue,
+    parsedSignalsJson: { ...signals, channelType } as Prisma.InputJsonValue,
+  };
+}
+
+function compactNullableUpdate<T extends Record<string, unknown>>(data: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(data).filter(([, value]) => {
+      if (value === null || value === undefined) return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      if (isPlainEmptyObject(value)) return false;
+      return true;
+    }),
+  ) as Partial<T>;
+}
+
+function isPlainEmptyObject(value: unknown): boolean {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) && value.constructor === Object && Object.keys(value).length === 0);
+}
+
+function toNullableDate(value: string | null): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function mapAuvoSignals(row: {
+  origin: string | null;
+  utmJson: unknown;
+  tagsJson: unknown;
+  customFieldsJson: unknown;
+  classification: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  agentId: string | null;
+  agentName: string | null;
+  channelType: string | null;
+  sessionStartedAt: Date | null;
+  sessionEndedAt: Date | null;
+  firstUserInteractionAt: Date | null;
+  firstAgentMessageAt: Date | null;
+  lastInteractionAt: Date | null;
+  lastMessageText: string | null;
+  unreadCount: number | null;
+  waitReply: boolean | null;
+  windowStatus: string | null;
+  derivedJson: unknown;
+}): AuvoParsedSignals {
+  const fallbackDerived: AuvoParsedSignals["derived"] = {
+    intent: "outro",
+    urgency: "normal",
+    suggestedAction: "human_review",
+    confidence: 0,
+    missingData: ["tipo_demanda"],
+    slaState: "novo",
+    needsHumanReview: true,
+    summary: "Atendimento aguardando triagem",
+  };
+  return {
+    origin: row.origin,
+    utm: row.utmJson ?? {},
+    tags: Array.isArray(row.tagsJson) ? row.tagsJson : [],
+    customFields: Array.isArray(row.customFieldsJson) ? row.customFieldsJson : [],
+    classification: row.classification,
+    departmentId: row.departmentId,
+    departmentName: row.departmentName,
+    agentId: row.agentId,
+    agentName: row.agentName,
+    channelType: row.channelType,
+    sessionStartedAt: row.sessionStartedAt?.toISOString() ?? null,
+    sessionEndedAt: row.sessionEndedAt?.toISOString() ?? null,
+    firstUserInteractionAt: row.firstUserInteractionAt?.toISOString() ?? null,
+    firstAgentMessageAt: row.firstAgentMessageAt?.toISOString() ?? null,
+    lastInteractionAt: row.lastInteractionAt?.toISOString() ?? null,
+    lastMessageText: row.lastMessageText,
+    unreadCount: row.unreadCount,
+    waitReply: row.waitReply,
+    windowStatus: row.windowStatus,
+    derived: isRecordLike(row.derivedJson) ? { ...fallbackDerived, ...row.derivedJson } as AuvoParsedSignals["derived"] : fallbackDerived,
+  };
+}
+
+function isRecordLike(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
 function buildNotificationPayload(payload: NotificationPayload): Prisma.NotificationUncheckedCreateInput {
   return {
     userId: payload.userId,
@@ -2322,6 +2990,25 @@ function mapAuvoInboxItem(row: {
   auvoContactId: string | null;
   email: string | null;
   channelType: string | null;
+  origin: string | null;
+  utmJson: unknown;
+  tagsJson: unknown;
+  customFieldsJson: unknown;
+  classification: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  agentId: string | null;
+  agentName: string | null;
+  sessionStartedAt: Date | null;
+  sessionEndedAt: Date | null;
+  firstUserInteractionAt: Date | null;
+  firstAgentMessageAt: Date | null;
+  lastInteractionAt: Date | null;
+  lastMessageText: string | null;
+  unreadCount: number | null;
+  waitReply: boolean | null;
+  windowStatus: string | null;
+  derivedJson: unknown;
   resolution: string | null;
   resolvedOpportunityId: string | null;
   resolvedCustomerId: string | null;
@@ -2343,6 +3030,7 @@ function mapAuvoInboxItem(row: {
     auvoContactId: row.auvoContactId,
     email: row.email,
     channelType: row.channelType,
+    auvoSignals: mapAuvoSignals(row),
     resolution: row.resolution,
     resolvedOpportunityId: row.resolvedOpportunityId,
     resolvedCustomerId: row.resolvedCustomerId,
@@ -2484,6 +3172,7 @@ function mapOpportunity(row: OpportunityWithRelations): OpportunityRecord {
     motivoPerdaNome: row.motivoPerda?.nome ?? null,
     status: row.status as OpportunityRecord["status"],
     currentNextActionId: row.currentNextActionId,
+    auvoSignals: null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     archivedAt: row.archivedAt?.toISOString() ?? null,
@@ -2504,6 +3193,78 @@ function mapActivity(row: ActivityEntity): ActivityRecord {
     metadata: row.metadata as Record<string, unknown>,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    archivedAt: row.archivedAt?.toISOString() ?? null,
+  };
+}
+
+function mapAddress(row: AddressEntity): AddressRecord {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    label: row.label,
+    kind: row.kind as AddressRecord["kind"],
+    street: row.street,
+    number: row.number,
+    complement: row.complement,
+    neighborhood: row.neighborhood,
+    city: row.city,
+    state: row.state,
+    postalCode: row.postalCode,
+    reference: row.reference,
+    accessNotes: row.accessNotes,
+    isPrimary: row.isPrimary,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    createdBy: row.createdBy,
+    updatedBy: row.updatedBy,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
+  };
+}
+
+function mapEquipment(row: EquipmentEntity): EquipmentRecord {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    opportunityId: row.opportunityId,
+    addressId: row.addressId,
+    type: row.type as EquipmentRecord["type"],
+    brand: row.brand,
+    model: row.model,
+    btus: row.btus,
+    voltage: row.voltage,
+    environment: row.environment,
+    serialNumber: row.serialNumber,
+    installedAt: row.installedAt?.toISOString().slice(0, 10) ?? null,
+    warrantyUntil: row.warrantyUntil?.toISOString().slice(0, 10) ?? null,
+    notes: row.notes,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    createdBy: row.createdBy,
+    updatedBy: row.updatedBy,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
+  };
+}
+
+function mapVisit(row: VisitEntity): VisitRecord {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    opportunityId: row.opportunityId,
+    addressId: row.addressId,
+    scheduledStartAt: row.scheduledStartAt.toISOString(),
+    scheduledEndAt: row.scheduledEndAt?.toISOString() ?? null,
+    technicianUserId: row.technicianUserId,
+    status: row.status as VisitRecord["status"],
+    objective: row.objective,
+    accessNotes: row.accessNotes,
+    confirmationNotes: row.confirmationNotes,
+    result: row.result,
+    nextSteps: row.nextSteps,
+    equipmentIds: row.visitEquipment?.map((item) => item.equipmentId) ?? [],
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    createdBy: row.createdBy,
+    updatedBy: row.updatedBy,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   };
 }
@@ -2550,6 +3311,21 @@ function mapCommercialAction(row: NextActionWithRelations, now: Date) {
     dueAt: row.dueAt.toISOString(),
     overdueHours: Math.max(0, Math.floor((now.getTime() - row.dueAt.getTime()) / (60 * 60 * 1000))),
     priority: row.priority as NextActionRecord["priority"],
+  };
+}
+
+function mapCommercialVisit(row: CommercialVisitWithRelations): CommercialCenterVisitItem {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    customerName: row.customer.nome,
+    opportunityId: row.opportunityId,
+    opportunityTitle: row.opportunity?.titulo ?? null,
+    addressLabel: row.address?.label ?? null,
+    scheduledStartAt: row.scheduledStartAt.toISOString(),
+    scheduledEndAt: row.scheduledEndAt?.toISOString() ?? null,
+    status: row.status as VisitStatus,
+    objective: row.objective,
   };
 }
 

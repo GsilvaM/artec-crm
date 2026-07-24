@@ -6,6 +6,8 @@ import type { Actor, AuvoInboxStatus } from "./types.js";
 import {
   activityCreateSchema,
   activityUpdateSchema,
+  addressCreateSchema,
+  addressUpdateSchema,
   auvoWebhookEventQuerySchema,
   approveOpportunitySchema,
   cancelNextActionSchema,
@@ -14,6 +16,8 @@ import {
   completeNextActionSchema,
   customerCreateSchema,
   customerUpdateSchema,
+  equipmentCreateSchema,
+  equipmentUpdateSchema,
   lossReasonActiveSchema,
   lossReasonCreateSchema,
   loseOpportunitySchema,
@@ -28,9 +32,14 @@ import {
   pipelineStageCreateSchema,
   pipelineStageUpdateSchema,
   postponeNextActionSchema,
+  cancelVisitSchema,
+  completeVisitSchema,
   quoteCreateSchema,
   quoteUpdateSchema,
   resolveAuvoInboxItemSchema,
+  visitCreateSchema,
+  visitQuerySchema,
+  visitUpdateSchema,
 } from "./validation.js";
 
 type PreHandlerFactory = ReturnType<typeof createRouteGuards>;
@@ -330,6 +339,98 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
     const activity = await repository.setActivityArchived(getActor(request), readIdParam(request), true);
     if (!activity) throw new ApiError(404, "not_found", "Atividade nao encontrada.");
     return { activity };
+  });
+
+  app.get("/api/customers/:id/addresses", { preHandler: [guards.authenticate, guards.requirePermission("addresses:read")] }, async (request) => ({
+    addresses: await repository.listAddresses(getActor(request), { customerId: readIdParam(request) }),
+  }));
+
+  app.post("/api/customers/:id/addresses", { preHandler: [guards.authenticate, guards.requirePermission("addresses:write")] }, async (request, reply) => {
+    const address = await repository.createAddress(getActor(request), { ...parseBody(addressCreateSchema.omit({ customerId: true }), request.body), customerId: readIdParam(request) });
+    return reply.status(201).send({ address });
+  });
+
+  app.get("/api/addresses/:id", { preHandler: [guards.authenticate, guards.requirePermission("addresses:read")] }, async (request) => {
+    const address = await repository.getAddress(getActor(request), readIdParam(request));
+    if (!address) throw new ApiError(404, "not_found", "Endereco nao encontrado.");
+    return { address };
+  });
+
+  app.patch("/api/addresses/:id", { preHandler: [guards.authenticate, guards.requirePermission("addresses:write")] }, async (request) => {
+    const address = await repository.updateAddress(getActor(request), readIdParam(request), parseBody(addressUpdateSchema, request.body));
+    if (!address) throw new ApiError(404, "not_found", "Endereco nao encontrado.");
+    return { address };
+  });
+
+  app.post("/api/addresses/:id/archive", { preHandler: [guards.authenticate, guards.requirePermission("addresses:write")] }, async (request) => {
+    const address = await repository.setAddressArchived(getActor(request), readIdParam(request), true);
+    if (!address) throw new ApiError(404, "not_found", "Endereco nao encontrado.");
+    return { address };
+  });
+
+  app.get("/api/customers/:id/equipment", { preHandler: [guards.authenticate, guards.requirePermission("equipment:read")] }, async (request) => ({
+    equipment: await repository.listEquipment(getActor(request), { customerId: readIdParam(request) }),
+  }));
+
+  app.get("/api/opportunities/:id/equipment", { preHandler: [guards.authenticate, guards.requirePermission("equipment:read")] }, async (request) => ({
+    equipment: await repository.listEquipment(getActor(request), { opportunityId: readIdParam(request) }),
+  }));
+
+  app.post("/api/customers/:id/equipment", { preHandler: [guards.authenticate, guards.requirePermission("equipment:write")] }, async (request, reply) => {
+    const equipment = await repository.createEquipment(getActor(request), { ...parseBody(equipmentCreateSchema.omit({ customerId: true }), request.body), customerId: readIdParam(request) });
+    return reply.status(201).send({ equipment });
+  });
+
+  app.get("/api/equipment/:id", { preHandler: [guards.authenticate, guards.requirePermission("equipment:read")] }, async (request) => {
+    const equipment = await repository.getEquipment(getActor(request), readIdParam(request));
+    if (!equipment) throw new ApiError(404, "not_found", "Equipamento nao encontrado.");
+    return { equipment };
+  });
+
+  app.patch("/api/equipment/:id", { preHandler: [guards.authenticate, guards.requirePermission("equipment:write")] }, async (request) => {
+    const equipment = await repository.updateEquipment(getActor(request), readIdParam(request), parseBody(equipmentUpdateSchema, request.body));
+    if (!equipment) throw new ApiError(404, "not_found", "Equipamento nao encontrado.");
+    return { equipment };
+  });
+
+  app.post("/api/equipment/:id/archive", { preHandler: [guards.authenticate, guards.requirePermission("equipment:write")] }, async (request) => {
+    const equipment = await repository.setEquipmentArchived(getActor(request), readIdParam(request), true);
+    if (!equipment) throw new ApiError(404, "not_found", "Equipamento nao encontrado.");
+    return { equipment };
+  });
+
+  app.get("/api/visits", { preHandler: [guards.authenticate, guards.requirePermission("visits:read")] }, async (request) => {
+    const query = parseBody(visitQuerySchema, request.query);
+    return { visits: await repository.listVisits(getActor(request), query) };
+  });
+
+  app.post("/api/visits", { preHandler: [guards.authenticate, guards.requirePermission("visits:write")] }, async (request, reply) => {
+    const visit = await repository.createVisit(getActor(request), parseBody(visitCreateSchema, request.body));
+    return reply.status(201).send({ visit });
+  });
+
+  app.get("/api/visits/:id", { preHandler: [guards.authenticate, guards.requirePermission("visits:read")] }, async (request) => {
+    const visit = await repository.getVisit(getActor(request), readIdParam(request));
+    if (!visit) throw new ApiError(404, "not_found", "Visita nao encontrada.");
+    return { visit };
+  });
+
+  app.patch("/api/visits/:id", { preHandler: [guards.authenticate, guards.requirePermission("visits:write")] }, async (request) => {
+    const visit = await repository.updateVisit(getActor(request), readIdParam(request), parseBody(visitUpdateSchema, request.body));
+    if (!visit) throw new ApiError(404, "not_found", "Visita nao encontrada.");
+    return { visit };
+  });
+
+  app.post("/api/visits/:id/complete", { preHandler: [guards.authenticate, guards.requirePermission("visits:write")] }, async (request) => {
+    const visit = await repository.completeVisit(getActor(request), readIdParam(request), parseBody(completeVisitSchema, request.body));
+    if (!visit) throw new ApiError(404, "not_found", "Visita nao encontrada.");
+    return { visit };
+  });
+
+  app.post("/api/visits/:id/cancel", { preHandler: [guards.authenticate, guards.requirePermission("visits:write")] }, async (request) => {
+    const visit = await repository.cancelVisit(getActor(request), readIdParam(request), parseBody(cancelVisitSchema, request.body));
+    if (!visit) throw new ApiError(404, "not_found", "Visita nao encontrada.");
+    return { visit };
   });
 
   app.get("/api/next-actions", { preHandler: [guards.authenticate, guards.requirePermission("next_actions:read")] }, async (request) => {

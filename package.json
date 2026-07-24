@@ -22,6 +22,8 @@
     "prisma:studio": "prisma studio",
     "notifications:reconcile": "tsx server/notifications-reconcile.ts",
     "auvo:events:reconcile": "tsx server/auvo-events-reconcile.ts",
+    "auvo:signals:backfill": "tsx server/auvo-signals-backfill.ts",
+    "auvo:customers:match-dry-run": "tsx server/auvo-customer-match-dry-run.ts",
     "auvo:homologation:status": "tsx server/auvo-homologation-status.ts",
     "auvo:fixtures:export": "tsx server/auvo-fixtures-export.ts",
     "db:migrate": "tsx database/migrate.ts",

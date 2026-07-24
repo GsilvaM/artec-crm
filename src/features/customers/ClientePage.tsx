@@ -1,30 +1,50 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { Mail, Phone } from "lucide-react";
+import { BriefcaseBusiness, CalendarClock, CheckCircle2, ListChecks, MapPin, Mail, Phone, Plus, ShieldAlert, Snowflake, XCircle } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { AuvoSignalSummary } from "../../components/AuvoSignalSummary";
 import { Avatar } from "../../components/ui/Avatar";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { Tabs, type TabItem } from "../../components/ui/Tabs";
 import { useToast } from "../../components/ui/Toast";
-import { formatActivityType, formatDateTime, formatOpportunityStatus, opportunityStatusBadgeClass } from "../../domain/format";
+import { formatActivityType, formatAddressKind, formatDateTime, formatEquipmentType, formatOpportunityStatus, formatVisitStatus, opportunityStatusBadgeClass } from "../../domain/format";
 import {
   archiveCustomer,
+  cancelVisit,
   createActivity,
+  createAddress,
+  createEquipment,
   createNextAction,
+  createVisit,
+  completeVisit,
   loadCustomer,
+  loadCustomerAddresses,
   loadCustomerActivities,
+  loadCustomerEquipment,
   loadNextActions,
   loadOpportunitiesByCustomer,
+  loadVisits,
+  type Address,
   type Activity,
   type Customer,
+  type Equipment,
   type NextAction,
   type Opportunity,
+  type Visit,
 } from "../../domain/crm";
 
 const SUPPORT_ACTIVITY_TYPES: Activity["type"][] = ["warranty", "support", "after_sales"];
-const TAB_IDS = ["visao-geral", "oportunidades", "proximas-acoes", "garantia-suporte", "linha-do-tempo"] as const;
+const TAB_IDS = ["visao-geral", "estrutura", "oportunidades", "proximas-acoes", "garantia-suporte", "linha-do-tempo"] as const;
 type TabId = (typeof TAB_IDS)[number];
+
+type AddressForm = { label: string; kind: Address["kind"]; street: string; number: string; neighborhood: string; city: string; accessNotes: string; isPrimary: boolean };
+type EquipmentForm = { type: Equipment["type"]; brand: string; model: string; btus: string; voltage: string; environment: string; addressId: string; opportunityId: string; notes: string };
+type VisitForm = { objective: string; scheduledStartAt: string; scheduledEndAt: string; addressId: string; opportunityId: string; equipmentIds: string[]; accessNotes: string };
+
+const initialAddressForm: AddressForm = { label: "", kind: "service", street: "", number: "", neighborhood: "", city: "", accessNotes: "", isPrimary: false };
+const initialEquipmentForm: EquipmentForm = { type: "split_hi_wall", brand: "", model: "", btus: "", voltage: "", environment: "", addressId: "", opportunityId: "", notes: "" };
+const initialVisitForm: VisitForm = { objective: "", scheduledStartAt: "", scheduledEndAt: "", addressId: "", opportunityId: "", equipmentIds: [], accessNotes: "" };
 
 export function ClientePage({ currentUserId }: { currentUserId: string }) {
   const { id } = useParams<{ id: string }>();
@@ -35,10 +55,17 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [nextActions, setNextActions] = useState<NextAction[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [visits, setVisits] = useState<Visit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activityForm, setActivityForm] = useState<{ type: Activity["type"]; description: string }>({ type: "warranty", description: "" });
   const [actionForm, setActionForm] = useState({ title: "", dueAt: "" });
+  const [addressForm, setAddressForm] = useState<AddressForm>(initialAddressForm);
+  const [equipmentForm, setEquipmentForm] = useState<EquipmentForm>(initialEquipmentForm);
+  const [visitForm, setVisitForm] = useState<VisitForm>(initialVisitForm);
+  const [visitResultForms, setVisitResultForms] = useState<Record<string, { result: string; nextSteps: string; reason: string }>>({});
   const [confirmArchive, setConfirmArchive] = useState(false);
 
   const requestedTab = searchParams.get("aba");
@@ -57,16 +84,22 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
     setIsLoading(true);
     setError(null);
     try {
-      const [customerRecord, opportunityList, actionList, activityList] = await Promise.all([
+      const [customerRecord, opportunityList, actionList, activityList, addressList, equipmentList, visitList] = await Promise.all([
         loadCustomer(id),
         loadOpportunitiesByCustomer(id),
         loadNextActions({ customerId: id, status: "pending" }),
         loadCustomerActivities(id),
+        loadCustomerAddresses(id),
+        loadCustomerEquipment(id),
+        loadVisits({ customerId: id }),
       ]);
       setCustomer(customerRecord);
       setOpportunities(opportunityList);
       setNextActions(actionList);
       setActivities(activityList);
+      setAddresses(addressList);
+      setEquipment(equipmentList);
+      setVisits(visitList);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar o cliente.");
     } finally {
@@ -122,16 +155,157 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
     }
   }
 
+  async function handleCreateAddress(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!addressForm.label.trim()) return;
+    setError(null);
+    try {
+      await createAddress(customer!.id, {
+        label: addressForm.label.trim(),
+        kind: addressForm.kind,
+        street: emptyToNull(addressForm.street),
+        number: emptyToNull(addressForm.number),
+        neighborhood: emptyToNull(addressForm.neighborhood),
+        city: emptyToNull(addressForm.city),
+        accessNotes: emptyToNull(addressForm.accessNotes),
+        isPrimary: addressForm.isPrimary,
+      });
+      setAddressForm(initialAddressForm);
+      showToast("Endereco criado.");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel criar o endereco.");
+    }
+  }
+
+  async function handleCreateEquipment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!equipmentForm.brand.trim() && !equipmentForm.model.trim() && !equipmentForm.environment.trim()) return;
+    setError(null);
+    try {
+      await createEquipment(customer!.id, {
+        type: equipmentForm.type,
+        brand: emptyToNull(equipmentForm.brand),
+        model: emptyToNull(equipmentForm.model),
+        btus: equipmentForm.btus.trim() ? Number(equipmentForm.btus) : null,
+        voltage: emptyToNull(equipmentForm.voltage),
+        environment: emptyToNull(equipmentForm.environment),
+        addressId: equipmentForm.addressId || null,
+        opportunityId: equipmentForm.opportunityId || null,
+        notes: emptyToNull(equipmentForm.notes),
+      });
+      setEquipmentForm(initialEquipmentForm);
+      showToast("Equipamento criado.");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel criar o equipamento.");
+    }
+  }
+
+  async function handleCreateVisit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!visitForm.objective.trim() || !visitForm.scheduledStartAt) return;
+    setError(null);
+    try {
+      await createVisit({
+        customerId: customer!.id,
+        objective: visitForm.objective.trim(),
+        scheduledStartAt: visitForm.scheduledStartAt,
+        scheduledEndAt: emptyToNull(visitForm.scheduledEndAt),
+        addressId: visitForm.addressId || null,
+        opportunityId: visitForm.opportunityId || null,
+        equipmentIds: visitForm.equipmentIds,
+        accessNotes: emptyToNull(visitForm.accessNotes),
+      });
+      setVisitForm(initialVisitForm);
+      showToast("Visita criada.");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel criar a visita.");
+    }
+  }
+
+  async function handleCompleteVisit(visit: Visit) {
+    const form = visitResultForms[visit.id];
+    if (!form?.result.trim()) return;
+    setError(null);
+    try {
+      await completeVisit(visit.id, { result: form.result.trim(), nextSteps: emptyToNull(form.nextSteps) });
+      showToast("Visita concluida.");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel concluir a visita.");
+    }
+  }
+
+  async function handleCancelVisit(visit: Visit) {
+    const form = visitResultForms[visit.id];
+    if (!form?.reason.trim()) return;
+    setError(null);
+    try {
+      await cancelVisit(visit.id, form.reason.trim());
+      showToast("Visita cancelada.");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nao foi possivel cancelar a visita.");
+    }
+  }
+
   const supportActivities = activities.filter((activity) => SUPPORT_ACTIVITY_TYPES.includes(activity.type));
   const commercialActivities = activities.filter((activity) => !SUPPORT_ACTIVITY_TYPES.includes(activity.type));
   const nextUpAction = [...nextActions].sort((a, b) => a.dueAt.localeCompare(b.dueAt))[0] ?? null;
+  const openVisits = visits.filter((visit) => !["completed", "cancelled", "no_show"].includes(visit.status));
+  const activeOpportunities = opportunities.filter((opportunity) => opportunity.status === "ativa");
+  const overdueNextAction = nextUpAction ? new Date(nextUpAction.dueAt).getTime() < Date.now() : false;
 
   const tabs: TabItem[] = [
     {
       id: "visao-geral",
       label: "Visão geral",
       content: (
-        <section className="panel" aria-label="Dados cadastrais">
+        <div className="customer-overview">
+          <section className="customer-overview-grid" aria-label="Resumo operacional do cliente">
+            <article className="customer-overview-card">
+              <span className="customer-overview-icon"><BriefcaseBusiness aria-hidden="true" size={18} /></span>
+              <div>
+                <span>Oportunidades ativas</span>
+                <strong>{activeOpportunities.length}</strong>
+                <small>{opportunities.length} no historico</small>
+              </div>
+            </article>
+            <article className={`customer-overview-card ${overdueNextAction ? "customer-overview-card-danger" : ""}`}>
+              <span className="customer-overview-icon"><ListChecks aria-hidden="true" size={18} /></span>
+              <div>
+                <span>Proxima acao</span>
+                <strong>{nextUpAction ? formatDateTime(nextUpAction.dueAt) : "Sem pendencia"}</strong>
+                <small>{nextUpAction?.title ?? "Carteira sem follow-up aberto"}</small>
+              </div>
+            </article>
+            <article className="customer-overview-card">
+              <span className="customer-overview-icon"><CalendarClock aria-hidden="true" size={18} /></span>
+              <div>
+                <span>Visitas abertas</span>
+                <strong>{openVisits.length}</strong>
+                <small>{visits.length} no historico tecnico</small>
+              </div>
+            </article>
+            <article className={customer.duplicatePhoneCustomerIds.length ? "customer-overview-card customer-overview-card-warning" : "customer-overview-card"}>
+              <span className="customer-overview-icon"><ShieldAlert aria-hidden="true" size={18} /></span>
+              <div>
+                <span>Qualidade do cadastro</span>
+                <strong>{customer.duplicatePhoneCustomerIds.length ? "Revisar" : "Ok"}</strong>
+                <small>{customer.duplicatePhoneCustomerIds.length ? `${customer.duplicatePhoneCustomerIds.length} possivel duplicidade` : `${equipment.length} equipamento(s)`}</small>
+              </div>
+            </article>
+          </section>
+          <section className="panel customer-identity-panel" aria-label="Identidade e contato do cliente">
+            <header>
+              <div>
+                <h2>Identidade e contato</h2>
+                <p>{formatCustomerLocation(customer)}</p>
+              </div>
+              <span className="badge">{customer.tipoPessoa === "fisica" ? "Pessoa fisica" : "Pessoa juridica"}</span>
+            </header>
           <dl className="detail-list">
             <div><dt>Tipo</dt><dd>{customer.tipoPessoa === "fisica" ? "Pessoa física" : "Pessoa jurídica"}</dd></div>
             <div><dt>Telefone</dt><dd>{customer.telefone ? <a href={`tel:${customer.telefone}`}><Phone aria-hidden="true" size={14} /> {customer.telefone}</a> : "-"}</dd></div>
@@ -140,7 +314,182 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
             <div><dt>Cidade</dt><dd>{customer.cidade ?? "-"}</dd></div>
             <div><dt>Bairro</dt><dd>{customer.bairro ?? "-"}</dd></div>
           </dl>
-        </section>
+          </section>
+          {customer.auvoSignals ? (
+            <AuvoSignalSummary
+              signals={customer.auvoSignals}
+              title="Sinais Auvo do cliente"
+              description="Contexto mais recente do atendimento digital vinculado a este cadastro."
+            />
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      id: "estrutura",
+      label: `Estrutura (${addresses.length + equipment.length + visits.length})`,
+      content: (
+        <div className="customer-structure-grid">
+          <section className="customer-structure-section" aria-label="Enderecos do cliente">
+            <header>
+              <span className="customer-structure-icon"><MapPin aria-hidden="true" size={18} /></span>
+              <div>
+                <h2>Enderecos</h2>
+                <p>{addresses.length} cadastrado(s)</p>
+              </div>
+            </header>
+            <form className="structure-form" onSubmit={handleCreateAddress}>
+              <label>Nome<input value={addressForm.label} onChange={(event) => setAddressForm({ ...addressForm, label: event.target.value })} placeholder="ex: Apartamento" /></label>
+              <label>Tipo
+                <select value={addressForm.kind} onChange={(event) => setAddressForm({ ...addressForm, kind: event.target.value as Address["kind"] })}>
+                  <option value="service">Atendimento</option>
+                  <option value="installation">Instalacao</option>
+                  <option value="pickup">Retirada</option>
+                  <option value="billing">Cobranca</option>
+                  <option value="other">Outro</option>
+                </select>
+              </label>
+              <label>Rua<input value={addressForm.street} onChange={(event) => setAddressForm({ ...addressForm, street: event.target.value })} /></label>
+              <label>Numero<input value={addressForm.number} onChange={(event) => setAddressForm({ ...addressForm, number: event.target.value })} /></label>
+              <label>Bairro<input value={addressForm.neighborhood} onChange={(event) => setAddressForm({ ...addressForm, neighborhood: event.target.value })} /></label>
+              <label>Cidade<input value={addressForm.city} onChange={(event) => setAddressForm({ ...addressForm, city: event.target.value })} /></label>
+              <label className="structure-form-wide">Acesso<input value={addressForm.accessNotes} onChange={(event) => setAddressForm({ ...addressForm, accessNotes: event.target.value })} placeholder="portaria, referencia, restricoes" /></label>
+              <label className="checkbox-row"><input type="checkbox" checked={addressForm.isPrimary} onChange={(event) => setAddressForm({ ...addressForm, isPrimary: event.target.checked })} /> Principal</label>
+              <button className="button secondary" type="submit"><Plus aria-hidden="true" size={16} /> Endereco</button>
+            </form>
+            {addresses.length ? (
+              <ul className="structure-list">
+                {addresses.map((address) => (
+                  <li key={address.id}>
+                    <strong>{address.label}</strong>
+                    <span>{formatAddressKind(address.kind)}{address.isPrimary ? " · Principal" : ""}</span>
+                    <small>{formatAddressLine(address)}</small>
+                    {address.accessNotes ? <p>{address.accessNotes}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState title="Nenhum endereco" text="Cadastre enderecos para visitas, retirada e instalacao." />
+            )}
+          </section>
+
+          <section className="customer-structure-section" aria-label="Equipamentos do cliente">
+            <header>
+              <span className="customer-structure-icon"><Snowflake aria-hidden="true" size={18} /></span>
+              <div>
+                <h2>Equipamentos</h2>
+                <p>{equipment.length} cadastrado(s)</p>
+              </div>
+            </header>
+            <form className="structure-form" onSubmit={handleCreateEquipment}>
+              <label>Tipo
+                <select value={equipmentForm.type} onChange={(event) => setEquipmentForm({ ...equipmentForm, type: event.target.value as Equipment["type"] })}>
+                  <option value="split_hi_wall">Split hi-wall</option>
+                  <option value="cassette">Cassete</option>
+                  <option value="window_ac">Janela / ACJ</option>
+                  <option value="floor_ceiling">Piso-teto</option>
+                  <option value="multi_split">Multi split</option>
+                  <option value="other">Outro</option>
+                </select>
+              </label>
+              <label>Marca<input value={equipmentForm.brand} onChange={(event) => setEquipmentForm({ ...equipmentForm, brand: event.target.value })} /></label>
+              <label>Modelo<input value={equipmentForm.model} onChange={(event) => setEquipmentForm({ ...equipmentForm, model: event.target.value })} /></label>
+              <label>BTUs<input inputMode="numeric" value={equipmentForm.btus} onChange={(event) => setEquipmentForm({ ...equipmentForm, btus: event.target.value })} /></label>
+              <label>Tensao<input value={equipmentForm.voltage} onChange={(event) => setEquipmentForm({ ...equipmentForm, voltage: event.target.value })} placeholder="127V, 220V" /></label>
+              <label>Ambiente<input value={equipmentForm.environment} onChange={(event) => setEquipmentForm({ ...equipmentForm, environment: event.target.value })} placeholder="sala, quarto" /></label>
+              <label>Endereco
+                <select value={equipmentForm.addressId} onChange={(event) => setEquipmentForm({ ...equipmentForm, addressId: event.target.value })}>
+                  <option value="">Sem endereco</option>
+                  {addresses.map((address) => <option value={address.id} key={address.id}>{address.label}</option>)}
+                </select>
+              </label>
+              <label>Oportunidade
+                <select value={equipmentForm.opportunityId} onChange={(event) => setEquipmentForm({ ...equipmentForm, opportunityId: event.target.value })}>
+                  <option value="">Historico do cliente</option>
+                  {opportunities.map((opportunity) => <option value={opportunity.id} key={opportunity.id}>{opportunity.titulo}</option>)}
+                </select>
+              </label>
+              <label className="structure-form-wide">Notas<input value={equipmentForm.notes} onChange={(event) => setEquipmentForm({ ...equipmentForm, notes: event.target.value })} /></label>
+              <button className="button secondary" type="submit"><Plus aria-hidden="true" size={16} /> Equipamento</button>
+            </form>
+            {equipment.length ? (
+              <ul className="structure-list">
+                {equipment.map((item) => (
+                  <li key={item.id}>
+                    <strong>{formatEquipmentTitle(item)}</strong>
+                    <span>{formatEquipmentType(item.type)}{item.btus ? ` · ${item.btus.toLocaleString("pt-BR")} BTUs` : ""}</span>
+                    <small>{[item.environment, addresses.find((address) => address.id === item.addressId)?.label, opportunities.find((opportunity) => opportunity.id === item.opportunityId)?.titulo].filter(Boolean).join(" · ") || "Sem vinculo adicional"}</small>
+                    {item.notes ? <p>{item.notes}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState title="Nenhum equipamento" text="Registre aparelhos para suporte, garantia e visitas." />
+            )}
+          </section>
+
+          <section className="customer-structure-section customer-structure-section-wide" aria-label="Visitas do cliente">
+            <header>
+              <span className="customer-structure-icon"><CalendarClock aria-hidden="true" size={18} /></span>
+              <div>
+                <h2>Visitas</h2>
+                <p>{openVisits.length} aberta(s)</p>
+              </div>
+            </header>
+            <form className="structure-form structure-form-visits" onSubmit={handleCreateVisit}>
+              <label>Objetivo<input value={visitForm.objective} onChange={(event) => setVisitForm({ ...visitForm, objective: event.target.value })} placeholder="ex: vistoria para instalacao" /></label>
+              <label>Inicio<input type="datetime-local" value={visitForm.scheduledStartAt} onChange={(event) => setVisitForm({ ...visitForm, scheduledStartAt: event.target.value })} /></label>
+              <label>Fim<input type="datetime-local" value={visitForm.scheduledEndAt} onChange={(event) => setVisitForm({ ...visitForm, scheduledEndAt: event.target.value })} /></label>
+              <label>Endereco
+                <select value={visitForm.addressId} onChange={(event) => setVisitForm({ ...visitForm, addressId: event.target.value })}>
+                  <option value="">Sem endereco</option>
+                  {addresses.map((address) => <option value={address.id} key={address.id}>{address.label}</option>)}
+                </select>
+              </label>
+              <label>Oportunidade
+                <select value={visitForm.opportunityId} onChange={(event) => setVisitForm({ ...visitForm, opportunityId: event.target.value })}>
+                  <option value="">Sem oportunidade</option>
+                  {opportunities.map((opportunity) => <option value={opportunity.id} key={opportunity.id}>{opportunity.titulo}</option>)}
+                </select>
+              </label>
+              <label>Equipamentos
+                <select multiple value={visitForm.equipmentIds} onChange={(event) => setVisitForm({ ...visitForm, equipmentIds: Array.from(event.currentTarget.selectedOptions).map((option) => option.value) })}>
+                  {equipment.map((item) => <option value={item.id} key={item.id}>{formatEquipmentTitle(item)}</option>)}
+                </select>
+              </label>
+              <label className="structure-form-wide">Acesso<input value={visitForm.accessNotes} onChange={(event) => setVisitForm({ ...visitForm, accessNotes: event.target.value })} /></label>
+              <button className="button secondary" type="submit"><Plus aria-hidden="true" size={16} /> Visita</button>
+            </form>
+            {visits.length ? (
+              <ul className="structure-list visit-list">
+                {visits.map((visit) => {
+                  const resultForm = visitResultForms[visit.id] ?? { result: "", nextSteps: "", reason: "" };
+                  return (
+                    <li key={visit.id}>
+                      <div className="visit-list-main">
+                        <strong>{visit.objective}</strong>
+                        <span>{formatDateTime(visit.scheduledStartAt)} · {formatVisitStatus(visit.status)}</span>
+                        <small>{[addresses.find((address) => address.id === visit.addressId)?.label, opportunities.find((opportunity) => opportunity.id === visit.opportunityId)?.titulo].filter(Boolean).join(" · ") || "Sem endereco/oportunidade"}</small>
+                        {visit.result ? <p>{visit.result}</p> : null}
+                      </div>
+                      {!["completed", "cancelled", "no_show"].includes(visit.status) ? (
+                        <div className="visit-result-controls">
+                          <input value={resultForm.result} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, result: event.target.value } })} placeholder="Resultado da visita" />
+                          <input value={resultForm.nextSteps} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, nextSteps: event.target.value } })} placeholder="Proximos passos" />
+                          <button className="button secondary" type="button" onClick={() => void handleCompleteVisit(visit)}><CheckCircle2 aria-hidden="true" size={16} /> Concluir</button>
+                          <input value={resultForm.reason} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, reason: event.target.value } })} placeholder="Motivo do cancelamento" />
+                          <button className="button ghost" type="button" onClick={() => void handleCancelVisit(visit)}><XCircle aria-hidden="true" size={16} /> Cancelar</button>
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <EmptyState title="Nenhuma visita" text="Agende visitas tecnicas sem depender de texto livre em proximas acoes." />
+            )}
+          </section>
+        </div>
       ),
     },
     {
@@ -298,4 +647,23 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       ) : null}
     </>
   );
+}
+
+function emptyToNull(value: string): string | null {
+  const normalized = value.trim();
+  return normalized ? normalized : null;
+}
+
+function formatAddressLine(address: Address): string {
+  const street = [address.street, address.number].filter(Boolean).join(", ");
+  return [street, address.neighborhood, address.city].filter(Boolean).join(" · ") || "Endereco progressivo";
+}
+
+function formatEquipmentTitle(equipment: Equipment): string {
+  const title = [equipment.brand, equipment.model].filter(Boolean).join(" ");
+  return title || equipment.environment || formatEquipmentType(equipment.type);
+}
+
+function formatCustomerLocation(customer: Customer): string {
+  return [customer.bairro, customer.cidade].filter(Boolean).join(" - ") || "Localizacao ainda nao informada";
 }

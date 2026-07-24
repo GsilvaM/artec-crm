@@ -37,11 +37,20 @@ test.describe("WCAG automated audit", () => {
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });
 
+  test("opportunities list has no automatically detectable violations", async ({ page }) => {
+    await loginAsHomologationGestor(page);
+    await page.getByRole("link", { name: "Oportunidades" }).click();
+    await page.waitForURL(/\/oportunidades$/);
+    await page.locator("#oportunidades-section .opportunity-card").first().waitFor();
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+
   test("opportunity detail page has no automatically detectable violations", async ({ page }) => {
     await loginAsHomologationGestor(page);
     await page.getByRole("link", { name: "Oportunidades" }).click();
     await page.waitForURL(/\/oportunidades$/);
-    await page.locator("#oportunidades-section table tbody tr").first().getByRole("link", { name: "Abrir" }).click();
+    await page.locator("#oportunidades-section .opportunity-card").first().getByRole("link", { name: "Abrir oportunidade" }).click();
     await page.waitForURL(/\/oportunidades\/[0-9a-f-]+$/);
     await page.waitForSelector("text=Linha do tempo");
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
@@ -52,7 +61,7 @@ test.describe("WCAG automated audit", () => {
     await loginAsHomologationGestor(page);
     await page.getByRole("link", { name: "Clientes" }).click();
     await page.waitForURL(/\/clientes$/);
-    await page.locator("#clientes-section table tbody tr").first().getByRole("link", { name: "Abrir" }).click();
+    await page.locator("#clientes-section .customer-card").first().getByRole("link", { name: "Abrir cliente" }).click();
     await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
     await page.getByRole("tablist").waitFor();
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
@@ -108,6 +117,20 @@ test.describe("WCAG automated audit", () => {
     await page.getByRole("link", { name: "Integração Auvo" }).click();
     await page.waitForURL(/\/configuracoes\/integracoes\/auvo$/);
     await page.waitForSelector("section.auvo-admin");
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+});
+
+// Achado real da auditoria desta sessao: os testes acima nunca definem colorScheme,
+// entao so validam o modo claro — "0 violacoes" nunca provou nada sobre o escuro.
+// Cobertura de dark mode adicionada aqui apenas para a Central Comercial (escopo desta
+// execucao); as demais paginas continuam sem essa cobertura e ficam como pendencia.
+test.describe("WCAG automated audit — dark mode (Central Comercial)", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("Central Comercial has no automatically detectable violations in dark mode", async ({ page }) => {
+    await loginAsHomologationGestor(page);
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });

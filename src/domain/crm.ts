@@ -41,6 +41,7 @@ export type Customer = {
   archivedAt: string | null;
   opportunitiesCount: number;
   duplicatePhoneCustomerIds: string[];
+  auvoSignals: AuvoParsedSignals | null;
 };
 
 export type Opportunity = {
@@ -70,6 +71,7 @@ export type Opportunity = {
   motivoPerdaNome: string | null;
   status: "rascunho" | "ativa" | "ganha" | "perdida" | "arquivada";
   currentNextActionId: string | null;
+  auvoSignals: AuvoParsedSignals | null;
   archivedAt: string | null;
 };
 
@@ -83,6 +85,72 @@ export type Activity = {
   occurredAt: string;
   createdBy: string;
   source: "manual" | "system";
+};
+
+export type AddressKind = "service" | "billing" | "pickup" | "installation" | "other";
+
+export type Address = {
+  id: string;
+  customerId: string;
+  label: string;
+  kind: AddressKind;
+  street: string | null;
+  number: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  reference: string | null;
+  accessNotes: string | null;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+};
+
+export type EquipmentType = "split_hi_wall" | "cassette" | "window_ac" | "floor_ceiling" | "multi_split" | "other";
+
+export type Equipment = {
+  id: string;
+  customerId: string;
+  opportunityId: string | null;
+  addressId: string | null;
+  type: EquipmentType;
+  brand: string | null;
+  model: string | null;
+  btus: number | null;
+  voltage: string | null;
+  environment: string | null;
+  serialNumber: string | null;
+  installedAt: string | null;
+  warrantyUntil: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+};
+
+export type VisitStatus = "draft" | "awaiting_confirmation" | "confirmed" | "completed" | "cancelled" | "no_show";
+
+export type Visit = {
+  id: string;
+  customerId: string;
+  opportunityId: string | null;
+  addressId: string | null;
+  scheduledStartAt: string;
+  scheduledEndAt: string | null;
+  technicianUserId: string | null;
+  status: VisitStatus;
+  objective: string;
+  accessNotes: string | null;
+  confirmationNotes: string | null;
+  result: string | null;
+  nextSteps: string | null;
+  equipmentIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
 };
 
 export type NextAction = {
@@ -148,6 +216,38 @@ export type MembershipCandidate = {
 
 export type AuvoInboxStatus = "novo" | "em_analise" | "aguardando_dados" | "processado" | "descartado" | "erro_integracao";
 
+export type AuvoParsedSignals = {
+  origin: string | null;
+  utm: unknown;
+  tags: unknown[];
+  customFields: unknown[];
+  classification: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  agentId: string | null;
+  agentName: string | null;
+  channelType: string | null;
+  sessionStartedAt: string | null;
+  sessionEndedAt: string | null;
+  firstUserInteractionAt: string | null;
+  firstAgentMessageAt: string | null;
+  lastInteractionAt: string | null;
+  lastMessageText: string | null;
+  unreadCount: number | null;
+  waitReply: boolean | null;
+  windowStatus: string | null;
+  derived: {
+    intent: "instalacao" | "manutencao" | "higienizacao" | "garantia" | "suporte" | "pos_venda" | "orcamento" | "outro";
+    urgency: "baixa" | "normal" | "alta";
+    suggestedAction: "create_opportunity" | "link_customer" | "request_missing_data" | "register_support" | "register_warranty" | "human_review";
+    confidence: number;
+    missingData: Array<"nome" | "telefone" | "tipo_demanda" | "endereco" | "equipamento">;
+    slaState: "novo" | "aguardando_atendente" | "aguardando_cliente" | "parado" | "vencido";
+    needsHumanReview: boolean;
+    summary: string;
+  };
+};
+
 export type AuvoInboxItem = {
   id: string;
   externalServiceId: string;
@@ -159,6 +259,7 @@ export type AuvoInboxItem = {
   auvoContactId: string | null;
   email: string | null;
   channelType: string | null;
+  auvoSignals: AuvoParsedSignals;
   resolution: string | null;
   resolvedOpportunityId: string | null;
   resolvedCustomerId: string | null;
@@ -251,13 +352,26 @@ export type CommercialCenterOpportunityItem = {
   daysOpen: number;
 };
 
+export type CommercialCenterVisitItem = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  opportunityId: string | null;
+  opportunityTitle: string | null;
+  addressLabel: string | null;
+  scheduledStartAt: string;
+  scheduledEndAt: string | null;
+  status: VisitStatus;
+  objective: string;
+};
+
 export type CommercialCenter = {
   generatedAt: string;
   overdueActions: CommercialCenterActionItem[];
   todayActions: CommercialCenterActionItem[];
   opportunitiesWithoutNextAction: CommercialCenterOpportunityItem[];
   quotesAwaitingReturn: CommercialCenterOpportunityItem[];
-  upcomingVisits: CommercialCenterActionItem[];
+  upcomingVisits: CommercialCenterVisitItem[];
   stalledOpportunities: CommercialCenterOpportunityItem[];
   auvoInbox: { status: "pending" | "empty"; pending: number; message: string };
   summary: {
@@ -364,6 +478,52 @@ export type CreateOpportunityPayload = {
   valorEstimado?: number | null;
   proximaAcao: string;
   proximaAcaoEm: string;
+};
+
+export type CreateAddressPayload = {
+  label: string;
+  kind?: AddressKind;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  reference?: string | null;
+  accessNotes?: string | null;
+  isPrimary?: boolean;
+};
+
+export type CreateEquipmentPayload = {
+  opportunityId?: string | null;
+  addressId?: string | null;
+  type?: EquipmentType;
+  brand?: string | null;
+  model?: string | null;
+  btus?: number | null;
+  voltage?: string | null;
+  environment?: string | null;
+  serialNumber?: string | null;
+  installedAt?: string | null;
+  warrantyUntil?: string | null;
+  notes?: string | null;
+};
+
+export type CreateVisitPayload = {
+  customerId: string;
+  opportunityId?: string | null;
+  addressId?: string | null;
+  scheduledStartAt: string;
+  scheduledEndAt?: string | null;
+  technicianUserId?: string | null;
+  status?: VisitStatus;
+  objective: string;
+  accessNotes?: string | null;
+  confirmationNotes?: string | null;
+  result?: string | null;
+  nextSteps?: string | null;
+  equipmentIds?: string[];
 };
 
 function toQueryString(params: Record<string, string | undefined>): string {
@@ -480,6 +640,42 @@ export async function loadOpportunityActivities(opportunityId: string): Promise<
 
 export async function createActivity(payload: { customerId: string; opportunityId?: string | null; type: Activity["type"]; title?: string | null; description: string }): Promise<Activity> {
   return (await apiSend<{ activity: Activity }>("/api/activities", "POST", payload)).activity;
+}
+
+export async function loadCustomerAddresses(customerId: string): Promise<Address[]> {
+  return (await apiGet<{ addresses: Address[] }>(`/api/customers/${customerId}/addresses`)).addresses;
+}
+
+export async function createAddress(customerId: string, payload: CreateAddressPayload): Promise<Address> {
+  return (await apiSend<{ address: Address }>(`/api/customers/${customerId}/addresses`, "POST", payload)).address;
+}
+
+export async function loadCustomerEquipment(customerId: string): Promise<Equipment[]> {
+  return (await apiGet<{ equipment: Equipment[] }>(`/api/customers/${customerId}/equipment`)).equipment;
+}
+
+export async function loadOpportunityEquipment(opportunityId: string): Promise<Equipment[]> {
+  return (await apiGet<{ equipment: Equipment[] }>(`/api/opportunities/${opportunityId}/equipment`)).equipment;
+}
+
+export async function createEquipment(customerId: string, payload: CreateEquipmentPayload): Promise<Equipment> {
+  return (await apiSend<{ equipment: Equipment }>(`/api/customers/${customerId}/equipment`, "POST", payload)).equipment;
+}
+
+export async function loadVisits(filters: { customerId?: string; opportunityId?: string; from?: string; to?: string; status?: VisitStatus } = {}): Promise<Visit[]> {
+  return (await apiGet<{ visits: Visit[] }>(`/api/visits${toQueryString(filters)}`)).visits;
+}
+
+export async function createVisit(payload: CreateVisitPayload): Promise<Visit> {
+  return (await apiSend<{ visit: Visit }>("/api/visits", "POST", payload)).visit;
+}
+
+export async function completeVisit(id: string, payload: { result: string; nextSteps?: string | null }): Promise<Visit> {
+  return (await apiSend<{ visit: Visit }>(`/api/visits/${id}/complete`, "POST", payload)).visit;
+}
+
+export async function cancelVisit(id: string, reason: string): Promise<Visit> {
+  return (await apiSend<{ visit: Visit }>(`/api/visits/${id}/cancel`, "POST", { reason })).visit;
 }
 
 export type NextActionFilters = {

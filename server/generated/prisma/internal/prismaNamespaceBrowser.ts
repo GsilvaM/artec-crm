@@ -56,6 +56,10 @@ export const ModelName = {
   PipelineStage: 'PipelineStage',
   LossReason: 'LossReason',
   Opportunity: 'Opportunity',
+  Address: 'Address',
+  Equipment: 'Equipment',
+  Visit: 'Visit',
+  VisitEquipment: 'VisitEquipment',
   Quote: 'Quote',
   Activity: 'Activity',
   NextAction: 'NextAction',
@@ -63,6 +67,7 @@ export const ModelName = {
   Notification: 'Notification',
   AuvoWebhookEvent: 'AuvoWebhookEvent',
   AuvoInboxItem: 'AuvoInboxItem',
+  AuvoContactSignal: 'AuvoContactSignal',
   MigrationHistory: 'MigrationHistory'
 } as const
 
@@ -176,6 +181,89 @@ export const OpportunityScalarFieldEnum = {
 } as const
 
 export type OpportunityScalarFieldEnum = (typeof OpportunityScalarFieldEnum)[keyof typeof OpportunityScalarFieldEnum]
+
+
+export const AddressScalarFieldEnum = {
+  id: 'id',
+  customerId: 'customerId',
+  label: 'label',
+  kind: 'kind',
+  street: 'street',
+  number: 'number',
+  complement: 'complement',
+  neighborhood: 'neighborhood',
+  city: 'city',
+  state: 'state',
+  postalCode: 'postalCode',
+  reference: 'reference',
+  accessNotes: 'accessNotes',
+  isPrimary: 'isPrimary',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdBy: 'createdBy',
+  updatedBy: 'updatedBy',
+  archivedAt: 'archivedAt'
+} as const
+
+export type AddressScalarFieldEnum = (typeof AddressScalarFieldEnum)[keyof typeof AddressScalarFieldEnum]
+
+
+export const EquipmentScalarFieldEnum = {
+  id: 'id',
+  customerId: 'customerId',
+  opportunityId: 'opportunityId',
+  addressId: 'addressId',
+  type: 'type',
+  brand: 'brand',
+  model: 'model',
+  btus: 'btus',
+  voltage: 'voltage',
+  environment: 'environment',
+  serialNumber: 'serialNumber',
+  installedAt: 'installedAt',
+  warrantyUntil: 'warrantyUntil',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdBy: 'createdBy',
+  updatedBy: 'updatedBy',
+  archivedAt: 'archivedAt'
+} as const
+
+export type EquipmentScalarFieldEnum = (typeof EquipmentScalarFieldEnum)[keyof typeof EquipmentScalarFieldEnum]
+
+
+export const VisitScalarFieldEnum = {
+  id: 'id',
+  customerId: 'customerId',
+  opportunityId: 'opportunityId',
+  addressId: 'addressId',
+  scheduledStartAt: 'scheduledStartAt',
+  scheduledEndAt: 'scheduledEndAt',
+  technicianUserId: 'technicianUserId',
+  status: 'status',
+  objective: 'objective',
+  accessNotes: 'accessNotes',
+  confirmationNotes: 'confirmationNotes',
+  result: 'result',
+  nextSteps: 'nextSteps',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdBy: 'createdBy',
+  updatedBy: 'updatedBy',
+  archivedAt: 'archivedAt'
+} as const
+
+export type VisitScalarFieldEnum = (typeof VisitScalarFieldEnum)[keyof typeof VisitScalarFieldEnum]
+
+
+export const VisitEquipmentScalarFieldEnum = {
+  visitId: 'visitId',
+  equipmentId: 'equipmentId',
+  notes: 'notes'
+} as const
+
+export type VisitEquipmentScalarFieldEnum = (typeof VisitEquipmentScalarFieldEnum)[keyof typeof VisitEquipmentScalarFieldEnum]
 
 
 export const QuoteScalarFieldEnum = {
@@ -325,6 +413,26 @@ export const AuvoInboxItemScalarFieldEnum = {
   auvoContactId: 'auvoContactId',
   email: 'email',
   channelType: 'channelType',
+  origin: 'origin',
+  utmJson: 'utmJson',
+  tagsJson: 'tagsJson',
+  customFieldsJson: 'customFieldsJson',
+  classification: 'classification',
+  departmentId: 'departmentId',
+  departmentName: 'departmentName',
+  agentId: 'agentId',
+  agentName: 'agentName',
+  sessionStartedAt: 'sessionStartedAt',
+  sessionEndedAt: 'sessionEndedAt',
+  firstUserInteractionAt: 'firstUserInteractionAt',
+  firstAgentMessageAt: 'firstAgentMessageAt',
+  lastInteractionAt: 'lastInteractionAt',
+  lastMessageText: 'lastMessageText',
+  unreadCount: 'unreadCount',
+  waitReply: 'waitReply',
+  windowStatus: 'windowStatus',
+  derivedJson: 'derivedJson',
+  parsedSignalsJson: 'parsedSignalsJson',
   resolution: 'resolution',
   resolvedOpportunityId: 'resolvedOpportunityId',
   resolvedCustomerId: 'resolvedCustomerId',
@@ -338,6 +446,41 @@ export const AuvoInboxItemScalarFieldEnum = {
 } as const
 
 export type AuvoInboxItemScalarFieldEnum = (typeof AuvoInboxItemScalarFieldEnum)[keyof typeof AuvoInboxItemScalarFieldEnum]
+
+
+export const AuvoContactSignalScalarFieldEnum = {
+  auvoContactId: 'auvoContactId',
+  contactName: 'contactName',
+  phoneNormalized: 'phoneNormalized',
+  email: 'email',
+  origin: 'origin',
+  utmJson: 'utmJson',
+  tagsJson: 'tagsJson',
+  customFieldsJson: 'customFieldsJson',
+  classification: 'classification',
+  departmentId: 'departmentId',
+  departmentName: 'departmentName',
+  agentId: 'agentId',
+  agentName: 'agentName',
+  channelType: 'channelType',
+  sessionStartedAt: 'sessionStartedAt',
+  sessionEndedAt: 'sessionEndedAt',
+  firstUserInteractionAt: 'firstUserInteractionAt',
+  firstAgentMessageAt: 'firstAgentMessageAt',
+  lastInteractionAt: 'lastInteractionAt',
+  lastMessageText: 'lastMessageText',
+  unreadCount: 'unreadCount',
+  waitReply: 'waitReply',
+  windowStatus: 'windowStatus',
+  derivedJson: 'derivedJson',
+  parsedSignalsJson: 'parsedSignalsJson',
+  lastEventId: 'lastEventId',
+  lastEventReceivedAt: 'lastEventReceivedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AuvoContactSignalScalarFieldEnum = (typeof AuvoContactSignalScalarFieldEnum)[keyof typeof AuvoContactSignalScalarFieldEnum]
 
 
 export const MigrationHistoryScalarFieldEnum = {

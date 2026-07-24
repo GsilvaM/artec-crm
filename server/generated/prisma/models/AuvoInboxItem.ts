@@ -20,8 +20,18 @@ export type AuvoInboxItemModel = runtime.Types.Result.DefaultSelection<Prisma.$A
 
 export type AggregateAuvoInboxItem = {
   _count: AuvoInboxItemCountAggregateOutputType | null
+  _avg: AuvoInboxItemAvgAggregateOutputType | null
+  _sum: AuvoInboxItemSumAggregateOutputType | null
   _min: AuvoInboxItemMinAggregateOutputType | null
   _max: AuvoInboxItemMaxAggregateOutputType | null
+}
+
+export type AuvoInboxItemAvgAggregateOutputType = {
+  unreadCount: number | null
+}
+
+export type AuvoInboxItemSumAggregateOutputType = {
+  unreadCount: number | null
 }
 
 export type AuvoInboxItemMinAggregateOutputType = {
@@ -35,6 +45,21 @@ export type AuvoInboxItemMinAggregateOutputType = {
   auvoContactId: string | null
   email: string | null
   channelType: string | null
+  origin: string | null
+  classification: string | null
+  departmentId: string | null
+  departmentName: string | null
+  agentId: string | null
+  agentName: string | null
+  sessionStartedAt: Date | null
+  sessionEndedAt: Date | null
+  firstUserInteractionAt: Date | null
+  firstAgentMessageAt: Date | null
+  lastInteractionAt: Date | null
+  lastMessageText: string | null
+  unreadCount: number | null
+  waitReply: boolean | null
+  windowStatus: string | null
   resolution: string | null
   resolvedOpportunityId: string | null
   resolvedCustomerId: string | null
@@ -58,6 +83,21 @@ export type AuvoInboxItemMaxAggregateOutputType = {
   auvoContactId: string | null
   email: string | null
   channelType: string | null
+  origin: string | null
+  classification: string | null
+  departmentId: string | null
+  departmentName: string | null
+  agentId: string | null
+  agentName: string | null
+  sessionStartedAt: Date | null
+  sessionEndedAt: Date | null
+  firstUserInteractionAt: Date | null
+  firstAgentMessageAt: Date | null
+  lastInteractionAt: Date | null
+  lastMessageText: string | null
+  unreadCount: number | null
+  waitReply: boolean | null
+  windowStatus: string | null
   resolution: string | null
   resolvedOpportunityId: string | null
   resolvedCustomerId: string | null
@@ -81,6 +121,26 @@ export type AuvoInboxItemCountAggregateOutputType = {
   auvoContactId: number
   email: number
   channelType: number
+  origin: number
+  utmJson: number
+  tagsJson: number
+  customFieldsJson: number
+  classification: number
+  departmentId: number
+  departmentName: number
+  agentId: number
+  agentName: number
+  sessionStartedAt: number
+  sessionEndedAt: number
+  firstUserInteractionAt: number
+  firstAgentMessageAt: number
+  lastInteractionAt: number
+  lastMessageText: number
+  unreadCount: number
+  waitReply: number
+  windowStatus: number
+  derivedJson: number
+  parsedSignalsJson: number
   resolution: number
   resolvedOpportunityId: number
   resolvedCustomerId: number
@@ -95,6 +155,14 @@ export type AuvoInboxItemCountAggregateOutputType = {
 }
 
 
+export type AuvoInboxItemAvgAggregateInputType = {
+  unreadCount?: true
+}
+
+export type AuvoInboxItemSumAggregateInputType = {
+  unreadCount?: true
+}
+
 export type AuvoInboxItemMinAggregateInputType = {
   id?: true
   externalServiceId?: true
@@ -106,6 +174,21 @@ export type AuvoInboxItemMinAggregateInputType = {
   auvoContactId?: true
   email?: true
   channelType?: true
+  origin?: true
+  classification?: true
+  departmentId?: true
+  departmentName?: true
+  agentId?: true
+  agentName?: true
+  sessionStartedAt?: true
+  sessionEndedAt?: true
+  firstUserInteractionAt?: true
+  firstAgentMessageAt?: true
+  lastInteractionAt?: true
+  lastMessageText?: true
+  unreadCount?: true
+  waitReply?: true
+  windowStatus?: true
   resolution?: true
   resolvedOpportunityId?: true
   resolvedCustomerId?: true
@@ -129,6 +212,21 @@ export type AuvoInboxItemMaxAggregateInputType = {
   auvoContactId?: true
   email?: true
   channelType?: true
+  origin?: true
+  classification?: true
+  departmentId?: true
+  departmentName?: true
+  agentId?: true
+  agentName?: true
+  sessionStartedAt?: true
+  sessionEndedAt?: true
+  firstUserInteractionAt?: true
+  firstAgentMessageAt?: true
+  lastInteractionAt?: true
+  lastMessageText?: true
+  unreadCount?: true
+  waitReply?: true
+  windowStatus?: true
   resolution?: true
   resolvedOpportunityId?: true
   resolvedCustomerId?: true
@@ -152,6 +250,26 @@ export type AuvoInboxItemCountAggregateInputType = {
   auvoContactId?: true
   email?: true
   channelType?: true
+  origin?: true
+  utmJson?: true
+  tagsJson?: true
+  customFieldsJson?: true
+  classification?: true
+  departmentId?: true
+  departmentName?: true
+  agentId?: true
+  agentName?: true
+  sessionStartedAt?: true
+  sessionEndedAt?: true
+  firstUserInteractionAt?: true
+  firstAgentMessageAt?: true
+  lastInteractionAt?: true
+  lastMessageText?: true
+  unreadCount?: true
+  waitReply?: true
+  windowStatus?: true
+  derivedJson?: true
+  parsedSignalsJson?: true
   resolution?: true
   resolvedOpportunityId?: true
   resolvedCustomerId?: true
@@ -203,6 +321,18 @@ export type AuvoInboxItemAggregateArgs<ExtArgs extends runtime.Types.Extensions.
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: AuvoInboxItemAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: AuvoInboxItemSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: AuvoInboxItemMinAggregateInputType
@@ -233,6 +363,8 @@ export type AuvoInboxItemGroupByArgs<ExtArgs extends runtime.Types.Extensions.In
   take?: number
   skip?: number
   _count?: AuvoInboxItemCountAggregateInputType | true
+  _avg?: AuvoInboxItemAvgAggregateInputType
+  _sum?: AuvoInboxItemSumAggregateInputType
   _min?: AuvoInboxItemMinAggregateInputType
   _max?: AuvoInboxItemMaxAggregateInputType
 }
@@ -248,6 +380,26 @@ export type AuvoInboxItemGroupByOutputType = {
   auvoContactId: string | null
   email: string | null
   channelType: string | null
+  origin: string | null
+  utmJson: runtime.JsonValue
+  tagsJson: runtime.JsonValue
+  customFieldsJson: runtime.JsonValue
+  classification: string | null
+  departmentId: string | null
+  departmentName: string | null
+  agentId: string | null
+  agentName: string | null
+  sessionStartedAt: Date | null
+  sessionEndedAt: Date | null
+  firstUserInteractionAt: Date | null
+  firstAgentMessageAt: Date | null
+  lastInteractionAt: Date | null
+  lastMessageText: string | null
+  unreadCount: number | null
+  waitReply: boolean | null
+  windowStatus: string | null
+  derivedJson: runtime.JsonValue
+  parsedSignalsJson: runtime.JsonValue
   resolution: string | null
   resolvedOpportunityId: string | null
   resolvedCustomerId: string | null
@@ -259,6 +411,8 @@ export type AuvoInboxItemGroupByOutputType = {
   updatedAt: Date
   isTestFixture: boolean
   _count: AuvoInboxItemCountAggregateOutputType | null
+  _avg: AuvoInboxItemAvgAggregateOutputType | null
+  _sum: AuvoInboxItemSumAggregateOutputType | null
   _min: AuvoInboxItemMinAggregateOutputType | null
   _max: AuvoInboxItemMaxAggregateOutputType | null
 }
@@ -292,6 +446,26 @@ export type AuvoInboxItemWhereInput = {
   auvoContactId?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
   email?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
   channelType?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  origin?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  utmJson?: Prisma.JsonFilter<"AuvoInboxItem">
+  tagsJson?: Prisma.JsonFilter<"AuvoInboxItem">
+  customFieldsJson?: Prisma.JsonFilter<"AuvoInboxItem">
+  classification?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  departmentId?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  departmentName?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  agentId?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  agentName?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  sessionStartedAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  sessionEndedAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  firstUserInteractionAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  firstAgentMessageAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  lastInteractionAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  lastMessageText?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  unreadCount?: Prisma.IntNullableFilter<"AuvoInboxItem"> | number | null
+  waitReply?: Prisma.BoolNullableFilter<"AuvoInboxItem"> | boolean | null
+  windowStatus?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  derivedJson?: Prisma.JsonFilter<"AuvoInboxItem">
+  parsedSignalsJson?: Prisma.JsonFilter<"AuvoInboxItem">
   resolution?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
   resolvedOpportunityId?: Prisma.UuidNullableFilter<"AuvoInboxItem"> | string | null
   resolvedCustomerId?: Prisma.UuidNullableFilter<"AuvoInboxItem"> | string | null
@@ -315,6 +489,26 @@ export type AuvoInboxItemOrderByWithRelationInput = {
   auvoContactId?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   channelType?: Prisma.SortOrderInput | Prisma.SortOrder
+  origin?: Prisma.SortOrderInput | Prisma.SortOrder
+  utmJson?: Prisma.SortOrder
+  tagsJson?: Prisma.SortOrder
+  customFieldsJson?: Prisma.SortOrder
+  classification?: Prisma.SortOrderInput | Prisma.SortOrder
+  departmentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  departmentName?: Prisma.SortOrderInput | Prisma.SortOrder
+  agentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  agentName?: Prisma.SortOrderInput | Prisma.SortOrder
+  sessionStartedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  sessionEndedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  firstUserInteractionAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  firstAgentMessageAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastInteractionAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastMessageText?: Prisma.SortOrderInput | Prisma.SortOrder
+  unreadCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  waitReply?: Prisma.SortOrderInput | Prisma.SortOrder
+  windowStatus?: Prisma.SortOrderInput | Prisma.SortOrder
+  derivedJson?: Prisma.SortOrder
+  parsedSignalsJson?: Prisma.SortOrder
   resolution?: Prisma.SortOrderInput | Prisma.SortOrder
   resolvedOpportunityId?: Prisma.SortOrderInput | Prisma.SortOrder
   resolvedCustomerId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -341,6 +535,26 @@ export type AuvoInboxItemWhereUniqueInput = Prisma.AtLeast<{
   auvoContactId?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
   email?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
   channelType?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  origin?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  utmJson?: Prisma.JsonFilter<"AuvoInboxItem">
+  tagsJson?: Prisma.JsonFilter<"AuvoInboxItem">
+  customFieldsJson?: Prisma.JsonFilter<"AuvoInboxItem">
+  classification?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  departmentId?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  departmentName?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  agentId?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  agentName?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  sessionStartedAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  sessionEndedAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  firstUserInteractionAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  firstAgentMessageAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  lastInteractionAt?: Prisma.DateTimeNullableFilter<"AuvoInboxItem"> | Date | string | null
+  lastMessageText?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  unreadCount?: Prisma.IntNullableFilter<"AuvoInboxItem"> | number | null
+  waitReply?: Prisma.BoolNullableFilter<"AuvoInboxItem"> | boolean | null
+  windowStatus?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
+  derivedJson?: Prisma.JsonFilter<"AuvoInboxItem">
+  parsedSignalsJson?: Prisma.JsonFilter<"AuvoInboxItem">
   resolution?: Prisma.StringNullableFilter<"AuvoInboxItem"> | string | null
   resolvedOpportunityId?: Prisma.UuidNullableFilter<"AuvoInboxItem"> | string | null
   resolvedCustomerId?: Prisma.UuidNullableFilter<"AuvoInboxItem"> | string | null
@@ -364,6 +578,26 @@ export type AuvoInboxItemOrderByWithAggregationInput = {
   auvoContactId?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   channelType?: Prisma.SortOrderInput | Prisma.SortOrder
+  origin?: Prisma.SortOrderInput | Prisma.SortOrder
+  utmJson?: Prisma.SortOrder
+  tagsJson?: Prisma.SortOrder
+  customFieldsJson?: Prisma.SortOrder
+  classification?: Prisma.SortOrderInput | Prisma.SortOrder
+  departmentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  departmentName?: Prisma.SortOrderInput | Prisma.SortOrder
+  agentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  agentName?: Prisma.SortOrderInput | Prisma.SortOrder
+  sessionStartedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  sessionEndedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  firstUserInteractionAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  firstAgentMessageAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastInteractionAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastMessageText?: Prisma.SortOrderInput | Prisma.SortOrder
+  unreadCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  waitReply?: Prisma.SortOrderInput | Prisma.SortOrder
+  windowStatus?: Prisma.SortOrderInput | Prisma.SortOrder
+  derivedJson?: Prisma.SortOrder
+  parsedSignalsJson?: Prisma.SortOrder
   resolution?: Prisma.SortOrderInput | Prisma.SortOrder
   resolvedOpportunityId?: Prisma.SortOrderInput | Prisma.SortOrder
   resolvedCustomerId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -375,8 +609,10 @@ export type AuvoInboxItemOrderByWithAggregationInput = {
   updatedAt?: Prisma.SortOrder
   isTestFixture?: Prisma.SortOrder
   _count?: Prisma.AuvoInboxItemCountOrderByAggregateInput
+  _avg?: Prisma.AuvoInboxItemAvgOrderByAggregateInput
   _max?: Prisma.AuvoInboxItemMaxOrderByAggregateInput
   _min?: Prisma.AuvoInboxItemMinOrderByAggregateInput
+  _sum?: Prisma.AuvoInboxItemSumOrderByAggregateInput
 }
 
 export type AuvoInboxItemScalarWhereWithAggregatesInput = {
@@ -393,6 +629,26 @@ export type AuvoInboxItemScalarWhereWithAggregatesInput = {
   auvoContactId?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
   email?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
   channelType?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
+  origin?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
+  utmJson?: Prisma.JsonWithAggregatesFilter<"AuvoInboxItem">
+  tagsJson?: Prisma.JsonWithAggregatesFilter<"AuvoInboxItem">
+  customFieldsJson?: Prisma.JsonWithAggregatesFilter<"AuvoInboxItem">
+  classification?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
+  departmentId?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
+  departmentName?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
+  agentId?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
+  agentName?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
+  sessionStartedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AuvoInboxItem"> | Date | string | null
+  sessionEndedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AuvoInboxItem"> | Date | string | null
+  firstUserInteractionAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AuvoInboxItem"> | Date | string | null
+  firstAgentMessageAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AuvoInboxItem"> | Date | string | null
+  lastInteractionAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AuvoInboxItem"> | Date | string | null
+  lastMessageText?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
+  unreadCount?: Prisma.IntNullableWithAggregatesFilter<"AuvoInboxItem"> | number | null
+  waitReply?: Prisma.BoolNullableWithAggregatesFilter<"AuvoInboxItem"> | boolean | null
+  windowStatus?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
+  derivedJson?: Prisma.JsonWithAggregatesFilter<"AuvoInboxItem">
+  parsedSignalsJson?: Prisma.JsonWithAggregatesFilter<"AuvoInboxItem">
   resolution?: Prisma.StringNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
   resolvedOpportunityId?: Prisma.UuidNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
   resolvedCustomerId?: Prisma.UuidNullableWithAggregatesFilter<"AuvoInboxItem"> | string | null
@@ -416,6 +672,26 @@ export type AuvoInboxItemCreateInput = {
   auvoContactId?: string | null
   email?: string | null
   channelType?: string | null
+  origin?: string | null
+  utmJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  tagsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  customFieldsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  classification?: string | null
+  departmentId?: string | null
+  departmentName?: string | null
+  agentId?: string | null
+  agentName?: string | null
+  sessionStartedAt?: Date | string | null
+  sessionEndedAt?: Date | string | null
+  firstUserInteractionAt?: Date | string | null
+  firstAgentMessageAt?: Date | string | null
+  lastInteractionAt?: Date | string | null
+  lastMessageText?: string | null
+  unreadCount?: number | null
+  waitReply?: boolean | null
+  windowStatus?: string | null
+  derivedJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  parsedSignalsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   resolution?: string | null
   resolvedOpportunityId?: string | null
   resolvedCustomerId?: string | null
@@ -439,6 +715,26 @@ export type AuvoInboxItemUncheckedCreateInput = {
   auvoContactId?: string | null
   email?: string | null
   channelType?: string | null
+  origin?: string | null
+  utmJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  tagsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  customFieldsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  classification?: string | null
+  departmentId?: string | null
+  departmentName?: string | null
+  agentId?: string | null
+  agentName?: string | null
+  sessionStartedAt?: Date | string | null
+  sessionEndedAt?: Date | string | null
+  firstUserInteractionAt?: Date | string | null
+  firstAgentMessageAt?: Date | string | null
+  lastInteractionAt?: Date | string | null
+  lastMessageText?: string | null
+  unreadCount?: number | null
+  waitReply?: boolean | null
+  windowStatus?: string | null
+  derivedJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  parsedSignalsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   resolution?: string | null
   resolvedOpportunityId?: string | null
   resolvedCustomerId?: string | null
@@ -462,6 +758,26 @@ export type AuvoInboxItemUpdateInput = {
   auvoContactId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   channelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  utmJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  tagsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  customFieldsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  classification?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departmentName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessionEndedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstUserInteractionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstAgentMessageAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastInteractionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastMessageText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unreadCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  waitReply?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  windowStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  derivedJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  parsedSignalsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   resolution?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   resolvedOpportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   resolvedCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -485,6 +801,26 @@ export type AuvoInboxItemUncheckedUpdateInput = {
   auvoContactId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   channelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  utmJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  tagsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  customFieldsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  classification?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departmentName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessionEndedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstUserInteractionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstAgentMessageAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastInteractionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastMessageText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unreadCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  waitReply?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  windowStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  derivedJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  parsedSignalsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   resolution?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   resolvedOpportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   resolvedCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -508,6 +844,26 @@ export type AuvoInboxItemCreateManyInput = {
   auvoContactId?: string | null
   email?: string | null
   channelType?: string | null
+  origin?: string | null
+  utmJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  tagsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  customFieldsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  classification?: string | null
+  departmentId?: string | null
+  departmentName?: string | null
+  agentId?: string | null
+  agentName?: string | null
+  sessionStartedAt?: Date | string | null
+  sessionEndedAt?: Date | string | null
+  firstUserInteractionAt?: Date | string | null
+  firstAgentMessageAt?: Date | string | null
+  lastInteractionAt?: Date | string | null
+  lastMessageText?: string | null
+  unreadCount?: number | null
+  waitReply?: boolean | null
+  windowStatus?: string | null
+  derivedJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  parsedSignalsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   resolution?: string | null
   resolvedOpportunityId?: string | null
   resolvedCustomerId?: string | null
@@ -531,6 +887,26 @@ export type AuvoInboxItemUpdateManyMutationInput = {
   auvoContactId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   channelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  utmJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  tagsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  customFieldsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  classification?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departmentName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessionEndedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstUserInteractionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstAgentMessageAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastInteractionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastMessageText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unreadCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  waitReply?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  windowStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  derivedJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  parsedSignalsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   resolution?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   resolvedOpportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   resolvedCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -554,6 +930,26 @@ export type AuvoInboxItemUncheckedUpdateManyInput = {
   auvoContactId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   channelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  utmJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  tagsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  customFieldsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  classification?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departmentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  departmentName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionStartedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sessionEndedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstUserInteractionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  firstAgentMessageAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastInteractionAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastMessageText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unreadCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  waitReply?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  windowStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  derivedJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  parsedSignalsJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   resolution?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   resolvedOpportunityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   resolvedCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -577,6 +973,26 @@ export type AuvoInboxItemCountOrderByAggregateInput = {
   auvoContactId?: Prisma.SortOrder
   email?: Prisma.SortOrder
   channelType?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
+  utmJson?: Prisma.SortOrder
+  tagsJson?: Prisma.SortOrder
+  customFieldsJson?: Prisma.SortOrder
+  classification?: Prisma.SortOrder
+  departmentId?: Prisma.SortOrder
+  departmentName?: Prisma.SortOrder
+  agentId?: Prisma.SortOrder
+  agentName?: Prisma.SortOrder
+  sessionStartedAt?: Prisma.SortOrder
+  sessionEndedAt?: Prisma.SortOrder
+  firstUserInteractionAt?: Prisma.SortOrder
+  firstAgentMessageAt?: Prisma.SortOrder
+  lastInteractionAt?: Prisma.SortOrder
+  lastMessageText?: Prisma.SortOrder
+  unreadCount?: Prisma.SortOrder
+  waitReply?: Prisma.SortOrder
+  windowStatus?: Prisma.SortOrder
+  derivedJson?: Prisma.SortOrder
+  parsedSignalsJson?: Prisma.SortOrder
   resolution?: Prisma.SortOrder
   resolvedOpportunityId?: Prisma.SortOrder
   resolvedCustomerId?: Prisma.SortOrder
@@ -587,6 +1003,10 @@ export type AuvoInboxItemCountOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   isTestFixture?: Prisma.SortOrder
+}
+
+export type AuvoInboxItemAvgOrderByAggregateInput = {
+  unreadCount?: Prisma.SortOrder
 }
 
 export type AuvoInboxItemMaxOrderByAggregateInput = {
@@ -600,6 +1020,21 @@ export type AuvoInboxItemMaxOrderByAggregateInput = {
   auvoContactId?: Prisma.SortOrder
   email?: Prisma.SortOrder
   channelType?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
+  classification?: Prisma.SortOrder
+  departmentId?: Prisma.SortOrder
+  departmentName?: Prisma.SortOrder
+  agentId?: Prisma.SortOrder
+  agentName?: Prisma.SortOrder
+  sessionStartedAt?: Prisma.SortOrder
+  sessionEndedAt?: Prisma.SortOrder
+  firstUserInteractionAt?: Prisma.SortOrder
+  firstAgentMessageAt?: Prisma.SortOrder
+  lastInteractionAt?: Prisma.SortOrder
+  lastMessageText?: Prisma.SortOrder
+  unreadCount?: Prisma.SortOrder
+  waitReply?: Prisma.SortOrder
+  windowStatus?: Prisma.SortOrder
   resolution?: Prisma.SortOrder
   resolvedOpportunityId?: Prisma.SortOrder
   resolvedCustomerId?: Prisma.SortOrder
@@ -623,6 +1058,21 @@ export type AuvoInboxItemMinOrderByAggregateInput = {
   auvoContactId?: Prisma.SortOrder
   email?: Prisma.SortOrder
   channelType?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
+  classification?: Prisma.SortOrder
+  departmentId?: Prisma.SortOrder
+  departmentName?: Prisma.SortOrder
+  agentId?: Prisma.SortOrder
+  agentName?: Prisma.SortOrder
+  sessionStartedAt?: Prisma.SortOrder
+  sessionEndedAt?: Prisma.SortOrder
+  firstUserInteractionAt?: Prisma.SortOrder
+  firstAgentMessageAt?: Prisma.SortOrder
+  lastInteractionAt?: Prisma.SortOrder
+  lastMessageText?: Prisma.SortOrder
+  unreadCount?: Prisma.SortOrder
+  waitReply?: Prisma.SortOrder
+  windowStatus?: Prisma.SortOrder
   resolution?: Prisma.SortOrder
   resolvedOpportunityId?: Prisma.SortOrder
   resolvedCustomerId?: Prisma.SortOrder
@@ -633,6 +1083,14 @@ export type AuvoInboxItemMinOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   isTestFixture?: Prisma.SortOrder
+}
+
+export type AuvoInboxItemSumOrderByAggregateInput = {
+  unreadCount?: Prisma.SortOrder
+}
+
+export type NullableBoolFieldUpdateOperationsInput = {
+  set?: boolean | null
 }
 
 
@@ -648,6 +1106,26 @@ export type AuvoInboxItemSelect<ExtArgs extends runtime.Types.Extensions.Interna
   auvoContactId?: boolean
   email?: boolean
   channelType?: boolean
+  origin?: boolean
+  utmJson?: boolean
+  tagsJson?: boolean
+  customFieldsJson?: boolean
+  classification?: boolean
+  departmentId?: boolean
+  departmentName?: boolean
+  agentId?: boolean
+  agentName?: boolean
+  sessionStartedAt?: boolean
+  sessionEndedAt?: boolean
+  firstUserInteractionAt?: boolean
+  firstAgentMessageAt?: boolean
+  lastInteractionAt?: boolean
+  lastMessageText?: boolean
+  unreadCount?: boolean
+  waitReply?: boolean
+  windowStatus?: boolean
+  derivedJson?: boolean
+  parsedSignalsJson?: boolean
   resolution?: boolean
   resolvedOpportunityId?: boolean
   resolvedCustomerId?: boolean
@@ -671,6 +1149,26 @@ export type AuvoInboxItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types
   auvoContactId?: boolean
   email?: boolean
   channelType?: boolean
+  origin?: boolean
+  utmJson?: boolean
+  tagsJson?: boolean
+  customFieldsJson?: boolean
+  classification?: boolean
+  departmentId?: boolean
+  departmentName?: boolean
+  agentId?: boolean
+  agentName?: boolean
+  sessionStartedAt?: boolean
+  sessionEndedAt?: boolean
+  firstUserInteractionAt?: boolean
+  firstAgentMessageAt?: boolean
+  lastInteractionAt?: boolean
+  lastMessageText?: boolean
+  unreadCount?: boolean
+  waitReply?: boolean
+  windowStatus?: boolean
+  derivedJson?: boolean
+  parsedSignalsJson?: boolean
   resolution?: boolean
   resolvedOpportunityId?: boolean
   resolvedCustomerId?: boolean
@@ -694,6 +1192,26 @@ export type AuvoInboxItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   auvoContactId?: boolean
   email?: boolean
   channelType?: boolean
+  origin?: boolean
+  utmJson?: boolean
+  tagsJson?: boolean
+  customFieldsJson?: boolean
+  classification?: boolean
+  departmentId?: boolean
+  departmentName?: boolean
+  agentId?: boolean
+  agentName?: boolean
+  sessionStartedAt?: boolean
+  sessionEndedAt?: boolean
+  firstUserInteractionAt?: boolean
+  firstAgentMessageAt?: boolean
+  lastInteractionAt?: boolean
+  lastMessageText?: boolean
+  unreadCount?: boolean
+  waitReply?: boolean
+  windowStatus?: boolean
+  derivedJson?: boolean
+  parsedSignalsJson?: boolean
   resolution?: boolean
   resolvedOpportunityId?: boolean
   resolvedCustomerId?: boolean
@@ -717,6 +1235,26 @@ export type AuvoInboxItemSelectScalar = {
   auvoContactId?: boolean
   email?: boolean
   channelType?: boolean
+  origin?: boolean
+  utmJson?: boolean
+  tagsJson?: boolean
+  customFieldsJson?: boolean
+  classification?: boolean
+  departmentId?: boolean
+  departmentName?: boolean
+  agentId?: boolean
+  agentName?: boolean
+  sessionStartedAt?: boolean
+  sessionEndedAt?: boolean
+  firstUserInteractionAt?: boolean
+  firstAgentMessageAt?: boolean
+  lastInteractionAt?: boolean
+  lastMessageText?: boolean
+  unreadCount?: boolean
+  waitReply?: boolean
+  windowStatus?: boolean
+  derivedJson?: boolean
+  parsedSignalsJson?: boolean
   resolution?: boolean
   resolvedOpportunityId?: boolean
   resolvedCustomerId?: boolean
@@ -729,7 +1267,7 @@ export type AuvoInboxItemSelectScalar = {
   isTestFixture?: boolean
 }
 
-export type AuvoInboxItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "externalServiceId" | "status" | "suggestedCustomerId" | "title" | "contactName" | "phoneNormalized" | "auvoContactId" | "email" | "channelType" | "resolution" | "resolvedOpportunityId" | "resolvedCustomerId" | "resolvedBy" | "resolvedAt" | "discardReason" | "lastEventId" | "createdAt" | "updatedAt" | "isTestFixture", ExtArgs["result"]["auvoInboxItem"]>
+export type AuvoInboxItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "externalServiceId" | "status" | "suggestedCustomerId" | "title" | "contactName" | "phoneNormalized" | "auvoContactId" | "email" | "channelType" | "origin" | "utmJson" | "tagsJson" | "customFieldsJson" | "classification" | "departmentId" | "departmentName" | "agentId" | "agentName" | "sessionStartedAt" | "sessionEndedAt" | "firstUserInteractionAt" | "firstAgentMessageAt" | "lastInteractionAt" | "lastMessageText" | "unreadCount" | "waitReply" | "windowStatus" | "derivedJson" | "parsedSignalsJson" | "resolution" | "resolvedOpportunityId" | "resolvedCustomerId" | "resolvedBy" | "resolvedAt" | "discardReason" | "lastEventId" | "createdAt" | "updatedAt" | "isTestFixture", ExtArgs["result"]["auvoInboxItem"]>
 
 export type $AuvoInboxItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "AuvoInboxItem"
@@ -745,6 +1283,26 @@ export type $AuvoInboxItemPayload<ExtArgs extends runtime.Types.Extensions.Inter
     auvoContactId: string | null
     email: string | null
     channelType: string | null
+    origin: string | null
+    utmJson: runtime.JsonValue
+    tagsJson: runtime.JsonValue
+    customFieldsJson: runtime.JsonValue
+    classification: string | null
+    departmentId: string | null
+    departmentName: string | null
+    agentId: string | null
+    agentName: string | null
+    sessionStartedAt: Date | null
+    sessionEndedAt: Date | null
+    firstUserInteractionAt: Date | null
+    firstAgentMessageAt: Date | null
+    lastInteractionAt: Date | null
+    lastMessageText: string | null
+    unreadCount: number | null
+    waitReply: boolean | null
+    windowStatus: string | null
+    derivedJson: runtime.JsonValue
+    parsedSignalsJson: runtime.JsonValue
     resolution: string | null
     resolvedOpportunityId: string | null
     resolvedCustomerId: string | null
@@ -1188,6 +1746,26 @@ export interface AuvoInboxItemFieldRefs {
   readonly auvoContactId: Prisma.FieldRef<"AuvoInboxItem", 'String'>
   readonly email: Prisma.FieldRef<"AuvoInboxItem", 'String'>
   readonly channelType: Prisma.FieldRef<"AuvoInboxItem", 'String'>
+  readonly origin: Prisma.FieldRef<"AuvoInboxItem", 'String'>
+  readonly utmJson: Prisma.FieldRef<"AuvoInboxItem", 'Json'>
+  readonly tagsJson: Prisma.FieldRef<"AuvoInboxItem", 'Json'>
+  readonly customFieldsJson: Prisma.FieldRef<"AuvoInboxItem", 'Json'>
+  readonly classification: Prisma.FieldRef<"AuvoInboxItem", 'String'>
+  readonly departmentId: Prisma.FieldRef<"AuvoInboxItem", 'String'>
+  readonly departmentName: Prisma.FieldRef<"AuvoInboxItem", 'String'>
+  readonly agentId: Prisma.FieldRef<"AuvoInboxItem", 'String'>
+  readonly agentName: Prisma.FieldRef<"AuvoInboxItem", 'String'>
+  readonly sessionStartedAt: Prisma.FieldRef<"AuvoInboxItem", 'DateTime'>
+  readonly sessionEndedAt: Prisma.FieldRef<"AuvoInboxItem", 'DateTime'>
+  readonly firstUserInteractionAt: Prisma.FieldRef<"AuvoInboxItem", 'DateTime'>
+  readonly firstAgentMessageAt: Prisma.FieldRef<"AuvoInboxItem", 'DateTime'>
+  readonly lastInteractionAt: Prisma.FieldRef<"AuvoInboxItem", 'DateTime'>
+  readonly lastMessageText: Prisma.FieldRef<"AuvoInboxItem", 'String'>
+  readonly unreadCount: Prisma.FieldRef<"AuvoInboxItem", 'Int'>
+  readonly waitReply: Prisma.FieldRef<"AuvoInboxItem", 'Boolean'>
+  readonly windowStatus: Prisma.FieldRef<"AuvoInboxItem", 'String'>
+  readonly derivedJson: Prisma.FieldRef<"AuvoInboxItem", 'Json'>
+  readonly parsedSignalsJson: Prisma.FieldRef<"AuvoInboxItem", 'Json'>
   readonly resolution: Prisma.FieldRef<"AuvoInboxItem", 'String'>
   readonly resolvedOpportunityId: Prisma.FieldRef<"AuvoInboxItem", 'String'>
   readonly resolvedCustomerId: Prisma.FieldRef<"AuvoInboxItem", 'String'>

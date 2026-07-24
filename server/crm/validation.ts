@@ -11,6 +11,9 @@ const moneyValue = z.coerce.number().int().nonnegative().optional().nullable();
 const uuid = z.string().uuid();
 const metadataSchema = z.record(z.string(), z.unknown()).default({});
 const nextActionCategorySchema = z.enum(["commercial", "warranty", "support", "after_sales"]);
+const addressKindSchema = z.enum(["service", "billing", "pickup", "installation", "other"]);
+const equipmentTypeSchema = z.enum(["split_hi_wall", "cassette", "window_ac", "floor_ceiling", "multi_split", "other"]);
+const visitStatusSchema = z.enum(["draft", "awaiting_confirmation", "confirmed", "completed", "cancelled", "no_show"]);
 const notificationStatusSchema = z.enum(["unread", "read", "archived", "resolved", "active"]);
 const notificationTypeSchema = z.enum([
   "overdue_next_action",
@@ -140,6 +143,114 @@ export const activityUpdateSchema = activityCreateSchema
   .refine((value) => Object.keys(value).length > 0, {
     message: "Informe ao menos um campo para atualizar.",
   });
+
+export const addressCreateSchema = z.object({
+  customerId: uuid,
+  label: z.string().trim().min(2, "Informe um nome para o endereco."),
+  kind: addressKindSchema.default("service"),
+  street: optionalText,
+  number: optionalText,
+  complement: optionalText,
+  neighborhood: optionalText,
+  city: optionalText,
+  state: optionalText,
+  postalCode: optionalText,
+  reference: optionalText,
+  accessNotes: optionalText,
+  isPrimary: z.boolean().default(false),
+});
+
+export const addressUpdateSchema = addressCreateSchema
+  .omit({ customerId: true })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Informe ao menos um campo para atualizar.",
+  });
+
+export const equipmentCreateSchema = z.object({
+  customerId: uuid,
+  opportunityId: uuid.optional().nullable(),
+  addressId: uuid.optional().nullable(),
+  type: equipmentTypeSchema.default("other"),
+  brand: optionalText,
+  model: optionalText,
+  btus: z.coerce.number().int().positive("Informe BTUs validos.").optional().nullable(),
+  voltage: optionalText,
+  environment: optionalText,
+  serialNumber: optionalText,
+  installedAt: optionalText,
+  warrantyUntil: optionalText,
+  notes: optionalText,
+});
+
+export const equipmentUpdateSchema = equipmentCreateSchema
+  .omit({ customerId: true })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Informe ao menos um campo para atualizar.",
+  });
+
+const visitBaseSchema = z.object({
+  customerId: uuid,
+  opportunityId: uuid.optional().nullable(),
+  addressId: uuid.optional().nullable(),
+  scheduledStartAt: z.string().trim().min(1, "Informe a data da visita."),
+  scheduledEndAt: optionalText,
+  technicianUserId: uuid.optional().nullable(),
+  status: visitStatusSchema.default("awaiting_confirmation"),
+  objective: z.string().trim().min(2, "Informe o objetivo da visita."),
+  accessNotes: optionalText,
+  confirmationNotes: optionalText,
+  result: optionalText,
+  nextSteps: optionalText,
+  equipmentIds: z.array(uuid).default([]),
+});
+
+function refineVisitScheduleAndStatus(value: {
+  scheduledStartAt?: string;
+  scheduledEndAt?: string | null;
+  status?: string;
+  result?: string | null;
+  confirmationNotes?: string | null;
+}, context: z.RefinementCtx): void {
+    if (value.status === "completed" && !value.result?.trim()) {
+      context.addIssue({ code: "custom", message: "Informe o resultado para concluir a visita.", path: ["result"] });
+    }
+    if (value.status === "cancelled" && !value.confirmationNotes?.trim() && !value.result?.trim()) {
+      context.addIssue({ code: "custom", message: "Informe o motivo do cancelamento.", path: ["confirmationNotes"] });
+    }
+    if (value.scheduledStartAt && value.scheduledEndAt && new Date(value.scheduledEndAt).getTime() < new Date(value.scheduledStartAt).getTime()) {
+      context.addIssue({ code: "custom", message: "O fim da visita deve ser depois do inicio.", path: ["scheduledEndAt"] });
+    }
+}
+
+export const visitCreateSchema = visitBaseSchema.superRefine(refineVisitScheduleAndStatus);
+
+export const visitUpdateSchema = visitBaseSchema
+  .omit({ customerId: true })
+  .partial()
+  .superRefine(refineVisitScheduleAndStatus)
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Informe ao menos um campo para atualizar.",
+  });
+
+export const visitQuerySchema = z.object({
+  customerId: uuid.optional(),
+  opportunityId: uuid.optional(),
+  from: z.string().trim().min(1).optional(),
+  to: z.string().trim().min(1).optional(),
+  status: visitStatusSchema.optional(),
+  archived: z.enum(["true", "false"]).optional().transform((value) => value === "true"),
+});
+
+export const completeVisitSchema = z.object({
+  result: z.string().trim().min(2, "Informe o resultado da visita."),
+  nextSteps: optionalText,
+});
+
+export const cancelVisitSchema = z.object({
+  reason: z.string().trim().min(2, "Informe o motivo do cancelamento."),
+});
 
 export const nextActionCreateSchema = z.object({
   customerId: uuid,

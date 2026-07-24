@@ -3,6 +3,16 @@ export function formatDateTime(value: string | null): string {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
+// "Vencida há 2 dias" / "Vencida há 3h" — usa overdueHours ja calculado no backend
+// (server/crm/prisma-repository.ts) em vez de recalcular no cliente, evitando
+// divergencia de fuso entre o calculo do servidor e o relogio do navegador.
+export function formatOverdueLabel(overdueHours: number): string {
+  if (overdueHours < 1) return "Vencida agora";
+  if (overdueHours < 24) return `Vencida há ${overdueHours}h`;
+  const days = Math.floor(overdueHours / 24);
+  return `Vencida há ${days} dia${days === 1 ? "" : "s"}`;
+}
+
 export function formatMoney(valueInCents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valueInCents / 100);
 }
@@ -31,6 +41,44 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
 
 export function formatActivityType(type: string): string {
   return ACTIVITY_TYPE_LABELS[type] ?? type;
+}
+
+const ADDRESS_KIND_LABELS: Record<string, string> = {
+  service: "Atendimento",
+  billing: "Cobranca",
+  pickup: "Retirada",
+  installation: "Instalacao",
+  other: "Outro",
+};
+
+export function formatAddressKind(kind: string): string {
+  return ADDRESS_KIND_LABELS[kind] ?? kind;
+}
+
+const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
+  split_hi_wall: "Split hi-wall",
+  cassette: "Cassete",
+  window_ac: "Janela / ACJ",
+  floor_ceiling: "Piso-teto",
+  multi_split: "Multi split",
+  other: "Outro",
+};
+
+export function formatEquipmentType(type: string): string {
+  return EQUIPMENT_TYPE_LABELS[type] ?? type;
+}
+
+const VISIT_STATUS_LABELS: Record<string, string> = {
+  draft: "Rascunho",
+  awaiting_confirmation: "Aguardando confirmacao",
+  confirmed: "Confirmada",
+  completed: "Concluida",
+  cancelled: "Cancelada",
+  no_show: "No-show",
+};
+
+export function formatVisitStatus(status: string): string {
+  return VISIT_STATUS_LABELS[status] ?? status;
 }
 
 const NEXT_ACTION_STATUS_LABELS: Record<string, string> = {

@@ -389,6 +389,10 @@ export const ModelName = {
   PipelineStage: 'PipelineStage',
   LossReason: 'LossReason',
   Opportunity: 'Opportunity',
+  Address: 'Address',
+  Equipment: 'Equipment',
+  Visit: 'Visit',
+  VisitEquipment: 'VisitEquipment',
   Quote: 'Quote',
   Activity: 'Activity',
   NextAction: 'NextAction',
@@ -396,6 +400,7 @@ export const ModelName = {
   Notification: 'Notification',
   AuvoWebhookEvent: 'AuvoWebhookEvent',
   AuvoInboxItem: 'AuvoInboxItem',
+  AuvoContactSignal: 'AuvoContactSignal',
   MigrationHistory: 'MigrationHistory'
 } as const
 
@@ -412,7 +417,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "userMembership" | "customer" | "pipelineStage" | "lossReason" | "opportunity" | "quote" | "activity" | "nextAction" | "auditLog" | "notification" | "auvoWebhookEvent" | "auvoInboxItem" | "migrationHistory"
+    modelProps: "userMembership" | "customer" | "pipelineStage" | "lossReason" | "opportunity" | "address" | "equipment" | "visit" | "visitEquipment" | "quote" | "activity" | "nextAction" | "auditLog" | "notification" | "auvoWebhookEvent" | "auvoInboxItem" | "auvoContactSignal" | "migrationHistory"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -783,6 +788,302 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.OpportunityCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.OpportunityCountAggregateOutputType> | number
+        }
+      }
+    }
+    Address: {
+      payload: Prisma.$AddressPayload<ExtArgs>
+      fields: Prisma.AddressFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AddressFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AddressFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload>
+        }
+        findFirst: {
+          args: Prisma.AddressFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AddressFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload>
+        }
+        findMany: {
+          args: Prisma.AddressFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload>[]
+        }
+        create: {
+          args: Prisma.AddressCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload>
+        }
+        createMany: {
+          args: Prisma.AddressCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AddressCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload>[]
+        }
+        delete: {
+          args: Prisma.AddressDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload>
+        }
+        update: {
+          args: Prisma.AddressUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload>
+        }
+        deleteMany: {
+          args: Prisma.AddressDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AddressUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AddressUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload>[]
+        }
+        upsert: {
+          args: Prisma.AddressUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AddressPayload>
+        }
+        aggregate: {
+          args: Prisma.AddressAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAddress>
+        }
+        groupBy: {
+          args: Prisma.AddressGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AddressGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AddressCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AddressCountAggregateOutputType> | number
+        }
+      }
+    }
+    Equipment: {
+      payload: Prisma.$EquipmentPayload<ExtArgs>
+      fields: Prisma.EquipmentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EquipmentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EquipmentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload>
+        }
+        findFirst: {
+          args: Prisma.EquipmentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EquipmentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload>
+        }
+        findMany: {
+          args: Prisma.EquipmentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload>[]
+        }
+        create: {
+          args: Prisma.EquipmentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload>
+        }
+        createMany: {
+          args: Prisma.EquipmentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EquipmentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload>[]
+        }
+        delete: {
+          args: Prisma.EquipmentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload>
+        }
+        update: {
+          args: Prisma.EquipmentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload>
+        }
+        deleteMany: {
+          args: Prisma.EquipmentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EquipmentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EquipmentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload>[]
+        }
+        upsert: {
+          args: Prisma.EquipmentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EquipmentPayload>
+        }
+        aggregate: {
+          args: Prisma.EquipmentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEquipment>
+        }
+        groupBy: {
+          args: Prisma.EquipmentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EquipmentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EquipmentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EquipmentCountAggregateOutputType> | number
+        }
+      }
+    }
+    Visit: {
+      payload: Prisma.$VisitPayload<ExtArgs>
+      fields: Prisma.VisitFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.VisitFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.VisitFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload>
+        }
+        findFirst: {
+          args: Prisma.VisitFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.VisitFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload>
+        }
+        findMany: {
+          args: Prisma.VisitFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload>[]
+        }
+        create: {
+          args: Prisma.VisitCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload>
+        }
+        createMany: {
+          args: Prisma.VisitCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.VisitCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload>[]
+        }
+        delete: {
+          args: Prisma.VisitDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload>
+        }
+        update: {
+          args: Prisma.VisitUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload>
+        }
+        deleteMany: {
+          args: Prisma.VisitDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.VisitUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.VisitUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload>[]
+        }
+        upsert: {
+          args: Prisma.VisitUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitPayload>
+        }
+        aggregate: {
+          args: Prisma.VisitAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateVisit>
+        }
+        groupBy: {
+          args: Prisma.VisitGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisitGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.VisitCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisitCountAggregateOutputType> | number
+        }
+      }
+    }
+    VisitEquipment: {
+      payload: Prisma.$VisitEquipmentPayload<ExtArgs>
+      fields: Prisma.VisitEquipmentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.VisitEquipmentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.VisitEquipmentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload>
+        }
+        findFirst: {
+          args: Prisma.VisitEquipmentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.VisitEquipmentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload>
+        }
+        findMany: {
+          args: Prisma.VisitEquipmentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload>[]
+        }
+        create: {
+          args: Prisma.VisitEquipmentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload>
+        }
+        createMany: {
+          args: Prisma.VisitEquipmentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.VisitEquipmentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload>[]
+        }
+        delete: {
+          args: Prisma.VisitEquipmentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload>
+        }
+        update: {
+          args: Prisma.VisitEquipmentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload>
+        }
+        deleteMany: {
+          args: Prisma.VisitEquipmentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.VisitEquipmentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.VisitEquipmentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload>[]
+        }
+        upsert: {
+          args: Prisma.VisitEquipmentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VisitEquipmentPayload>
+        }
+        aggregate: {
+          args: Prisma.VisitEquipmentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateVisitEquipment>
+        }
+        groupBy: {
+          args: Prisma.VisitEquipmentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisitEquipmentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.VisitEquipmentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VisitEquipmentCountAggregateOutputType> | number
         }
       }
     }
@@ -1304,6 +1605,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AuvoContactSignal: {
+      payload: Prisma.$AuvoContactSignalPayload<ExtArgs>
+      fields: Prisma.AuvoContactSignalFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AuvoContactSignalFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AuvoContactSignalFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload>
+        }
+        findFirst: {
+          args: Prisma.AuvoContactSignalFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AuvoContactSignalFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload>
+        }
+        findMany: {
+          args: Prisma.AuvoContactSignalFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload>[]
+        }
+        create: {
+          args: Prisma.AuvoContactSignalCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload>
+        }
+        createMany: {
+          args: Prisma.AuvoContactSignalCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AuvoContactSignalCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload>[]
+        }
+        delete: {
+          args: Prisma.AuvoContactSignalDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload>
+        }
+        update: {
+          args: Prisma.AuvoContactSignalUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload>
+        }
+        deleteMany: {
+          args: Prisma.AuvoContactSignalDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AuvoContactSignalUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AuvoContactSignalUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload>[]
+        }
+        upsert: {
+          args: Prisma.AuvoContactSignalUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuvoContactSignalPayload>
+        }
+        aggregate: {
+          args: Prisma.AuvoContactSignalAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAuvoContactSignal>
+        }
+        groupBy: {
+          args: Prisma.AuvoContactSignalGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuvoContactSignalGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AuvoContactSignalCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuvoContactSignalCountAggregateOutputType> | number
+        }
+      }
+    }
     MigrationHistory: {
       payload: Prisma.$MigrationHistoryPayload<ExtArgs>
       fields: Prisma.MigrationHistoryFieldRefs
@@ -1513,6 +1888,89 @@ export const OpportunityScalarFieldEnum = {
 export type OpportunityScalarFieldEnum = (typeof OpportunityScalarFieldEnum)[keyof typeof OpportunityScalarFieldEnum]
 
 
+export const AddressScalarFieldEnum = {
+  id: 'id',
+  customerId: 'customerId',
+  label: 'label',
+  kind: 'kind',
+  street: 'street',
+  number: 'number',
+  complement: 'complement',
+  neighborhood: 'neighborhood',
+  city: 'city',
+  state: 'state',
+  postalCode: 'postalCode',
+  reference: 'reference',
+  accessNotes: 'accessNotes',
+  isPrimary: 'isPrimary',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdBy: 'createdBy',
+  updatedBy: 'updatedBy',
+  archivedAt: 'archivedAt'
+} as const
+
+export type AddressScalarFieldEnum = (typeof AddressScalarFieldEnum)[keyof typeof AddressScalarFieldEnum]
+
+
+export const EquipmentScalarFieldEnum = {
+  id: 'id',
+  customerId: 'customerId',
+  opportunityId: 'opportunityId',
+  addressId: 'addressId',
+  type: 'type',
+  brand: 'brand',
+  model: 'model',
+  btus: 'btus',
+  voltage: 'voltage',
+  environment: 'environment',
+  serialNumber: 'serialNumber',
+  installedAt: 'installedAt',
+  warrantyUntil: 'warrantyUntil',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdBy: 'createdBy',
+  updatedBy: 'updatedBy',
+  archivedAt: 'archivedAt'
+} as const
+
+export type EquipmentScalarFieldEnum = (typeof EquipmentScalarFieldEnum)[keyof typeof EquipmentScalarFieldEnum]
+
+
+export const VisitScalarFieldEnum = {
+  id: 'id',
+  customerId: 'customerId',
+  opportunityId: 'opportunityId',
+  addressId: 'addressId',
+  scheduledStartAt: 'scheduledStartAt',
+  scheduledEndAt: 'scheduledEndAt',
+  technicianUserId: 'technicianUserId',
+  status: 'status',
+  objective: 'objective',
+  accessNotes: 'accessNotes',
+  confirmationNotes: 'confirmationNotes',
+  result: 'result',
+  nextSteps: 'nextSteps',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  createdBy: 'createdBy',
+  updatedBy: 'updatedBy',
+  archivedAt: 'archivedAt'
+} as const
+
+export type VisitScalarFieldEnum = (typeof VisitScalarFieldEnum)[keyof typeof VisitScalarFieldEnum]
+
+
+export const VisitEquipmentScalarFieldEnum = {
+  visitId: 'visitId',
+  equipmentId: 'equipmentId',
+  notes: 'notes'
+} as const
+
+export type VisitEquipmentScalarFieldEnum = (typeof VisitEquipmentScalarFieldEnum)[keyof typeof VisitEquipmentScalarFieldEnum]
+
+
 export const QuoteScalarFieldEnum = {
   id: 'id',
   oportunidadeId: 'oportunidadeId',
@@ -1660,6 +2118,26 @@ export const AuvoInboxItemScalarFieldEnum = {
   auvoContactId: 'auvoContactId',
   email: 'email',
   channelType: 'channelType',
+  origin: 'origin',
+  utmJson: 'utmJson',
+  tagsJson: 'tagsJson',
+  customFieldsJson: 'customFieldsJson',
+  classification: 'classification',
+  departmentId: 'departmentId',
+  departmentName: 'departmentName',
+  agentId: 'agentId',
+  agentName: 'agentName',
+  sessionStartedAt: 'sessionStartedAt',
+  sessionEndedAt: 'sessionEndedAt',
+  firstUserInteractionAt: 'firstUserInteractionAt',
+  firstAgentMessageAt: 'firstAgentMessageAt',
+  lastInteractionAt: 'lastInteractionAt',
+  lastMessageText: 'lastMessageText',
+  unreadCount: 'unreadCount',
+  waitReply: 'waitReply',
+  windowStatus: 'windowStatus',
+  derivedJson: 'derivedJson',
+  parsedSignalsJson: 'parsedSignalsJson',
   resolution: 'resolution',
   resolvedOpportunityId: 'resolvedOpportunityId',
   resolvedCustomerId: 'resolvedCustomerId',
@@ -1673,6 +2151,41 @@ export const AuvoInboxItemScalarFieldEnum = {
 } as const
 
 export type AuvoInboxItemScalarFieldEnum = (typeof AuvoInboxItemScalarFieldEnum)[keyof typeof AuvoInboxItemScalarFieldEnum]
+
+
+export const AuvoContactSignalScalarFieldEnum = {
+  auvoContactId: 'auvoContactId',
+  contactName: 'contactName',
+  phoneNormalized: 'phoneNormalized',
+  email: 'email',
+  origin: 'origin',
+  utmJson: 'utmJson',
+  tagsJson: 'tagsJson',
+  customFieldsJson: 'customFieldsJson',
+  classification: 'classification',
+  departmentId: 'departmentId',
+  departmentName: 'departmentName',
+  agentId: 'agentId',
+  agentName: 'agentName',
+  channelType: 'channelType',
+  sessionStartedAt: 'sessionStartedAt',
+  sessionEndedAt: 'sessionEndedAt',
+  firstUserInteractionAt: 'firstUserInteractionAt',
+  firstAgentMessageAt: 'firstAgentMessageAt',
+  lastInteractionAt: 'lastInteractionAt',
+  lastMessageText: 'lastMessageText',
+  unreadCount: 'unreadCount',
+  waitReply: 'waitReply',
+  windowStatus: 'windowStatus',
+  derivedJson: 'derivedJson',
+  parsedSignalsJson: 'parsedSignalsJson',
+  lastEventId: 'lastEventId',
+  lastEventReceivedAt: 'lastEventReceivedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AuvoContactSignalScalarFieldEnum = (typeof AuvoContactSignalScalarFieldEnum)[keyof typeof AuvoContactSignalScalarFieldEnum]
 
 
 export const MigrationHistoryScalarFieldEnum = {
@@ -1930,6 +2443,10 @@ export type GlobalOmitConfig = {
   pipelineStage?: Prisma.PipelineStageOmit
   lossReason?: Prisma.LossReasonOmit
   opportunity?: Prisma.OpportunityOmit
+  address?: Prisma.AddressOmit
+  equipment?: Prisma.EquipmentOmit
+  visit?: Prisma.VisitOmit
+  visitEquipment?: Prisma.VisitEquipmentOmit
   quote?: Prisma.QuoteOmit
   activity?: Prisma.ActivityOmit
   nextAction?: Prisma.NextActionOmit
@@ -1937,6 +2454,7 @@ export type GlobalOmitConfig = {
   notification?: Prisma.NotificationOmit
   auvoWebhookEvent?: Prisma.AuvoWebhookEventOmit
   auvoInboxItem?: Prisma.AuvoInboxItemOmit
+  auvoContactSignal?: Prisma.AuvoContactSignalOmit
   migrationHistory?: Prisma.MigrationHistoryOmit
 }
 

@@ -6,6 +6,6 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/internal/reconcile", "schedule": "*/5 * * * *" }
+    { "path": "/api/internal/reconcile", "schedule": "0 8 * * *" }
   ]
 }

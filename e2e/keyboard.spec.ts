@@ -44,7 +44,7 @@ test.describe("Navegacao por teclado e gerenciamento de foco", () => {
     await loginAsHomologationGestor(page);
     await page.getByRole("link", { name: "Clientes" }).click();
     await page.waitForURL(/\/clientes$/);
-    await page.locator("#clientes-section table tbody tr").first().getByRole("link", { name: "Abrir" }).click();
+    await page.locator("#clientes-section .customer-card").first().getByRole("link", { name: "Abrir cliente" }).click();
     await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
 
     const firstTab = page.getByRole("tab", { name: "Visão geral" });
@@ -52,7 +52,7 @@ test.describe("Navegacao por teclado e gerenciamento de foco", () => {
     await firstTab.focus();
 
     await page.keyboard.press("ArrowRight");
-    const secondTab = page.getByRole("tab", { name: /^Oportunidades/ });
+    const secondTab = page.getByRole("tab", { name: /^Estrutura/ });
     await expect(secondTab).toHaveAttribute("aria-selected", "true");
     await expect(secondTab).toBeFocused();
   });
@@ -61,7 +61,7 @@ test.describe("Navegacao por teclado e gerenciamento de foco", () => {
     await loginAsHomologationGestor(page);
     await page.getByRole("link", { name: "Clientes" }).click();
     await page.waitForURL(/\/clientes$/);
-    await page.locator("#clientes-section table tbody tr").first().getByRole("link", { name: "Abrir" }).click();
+    await page.locator("#clientes-section .customer-card").first().getByRole("link", { name: "Abrir cliente" }).click();
     await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
 
     const archiveButton = page.locator(".page-heading").getByRole("button", { name: "Arquivar" });

@@ -1,32 +1,61 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, CalendarClock, CheckCircle2, Clock3, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { DataTable, type DataTableColumn } from "../../components/ui/DataTable";
 import { formatDateTime, formatNextActionStatus } from "../../domain/format";
 import { loadNextActions, type NextAction } from "../../domain/crm";
 import { useActionOperation } from "./useActionOperation";
 import { ActionOperationForm } from "./ActionOperationForm";
 
-type ActionFilter = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
+type ActionLane = "overdue" | "today" | "upcoming" | "completed" | "cancelled";
+type CategoryFilter = "all" | NextAction["category"];
+type PriorityFilter = "all" | NextAction["priority"];
+type ResponsibleFilter = "all" | "mine";
 
-const FILTER_LABELS: Record<ActionFilter, string> = {
+const LANE_LABELS: Record<ActionLane, string> = {
   overdue: "Vencidas",
   today: "Hoje",
-  upcoming: "Próximas",
-  completed: "Concluídas",
+  upcoming: "Proximas",
+  completed: "Concluidas",
   cancelled: "Canceladas",
+};
+
+const LANE_HINTS: Record<ActionLane, string> = {
+  overdue: "Acoes que ja travam atendimento ou venda.",
+  today: "Compromissos que precisam resposta no dia.",
+  upcoming: "Follow-ups futuros e agenda comercial.",
+  completed: "Historico recente de conclusao.",
+  cancelled: "Acoes encerradas sem execucao.",
+};
+
+const LANE_ICONS: Record<ActionLane, typeof AlertTriangle> = {
+  overdue: AlertTriangle,
+  today: Clock3,
+  upcoming: CalendarClock,
+  completed: CheckCircle2,
+  cancelled: XCircle,
 };
 
 const CATEGORY_LABELS: Record<NextAction["category"], string> = {
   commercial: "Comercial",
   warranty: "Garantia",
   support: "Suporte",
-  after_sales: "Pós-venda",
+  after_sales: "Pos-venda",
 };
 
 const PRIORITY_LABELS: Record<NextAction["priority"], string> = {
   high: "Alta",
   normal: "Normal",
   low: "Baixa",
+};
+
+const CATEGORY_FILTER_LABELS: Record<CategoryFilter, string> = {
+  all: "Todas as categorias",
+  ...CATEGORY_LABELS,
+};
+
+const PRIORITY_FILTER_LABELS: Record<PriorityFilter, string> = {
+  all: "Todas as prioridades",
+  ...PRIORITY_LABELS,
 };
 
 function isOverdue(action: NextAction): boolean {
@@ -40,58 +69,123 @@ function isTodayAction(action: NextAction): boolean {
   return due.getFullYear() === now.getFullYear() && due.getMonth() === now.getMonth() && due.getDate() === now.getDate();
 }
 
-function filterActions(actions: NextAction[], filter: ActionFilter): NextAction[] {
-  return actions.filter((action) => {
-    if (filter === "overdue") return isOverdue(action);
-    if (filter === "today") return isTodayAction(action);
-    if (filter === "upcoming") return action.status === "pending" && !isOverdue(action) && !isTodayAction(action);
-    return action.status === filter;
-  });
+function laneForAction(action: NextAction): ActionLane {
+  if (action.status === "completed") return "completed";
+  if (action.status === "cancelled") return "cancelled";
+  if (isOverdue(action)) return "overdue";
+  if (isTodayAction(action)) return "today";
+  return "upcoming";
+}
+
+function groupActionsByLane(actions: NextAction[]): Record<ActionLane, NextAction[]> {
+  const lanes: Record<ActionLane, NextAction[]> = {
+    overdue: [],
+    today: [],
+    upcoming: [],
+    completed: [],
+    cancelled: [],
+  };
+
+  for (const action of actions) {
+    lanes[laneForAction(action)].push(action);
+  }
+
+  return lanes;
 }
 
 export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) {
   const [actions, setActions] = useState<NextAction[]>([]);
-  const [filter, setFilter] = useState<ActionFilter>("overdue");
+  const [focusedLane, setFocusedLane] = useState<ActionLane>("overdue");
+  const [responsibleFilter, setResponsibleFilter] = useState<ResponsibleFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  async function refresh() {
+  const requestFilters = useMemo(
+    () => ({
+      responsibleUserId: responsibleFilter === "mine" ? currentUserId : undefined,
+      category: categoryFilter === "all" ? undefined : categoryFilter,
+      priority: priorityFilter === "all" ? undefined : priorityFilter,
+    }),
+    [categoryFilter, currentUserId, priorityFilter, responsibleFilter],
+  );
+
+  const refresh = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      setActions(await loadNextActions());
+      setActions(await loadNextActions(requestFilters));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar as próximas ações.");
+      setError(err instanceof Error ? err.message : "Nao foi possivel carregar as proximas acoes.");
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [requestFilters]);
 
   useEffect(() => {
     void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refresh]);
 
   const actionOperation = useActionOperation(currentUserId, refresh);
-  const visibleActions = filterActions(actions, filter);
+  const lanes = useMemo(() => groupActionsByLane(actions), [actions]);
 
   return (
     <>
-      <section id="proximas-acoes" className="page-heading">
+      <section id="proximas-acoes" className="page-heading next-actions-heading">
         <div>
           <p className="eyebrow">Follow-up e agenda comercial</p>
-          <h1>Próximas ações</h1>
+          <h1>Proximas acoes</h1>
         </div>
       </section>
 
-      <section className="data-section">
-        <div className="segmented-control" aria-label="Filtros de próximas ações">
-          {(Object.keys(FILTER_LABELS) as ActionFilter[]).map((key) => (
-            <button className={filter === key ? "active" : ""} type="button" key={key} onClick={() => setFilter(key)}>
-              {FILTER_LABELS[key]}
-            </button>
-          ))}
+      <section className="data-section next-actions-page next-actions-board-page" aria-label="Board de proximas acoes">
+        <div className="next-actions-metrics" aria-label="Resumo das proximas acoes">
+          {(Object.keys(LANE_LABELS) as ActionLane[]).map((key) => {
+            const Icon = LANE_ICONS[key];
+            return (
+              <button
+                key={key}
+                className={`next-action-metric ${focusedLane === key ? "is-active" : ""}`}
+                type="button"
+                aria-pressed={focusedLane === key}
+                onClick={() => setFocusedLane(key)}
+              >
+                <Icon aria-hidden="true" size={18} />
+                <span>{LANE_LABELS[key]}</span>
+                <strong>{lanes[key].length}</strong>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="next-actions-controls" aria-label="Filtros das proximas acoes">
+          <label>
+            <span>Responsavel</span>
+            <select value={responsibleFilter} onChange={(event) => setResponsibleFilter(event.target.value as ResponsibleFilter)}>
+              <option value="all">Todos permitidos</option>
+              <option value="mine">Minhas acoes</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Categoria</span>
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as CategoryFilter)}>
+              {(Object.keys(CATEGORY_FILTER_LABELS) as CategoryFilter[]).map((key) => (
+                <option key={key} value={key}>{CATEGORY_FILTER_LABELS[key]}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Prioridade</span>
+            <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value as PriorityFilter)}>
+              {(Object.keys(PRIORITY_FILTER_LABELS) as PriorityFilter[]).map((key) => (
+                <option key={key} value={key}>{PRIORITY_FILTER_LABELS[key]}</option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
@@ -106,60 +200,84 @@ export function ProximasAcoesPage({ currentUserId }: { currentUserId: string }) 
           />
         ) : null}
 
-        <DataTable
-          columns={[
-            {
-              key: "acao",
-              header: "Ação",
-              render: (action) => <>{action.title}{isOverdue(action) ? <span className="badge badge-alert-danger">vencida</span> : null}</>,
-            },
-            {
-              key: "cliente",
-              header: "Cliente",
-              render: (action) => (
-                <button className="search-dropdown-item" type="button" onClick={() => navigate(`/clientes/${action.customerId}`)}>
-                  {action.customerName}
-                </button>
-              ),
-            },
-            {
-              key: "contexto",
-              header: "Contexto",
-              render: (action) => action.opportunityId ? (
-                <button className="search-dropdown-item" type="button" onClick={() => navigate(`/oportunidades/${action.opportunityId}`)}>
-                  {action.opportunityTitle}
-                </button>
-              ) : "Atendimento",
-            },
-            { key: "categoria", header: "Categoria", render: (action) => <span className="badge">{CATEGORY_LABELS[action.category]}</span> },
-            { key: "vencimento", header: "Vencimento", render: (action) => formatDateTime(action.dueAt) },
-            {
-              key: "prioridade",
-              header: "Prioridade",
-              render: (action) => <span className={`badge${action.priority === "high" ? " badge-alert-warning" : ""}`}>{PRIORITY_LABELS[action.priority]}</span>,
-            },
-            { key: "status", header: "Status", render: (action) => <span className="badge">{formatNextActionStatus(action.status)}</span> },
-            {
-              key: "acoes",
-              header: "Ações",
-              className: "actions-cell",
-              render: (action) => action.status === "pending" ? (
-                <>
-                  <button className="button secondary" type="button" onClick={() => void actionOperation.open(action, "complete")}>Concluir</button>
-                  <button className="button secondary" type="button" onClick={() => void actionOperation.open(action, "postpone")}>Reagendar</button>
-                  <button className="button secondary" type="button" onClick={() => void actionOperation.open(action, "cancel")}>Cancelar</button>
-                </>
-              ) : null,
-            },
-          ] satisfies DataTableColumn<NextAction>[]}
-          rows={visibleActions}
-          rowKey={(action) => action.id}
-          isLoading={isLoading}
-          emptyTitle="Nenhuma próxima ação neste filtro"
-          emptyText="Crie uma ação pendente para acompanhar cliente, garantia, suporte ou oportunidade."
-        />
-      </section>
+        <section className="next-actions-board" aria-label="Board operacional de proximas acoes" aria-busy={isLoading}>
+          {isLoading ? (
+            <p className="quotes-empty">Carregando proximas acoes...</p>
+          ) : (
+            (Object.keys(LANE_LABELS) as ActionLane[]).map((lane) => (
+              <article key={lane} className={`next-action-lane ${focusedLane === lane ? "is-focused" : ""}`}>
+                <header>
+                  <div>
+                    <h2>{LANE_LABELS[lane]}</h2>
+                    <p>{LANE_HINTS[lane]}</p>
+                  </div>
+                  <strong>{lanes[lane].length}</strong>
+                </header>
+                <div className="next-action-lane-scroll">
+                  {lanes[lane].length ? (
+                    <ul className="next-action-list">
+                      {lanes[lane].map((action) => (
+                        <li key={action.id} className={`next-action-card ${isOverdue(action) ? "next-action-card-overdue" : ""}`}>
+                          <div className="next-action-card-main">
+                            <div>
+                              <span className="next-action-card-kicker">{CATEGORY_LABELS[action.category]}</span>
+                              <strong>{action.title}</strong>
+                            </div>
+                            <span className={`badge ${statusBadgeClass(action)}`}>{formatNextActionStatus(action.status)}</span>
+                          </div>
 
+                          <div className="next-action-card-meta">
+                            <button className="link-button" type="button" onClick={() => navigate(`/clientes/${action.customerId}`)}>
+                              {action.customerName}
+                            </button>
+                            <span>{formatDateTime(action.dueAt)}</span>
+                            <span className={`badge ${priorityBadgeClass(action.priority)}`}>{PRIORITY_LABELS[action.priority]}</span>
+                          </div>
+
+                          {action.opportunityId ? (
+                            <button className="next-action-context" type="button" onClick={() => navigate(`/oportunidades/${action.opportunityId}`)}>
+                              {action.opportunityTitle}
+                            </button>
+                          ) : (
+                            <span className="next-action-context-static">Atendimento sem oportunidade</span>
+                          )}
+
+                          {action.description || action.completionResult || action.cancellationReason ? (
+                            <p className="next-action-card-note">{action.completionResult ?? action.cancellationReason ?? action.description}</p>
+                          ) : null}
+
+                          {action.status === "pending" ? (
+                            <div className="next-action-card-actions">
+                              <button className="button secondary" type="button" onClick={() => void actionOperation.open(action, "complete")}>Concluir</button>
+                              <button className="button secondary" type="button" onClick={() => void actionOperation.open(action, "postpone")}>Reagendar</button>
+                              <button className="button ghost" type="button" onClick={() => void actionOperation.open(action, "cancel")}>Cancelar</button>
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="quotes-empty">Nenhuma acao nesta raia.</p>
+                  )}
+                </div>
+              </article>
+            ))
+          )}
+        </section>
+      </section>
     </>
   );
+}
+
+function priorityBadgeClass(priority: NextAction["priority"]): string {
+  if (priority === "high") return "badge-alert-warning";
+  if (priority === "low") return "badge-positive";
+  return "";
+}
+
+function statusBadgeClass(action: NextAction): string {
+  if (action.status === "completed") return "badge-positive";
+  if (action.status === "cancelled") return "";
+  if (isOverdue(action)) return "badge-alert-danger";
+  return "badge-informative";
 }
