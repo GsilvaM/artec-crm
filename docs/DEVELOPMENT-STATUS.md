@@ -52,7 +52,7 @@ Pendencias:
 
 ### 3. Melhorar Cadastro Rapido
 
-Estado: em melhoria incremental.
+Estado: implementado em fluxo principal, pendente homologacao real.
 
 Evidencia:
 
@@ -60,12 +60,12 @@ Evidencia:
 - Oportunidades: `src/features/opportunities/OportunidadesPage.tsx`.
 - API: `POST /api/customers` e `POST /api/opportunities`.
 - Cadastro de cliente agora mostra tipo de pessoa, alerta local de telefone parecido e atalho para criar oportunidade com o cliente recem-cadastrado ja selecionado.
+- `src/features/customers/ClientesPage.tsx` permite criar cliente + demanda comercial + proxima acao no mesmo envio, usando o usuario atual como responsavel.
+- `e2e/customer-and-opportunity.spec.ts` cobre o fluxo curto cliente + oportunidade + pipeline.
 
 Pendencias:
 
-- Criar experiencia curta: nome, telefone, demanda, responsavel, proxima acao.
-- Evoluir para um fluxo unificado cliente + demanda quando o usuario real validar que isso reduz retrabalho.
-- Evitar formulario longo no primeiro contato.
+- Rodar E2E com usuario real e validar se os campos opcionais do primeiro contato estao suficientes para a rotina da Artec.
 
 ### 4. Aprimorar Ficha da Oportunidade
 

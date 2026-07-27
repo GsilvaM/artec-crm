@@ -830,7 +830,8 @@
   .compact-form > h2,
   .compact-form > button,
   .compact-form .form-row,
-  .compact-form .inline-warning {
+  .compact-form .inline-warning,
+  .compact-form .quick-opportunity-fields {
     grid-column: 1 / -1;
   }
 
@@ -881,6 +882,28 @@
   .compact-form select:focus {
     border-color: #294da7;
     box-shadow: 0 0 0 3px rgb(41 77 167 / 12%);
+  }
+
+  .quick-opportunity-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 2px 0 0;
+    padding: 14px;
+    border: 1px solid #dfe6f0;
+    border-radius: 8px;
+    background: #f8fafc;
+  }
+
+  .quick-opportunity-fields legend {
+    padding: 0 6px;
+    color: #243047;
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  .quick-opportunity-fields .form-hint {
+    grid-column: 1 / -1;
   }
 
   .form-row {
@@ -2672,11 +2695,12 @@
       justify-content: flex-start;
     }
 
-    .compact-form,
-    .form-row,
-    .customer-created-alert {
-      grid-template-columns: 1fr;
-    }
+     .compact-form,
+     .quick-opportunity-fields,
+     .form-row,
+     .customer-created-alert {
+       grid-template-columns: 1fr;
+     }
 
     .compact-form .form-heading {
       display: grid;

@@ -4,7 +4,7 @@ import { AlertTriangle, Building2, CheckCircle2, MapPin, Phone, Plus, Search } f
 import { Avatar } from "../../components/ui/Avatar";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
-import { archiveCustomer, createCustomer, loadCustomersPage, type Customer } from "../../domain/crm";
+import { archiveCustomer, createCustomer, createOpportunity, loadCustomersPage, SITUACAO_SUGGESTIONS, TIPO_DEMANDA_OPTIONS, type Customer } from "../../domain/crm";
 
 type CustomerForm = {
   tipoPessoa: "fisica" | "juridica";
@@ -14,11 +14,29 @@ type CustomerForm = {
   empresa: string;
   bairro: string;
   cidade: string;
+  opportunityTitle: string;
+  tipoDemanda: string;
+  situacao: string;
+  proximaAcao: string;
+  proximaAcaoEm: string;
 };
 
-const EMPTY_FORM: CustomerForm = { tipoPessoa: "fisica", nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" };
+const EMPTY_FORM: CustomerForm = {
+  tipoPessoa: "fisica",
+  nome: "",
+  telefone: "",
+  email: "",
+  empresa: "",
+  bairro: "",
+  cidade: "",
+  opportunityTitle: "",
+  tipoDemanda: "instalacao",
+  situacao: "primeiro contato",
+  proximaAcao: "",
+  proximaAcaoEm: "",
+};
 
-export function ClientesPage() {
+export function ClientesPage({ currentUserId }: { currentUserId: string }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -29,6 +47,7 @@ export function ClientesPage() {
   const [customerToArchive, setCustomerToArchive] = useState<Customer | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [lastCreatedCustomer, setLastCreatedCustomer] = useState<Customer | null>(null);
+  const [lastCreatedOpportunityTitle, setLastCreatedOpportunityTitle] = useState<string | null>(null);
   const { showToast } = useToast();
 
   async function refresh() {
@@ -80,11 +99,32 @@ export function ClientesPage() {
     event.preventDefault();
     setError(null);
     try {
-      const customer = await createCustomer({ ...form });
+      const customer = await createCustomer({
+        tipoPessoa: form.tipoPessoa,
+        nome: form.nome,
+        telefone: form.telefone,
+        email: form.email,
+        empresa: form.empresa,
+        bairro: form.bairro,
+        cidade: form.cidade,
+      });
+      const opportunityTitle = form.opportunityTitle.trim();
+      if (opportunityTitle) {
+        await createOpportunity({
+          clienteId: customer.id,
+          titulo: opportunityTitle,
+          tipoDemanda: form.tipoDemanda,
+          situacao: form.situacao.trim() || "primeiro contato",
+          proximaAcao: form.proximaAcao.trim(),
+          proximaAcaoEm: form.proximaAcaoEm,
+          responsavelId: currentUserId,
+        });
+      }
       setForm(EMPTY_FORM);
       setShowCreateForm(false);
       setLastCreatedCustomer(customer);
-      showToast("Cliente salvo.");
+      setLastCreatedOpportunityTitle(opportunityTitle || null);
+      showToast(opportunityTitle ? "Cliente e oportunidade salvos." : "Cliente salvo.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nao foi possivel salvar o cliente.");
@@ -106,6 +146,7 @@ export function ClientesPage() {
         </div>
         <button className="button primary" type="button" onClick={() => {
           setLastCreatedCustomer(null);
+          setLastCreatedOpportunityTitle(null);
           setShowCreateForm((open) => !open);
         }}>
           <Plus aria-hidden="true" />{showCreateForm ? "Fechar criacao" : "Novo cliente"}
@@ -118,11 +159,17 @@ export function ClientesPage() {
           <CheckCircle2 aria-hidden="true" />
           <div>
             <strong>{lastCreatedCustomer.nome} cadastrado.</strong>
-            <span>Continue o atendimento criando a oportunidade com o cliente ja selecionado.</span>
+            <span>{lastCreatedOpportunityTitle ? `Oportunidade "${lastCreatedOpportunityTitle}" criada com proxima acao.` : "Continue o atendimento criando a oportunidade com o cliente ja selecionado."}</span>
           </div>
-          <Link className="button primary" to={`/oportunidades?clienteId=${lastCreatedCustomer.id}`}>
-            <Plus aria-hidden="true" />Criar oportunidade
-          </Link>
+          {lastCreatedOpportunityTitle ? (
+            <Link className="button primary" to="/oportunidades">
+              Abrir oportunidades
+            </Link>
+          ) : (
+            <Link className="button primary" to={`/oportunidades?clienteId=${lastCreatedCustomer.id}`}>
+              <Plus aria-hidden="true" />Criar oportunidade
+            </Link>
+          )}
         </div>
       ) : null}
 
@@ -131,7 +178,7 @@ export function ClientesPage() {
           <div className="form-heading">
             <div>
               <h2>Novo cliente</h2>
-              <p>Capture o essencial agora; endereco e equipamentos ficam para a ficha do cliente.</p>
+              <p>Capture o essencial agora; se ja houver demanda, crie a oportunidade e a proxima acao no mesmo envio.</p>
             </div>
             <span className="badge neutral">cadastro rapido</span>
           </div>
@@ -158,7 +205,25 @@ export function ClientesPage() {
             <label>Bairro<input value={form.bairro} onChange={(event) => setForm({ ...form, bairro: event.target.value })} /></label>
             <label>Cidade<input value={form.cidade} onChange={(event) => setForm({ ...form, cidade: event.target.value })} /></label>
           </div>
-          <button className="button primary" type="submit"><Plus aria-hidden="true" />Salvar cliente</button>
+          <fieldset className="quick-opportunity-fields">
+            <legend>Demanda comercial</legend>
+            <p className="form-hint">Opcional. Preencha quando o contato ja precisa entrar no funil comercial.</p>
+            <label>Titulo da oportunidade<input value={form.opportunityTitle} onChange={(event) => setForm({ ...form, opportunityTitle: event.target.value })} placeholder="ex: Instalacao split quarto" /></label>
+            <label>Tipo de demanda
+              <select value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
+                {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label>Situacao
+              <input list="customer-situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} />
+            </label>
+            <datalist id="customer-situacao-suggestions">
+              {SITUACAO_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
+            </datalist>
+            <label>Proxima acao<input required={Boolean(form.opportunityTitle.trim())} value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} placeholder="ex: retornar orçamento" /></label>
+            <label>Data da proxima acao<input required={Boolean(form.opportunityTitle.trim())} type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
+          </fieldset>
+          <button className="button primary" type="submit"><Plus aria-hidden="true" />Salvar atendimento</button>
         </form>
       ) : null}
 

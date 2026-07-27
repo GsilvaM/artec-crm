@@ -126,7 +126,7 @@ export function App() {
         <Route path="oportunidades/:id" element={<OportunidadePage currentUserId={authState.user.id} canManageUsers={canManageUsers} />} />
         <Route path="oportunidades" element={<OportunidadesPage currentUserId={authState.user.id} />} />
         <Route path="clientes/:id" element={<ClientePage currentUserId={authState.user.id} />} />
-        <Route path="clientes" element={<ClientesPage />} />
+        <Route path="clientes" element={<ClientesPage currentUserId={authState.user.id} />} />
         <Route path="notificacoes" element={<NotificacoesPage />} />
         {canViewReports ? <Route path="relatorios" element={<RelatoriosPage />} /> : null}
         {canManageAuvoInbox ? <Route path="caixa-auvo" element={<CaixaAuvoPage currentUserId={authState.user.id} />} /> : null}

@@ -47,7 +47,7 @@ test.afterEach(async ({ page }) => {
   }
 });
 
-test("creates a customer, creates an opportunity for it, and sees it on the pipeline board", async ({ page }) => {
+test("creates a customer with commercial demand and sees the opportunity on the pipeline board", async ({ page }) => {
   const suffix = Date.now().toString(36);
   customerName = `E2E Cliente ${suffix}`;
   opportunityTitle = `E2E Oportunidade ${suffix}`;
@@ -60,21 +60,17 @@ test("creates a customer, creates an opportunity for it, and sees it on the pipe
   const customerForm = page.locator("form", { has: page.getByRole("heading", { name: "Novo cliente" }) });
   await customerForm.getByLabel("Nome").fill(customerName);
   await customerForm.getByLabel("Telefone").fill("11999990000");
-  await customerForm.getByRole("button", { name: /Salvar cliente/i }).click();
+  await customerForm.getByLabel("Titulo da oportunidade").fill(opportunityTitle);
+  await customerForm.getByLabel("Tipo de demanda").selectOption("instalacao");
+  await customerForm.getByLabel("Situacao").fill("em andamento");
+  await customerForm.getByLabel("Proxima acao", { exact: true }).fill("Ligar para o cliente");
+  await customerForm.getByLabel("Data da proxima acao").fill("2026-08-01T10:00");
+  await customerForm.getByRole("button", { name: /Salvar atendimento/i }).click();
   await expect(page.locator("#clientes-section .customer-card").filter({ hasText: customerName })).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator(".customer-created-alert")).toContainText(`Oportunidade "${opportunityTitle}" criada`, { timeout: 15_000 });
 
   await page.getByRole("link", { name: "Oportunidades" }).click();
   await page.waitForURL(/\/oportunidades$/);
-
-  await page.getByRole("button", { name: "Nova oportunidade" }).click();
-  const opportunityForm = page.locator("form", { has: page.getByRole("heading", { name: "Nova oportunidade" }) });
-  await opportunityForm.getByLabel("Cliente").selectOption({ label: customerName });
-  await opportunityForm.getByLabel("Titulo").fill(opportunityTitle);
-  await opportunityForm.getByLabel("Tipo de demanda").selectOption("instalacao");
-  await opportunityForm.getByLabel("Situacao").fill("em andamento");
-  await opportunityForm.getByLabel("Proxima acao", { exact: true }).fill("Ligar para o cliente");
-  await opportunityForm.getByLabel("Data da proxima acao").fill("2026-08-01T10:00");
-  await opportunityForm.getByRole("button", { name: /Salvar oportunidade/i }).click();
   await expect(page.locator("#oportunidades-section").getByText(opportunityTitle)).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("link", { name: "Funil" }).click();
