@@ -100,18 +100,19 @@ Pendencias:
 
 ### 6. Separar Garantia/Suporte do Funil
 
-Estado: regra parcialmente implementada.
+Estado: implementado em fluxo principal, pendente homologacao real.
 
 Evidencia:
 
 - `server/crm/validation.ts` exclui garantia/suporte/pos-venda dos tipos comerciais de oportunidade.
 - Caixa Auvo tem acoes de garantia, suporte e pos-venda.
+- `src/features/customers/ClientePage.tsx` registra garantia/suporte/pos-venda como atividade do cliente, sem oportunidade, e permite agendar retorno tecnico com categoria `warranty`, `support` ou `after_sales`.
+- `server/app.test.ts` cobre atividade de garantia/suporte sem criar oportunidade comercial.
+- `e2e/customer-detail.spec.ts` verifica a aba Garantia e suporte com formulario de retorno tecnico separado.
 
 Pendencias:
 
-- Criar fluxo mais claro na ficha do cliente.
-- Garantir atividade/proxima acao sem oportunidade comercial obrigatoria.
-- Cobrir com testes.
+- Rodar E2E com usuario real para confirmar cadastro e retorno tecnico no ambiente conectado.
 
 ### 7. Evoluir Caixa Auvo com Triagem Assistida
 

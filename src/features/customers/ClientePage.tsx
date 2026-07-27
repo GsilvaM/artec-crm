@@ -41,6 +41,7 @@ type TabId = (typeof TAB_IDS)[number];
 type AddressForm = { label: string; kind: Address["kind"]; street: string; number: string; neighborhood: string; city: string; accessNotes: string; isPrimary: boolean };
 type EquipmentForm = { type: Equipment["type"]; brand: string; model: string; btus: string; voltage: string; environment: string; addressId: string; opportunityId: string; notes: string };
 type VisitForm = { objective: string; scheduledStartAt: string; scheduledEndAt: string; addressId: string; opportunityId: string; equipmentIds: string[]; accessNotes: string };
+type SupportActionCategory = Extract<NextAction["category"], "warranty" | "support" | "after_sales">;
 
 const initialAddressForm: AddressForm = { label: "", kind: "service", street: "", number: "", neighborhood: "", city: "", accessNotes: "", isPrimary: false };
 const initialEquipmentForm: EquipmentForm = { type: "split_hi_wall", brand: "", model: "", btus: "", voltage: "", environment: "", addressId: "", opportunityId: "", notes: "" };
@@ -61,7 +62,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activityForm, setActivityForm] = useState<{ type: Activity["type"]; description: string }>({ type: "warranty", description: "" });
-  const [actionForm, setActionForm] = useState({ title: "", dueAt: "" });
+  const [actionForm, setActionForm] = useState<{ title: string; dueAt: string; category: SupportActionCategory }>({ title: "", dueAt: "", category: "support" });
   const [addressForm, setAddressForm] = useState<AddressForm>(initialAddressForm);
   const [equipmentForm, setEquipmentForm] = useState<EquipmentForm>(initialEquipmentForm);
   const [visitForm, setVisitForm] = useState<VisitForm>(initialVisitForm);
@@ -134,6 +135,11 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
     try {
       await createActivity({ customerId: customer!.id, opportunityId: null, type: activityForm.type, description: activityForm.description.trim() });
       setActivityForm({ ...activityForm, description: "" });
+      setActionForm((current) => ({
+        ...current,
+        category: activityForm.type as SupportActionCategory,
+        title: current.title || getSupportActionSuggestion(activityForm.type as SupportActionCategory),
+      }));
       showToast("Atendimento registrado.");
       await refresh();
     } catch (err) {
@@ -146,8 +152,8 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
     if (!actionForm.title.trim() || !actionForm.dueAt) return;
     setError(null);
     try {
-      await createNextAction({ customerId: customer!.id, responsibleUserId: currentUserId, category: "support", title: actionForm.title.trim(), dueAt: actionForm.dueAt });
-      setActionForm({ title: "", dueAt: "" });
+      await createNextAction({ customerId: customer!.id, responsibleUserId: currentUserId, category: actionForm.category, title: actionForm.title.trim(), dueAt: actionForm.dueAt });
+      setActionForm({ title: "", dueAt: "", category: "support" });
       showToast("Próxima ação criada.");
       await refresh();
     } catch (err) {
@@ -529,7 +535,14 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       label: `Próximas ações (${nextActions.length})`,
       content: (
         <>
-          <form className="admin-inline-form" onSubmit={handleCreateAction}>
+          <form className="admin-inline-form" onSubmit={handleCreateAction} aria-label="Criar proxima acao tecnica">
+            <label>Categoria
+              <select value={actionForm.category} onChange={(event) => setActionForm({ ...actionForm, category: event.target.value as SupportActionCategory })}>
+                <option value="warranty">Garantia</option>
+                <option value="support">Suporte</option>
+                <option value="after_sales">Pos-venda</option>
+              </select>
+            </label>
             <label>Nova ação de atendimento<input value={actionForm.title} onChange={(event) => setActionForm({ ...actionForm, title: event.target.value })} placeholder="ex: retornar sobre garantia" /></label>
             <label>Data<input type="datetime-local" value={actionForm.dueAt} onChange={(event) => setActionForm({ ...actionForm, dueAt: event.target.value })} /></label>
             <button className="button secondary" type="submit">Criar</button>
@@ -559,7 +572,14 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
         <>
           <form className="admin-inline-form" onSubmit={handleRegisterActivity}>
             <label>Tipo
-              <select value={activityForm.type} onChange={(event) => setActivityForm({ ...activityForm, type: event.target.value as Activity["type"] })}>
+              <select
+                value={activityForm.type}
+                onChange={(event) => {
+                  const type = event.target.value as SupportActionCategory;
+                  setActivityForm({ ...activityForm, type });
+                  setActionForm((current) => ({ ...current, category: type, title: current.title || getSupportActionSuggestion(type) }));
+                }}
+              >
                 <option value="warranty">Garantia</option>
                 <option value="support">Suporte</option>
                 <option value="after_sales">Pós-venda</option>
@@ -567,6 +587,24 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
             </label>
             <label>Descrição<input value={activityForm.description} onChange={(event) => setActivityForm({ ...activityForm, description: event.target.value })} placeholder="Descreva o atendimento" /></label>
             <button className="button secondary" type="submit">Registrar</button>
+          </form>
+          <form className="admin-inline-form support-followup-form" onSubmit={handleCreateAction} aria-label="Agendar retorno tecnico">
+            <label>Retorno
+              <input
+                value={actionForm.title}
+                onChange={(event) => setActionForm({ ...actionForm, title: event.target.value })}
+                placeholder={getSupportActionSuggestion(actionForm.category)}
+              />
+            </label>
+            <label>Categoria
+              <select value={actionForm.category} onChange={(event) => setActionForm({ ...actionForm, category: event.target.value as SupportActionCategory })}>
+                <option value="warranty">Garantia</option>
+                <option value="support">Suporte</option>
+                <option value="after_sales">Pos-venda</option>
+              </select>
+            </label>
+            <label>Data<input type="datetime-local" value={actionForm.dueAt} onChange={(event) => setActionForm({ ...actionForm, dueAt: event.target.value })} /></label>
+            <button className="button secondary" type="submit"><CalendarClock aria-hidden="true" size={16} /> Agendar retorno</button>
           </form>
           {supportActivities.length ? (
             <ol className="timeline-list">
@@ -699,6 +737,12 @@ function formatEquipmentTitle(equipment: Equipment): string {
 
 function formatCustomerLocation(customer: Customer): string {
   return [customer.bairro, customer.cidade].filter(Boolean).join(" - ") || "Localizacao ainda nao informada";
+}
+
+function getSupportActionSuggestion(category: SupportActionCategory): string {
+  if (category === "warranty") return "Retornar sobre garantia";
+  if (category === "after_sales") return "Acompanhar pos-venda";
+  return "Retornar sobre suporte";
 }
 
 function getRelationshipState(nextAction: NextAction | null, activeOpportunityCount: number, supportActivityCount: number): {

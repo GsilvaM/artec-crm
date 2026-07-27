@@ -16,6 +16,8 @@ test("opens a customer detail page from the list and sees related opportunities 
 
   await page.getByRole("tab", { name: "Garantia e suporte" }).click();
   await expect(page.getByLabel("Descrição")).toBeVisible();
+  await expect(page.getByRole("form", { name: "Agendar retorno tecnico" })).toBeVisible();
+  await expect(page.getByRole("form", { name: "Agendar retorno tecnico" }).getByLabel("Categoria")).toHaveValue("warranty");
 
   await page.getByRole("tab", { name: "Linha do tempo" }).click();
   await expect(page.getByRole("tabpanel")).toBeVisible();
