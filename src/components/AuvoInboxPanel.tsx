@@ -1,7 +1,9 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
-import { ChevronDown, Inbox } from "lucide-react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { AuvoSignalSummary } from "./AuvoSignalSummary";
 import { Avatar } from "./ui/Avatar";
+import { EmptyState } from "./ui/EmptyState";
+import { Badge } from "./ui/Badge";
 import { formatDateTime } from "../domain/format";
 import {
   loadAuvoInboxItems,
@@ -55,7 +57,7 @@ const ACTION_LABELS: Record<ActionMode, string> = {
 // Hierarquia de acoes por frequencia/consequencia real de uso (achado de
 // diagnostico visual: 8 botoes identicos lado a lado nao diferenciam criar
 // um registro de negocio de descartar como duplicado).
-const SECONDARY_MENU_ACTIONS: ActionMode[] = ["warranty", "support", "after_sales", "customer_only"];
+const SECONDARY_ACTIONS: ActionMode[] = ["warranty", "support", "after_sales", "customer_only"];
 const DISMISS_ACTIONS: ActionMode[] = ["not_commercial", "duplicate"];
 
 type AuvoInboxForm = {
@@ -71,60 +73,51 @@ type AuvoInboxForm = {
   reason: string;
 };
 
+// Caixa Auvo e a fila de triagem de atendimentos: ADR-0004 exige board/split-
+// view sem scroll global. Fila (esquerda) mostra status/prioridade/sinais de
+// cada atendimento; painel de decisao (direita) concentra leitura completa
+// (AuvoSignalSummary, match Cliente-Auvo) e as acoes humanas de resolucao —
+// o atendente nunca decide as cegas a partir so do titulo da fila.
 export function AuvoInboxPanel({ customers, currentUserId }: { customers: Customer[]; currentUserId: string }) {
   const [items, setItems] = useState<AuvoInboxItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<AuvoInboxStatus | "">("novo");
   const [error, setError] = useState<string | null>(null);
-  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [mode, setMode] = useState<ActionMode | "">("");
-  const [openMoreMenuItemId, setOpenMoreMenuItemId] = useState<string | null>(null);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
-  const [form, setForm] = useState<AuvoInboxForm>({
-    clienteId: "",
-    opportunityId: "",
-    titulo: "",
-    tipoDemanda: "instalacao",
-    origem: "Auvo",
-    situacao: "em andamento",
-    proximaAcao: "",
-    proximaAcaoEm: "",
-    description: "",
-    reason: "",
-  });
+  const [form, setForm] = useState<AuvoInboxForm>(emptyForm());
 
   useEffect(() => {
     void refresh();
   }, [statusFilter]);
 
-  useEffect(() => {
-    if (!openMoreMenuItemId) return;
-    function handleClickOutside(event: MouseEvent) {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) setOpenMoreMenuItemId(null);
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpenMoreMenuItemId(null);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [openMoreMenuItemId]);
+  const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
 
   async function refresh() {
     setError(null);
     try {
-      setItems(await loadAuvoInboxItems(statusFilter || undefined));
+      const loaded = await loadAuvoInboxItems(statusFilter || undefined);
+      setItems(loaded);
+      // Nao pre-seleciona o primeiro item: em mobile isso pularia direto para
+      // o painel de decisao, escondendo a fila atras dele. So mantem a
+      // selecao se o item ainda existir na lista recarregada.
+      setSelectedItemId((current) => (current && loaded.some((item) => item.id === current) ? current : null));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar a Caixa de Entrada.");
     }
   }
 
+  function selectItem(item: AuvoInboxItem) {
+    setSelectedItemId(item.id);
+    setMode("");
+  }
+
+  function backToQueue() {
+    setSelectedItemId(null);
+    setMode("");
+  }
+
   function openAction(item: AuvoInboxItem, actionMode: ActionMode) {
-    setActiveItemId(item.id);
     setMode(actionMode);
-    setOpenMoreMenuItemId(null);
     setForm({
       clienteId: item.suggestedCustomerId ?? "",
       opportunityId: "",
@@ -140,13 +133,12 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
   }
 
   function closeAction() {
-    setActiveItemId(null);
     setMode("");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!activeItemId || !mode) return;
+    if (!selectedItemId || !mode) return;
     setError(null);
 
     let payload: ResolveAuvoInboxItemPayload;
@@ -173,7 +165,7 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
     }
 
     try {
-      await resolveAuvoInboxItem(activeItemId, payload);
+      await resolveAuvoInboxItem(selectedItemId, payload);
       closeAction();
       await refresh();
     } catch (err) {
@@ -182,165 +174,238 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
   }
 
   return (
-    <section className="panel auvo-inbox-panel" aria-label="Caixa de Entrada Auvo">
-      <header>
-        <div>
-          <p className="eyebrow">Caixa de Entrada Auvo</p>
-          <h2>Triagem de atendimentos</h2>
-        </div>
-        <div className="filter-actions">
-          {(["novo", "em_analise", "processado", "descartado"] as const).map((status) => (
-            <button key={status} className={`button ${statusFilter === status ? "secondary" : "ghost"}`} type="button" aria-pressed={statusFilter === status} onClick={() => setStatusFilter(status)}>
-              {STATUS_LABELS[status]}
-            </button>
-          ))}
-          <button className={`button ${statusFilter === "" ? "secondary" : "ghost"}`} type="button" aria-pressed={statusFilter === ""} onClick={() => setStatusFilter("")}>Todos</button>
+    <section className="panel auvo-inbox-panel auvo-split-view" aria-label="Caixa de Entrada Auvo" data-mobile-view={selectedItem ? "detail" : "queue"}>
+      <div className="auvo-queue-column">
+        <header className="auvo-queue-header">
+          <div>
+            <p className="eyebrow">Caixa de Entrada Auvo</p>
+            <h2>Fila de triagem</h2>
+          </div>
+          <div className="filter-actions">
+            {(["novo", "em_analise", "processado", "descartado"] as const).map((status) => (
+              <button key={status} className={`button ${statusFilter === status ? "secondary" : "ghost"}`} type="button" aria-pressed={statusFilter === status} onClick={() => setStatusFilter(status)}>
+                {STATUS_LABELS[status]}
+              </button>
+            ))}
+            <button className={`button ${statusFilter === "" ? "secondary" : "ghost"}`} type="button" aria-pressed={statusFilter === ""} onClick={() => setStatusFilter("")}>Todos</button>
+          </div>
+        </header>
+
+        {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
+
+        {items.length ? (
+          <ul className="auvo-queue-list">
+            {items.map((item) => {
+              const isSelected = selectedItemId === item.id;
+              const suggestedCustomer = customers.find((customer) => customer.id === item.suggestedCustomerId);
+              const derived = item.auvoSignals.derived;
+              return (
+                <li key={item.id}>
+                  <button type="button" className="auvo-queue-item" aria-current={isSelected} onClick={() => selectItem(item)}>
+                    <Avatar name={suggestedCustomer?.nome ?? item.title} size="sm" />
+                    <span className="auvo-queue-item-body">
+                      <strong title={item.title}>{item.title}</strong>
+                      <span className="auvo-queue-item-meta">{item.channelType ?? "canal desconhecido"} • {formatDateTime(item.createdAt)}</span>
+                      <span className="auvo-queue-item-badges">
+                        <span className={`badge ${STATUS_BADGE_CLASS[item.status]}`}>{STATUS_LABELS[item.status]}</span>
+                        {derived.urgency === "alta" ? <Badge tone="alert-warning">urgente</Badge> : null}
+                        {derived.needsHumanReview ? <Badge tone="alert-danger">revisar</Badge> : null}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState title="Nenhum item nesta visualização" text="Ajuste o filtro de status para ver outros atendimentos." />
+        )}
+      </div>
+
+      <div className="auvo-decision-column">
+        {selectedItem ? (
+          <AuvoDecisionPanel
+            key={selectedItem.id}
+            item={selectedItem}
+            customers={customers}
+            mode={mode}
+            form={form}
+            setForm={setForm}
+            onBack={backToQueue}
+            onOpenAction={openAction}
+            onCloseAction={closeAction}
+            onSubmit={handleSubmit}
+          />
+        ) : (
+          <EmptyState title="Selecione um atendimento" text="Escolha um item da fila para ver os sinais Auvo, o match com o cliente e as ações de resolução." />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AuvoDecisionPanel({
+  item,
+  customers,
+  mode,
+  form,
+  setForm,
+  onBack,
+  onOpenAction,
+  onCloseAction,
+  onSubmit,
+}: {
+  item: AuvoInboxItem;
+  customers: Customer[];
+  mode: ActionMode | "";
+  form: AuvoInboxForm;
+  setForm: (form: AuvoInboxForm) => void;
+  onBack: () => void;
+  onOpenAction: (item: AuvoInboxItem, mode: ActionMode) => void;
+  onCloseAction: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const isResolved = item.status === "processado" || item.status === "descartado";
+  const suggestedCustomer = customers.find((customer) => customer.id === item.suggestedCustomerId);
+  const matchPreview = buildCustomerMatchPreview(item, suggestedCustomer);
+
+  return (
+    <article className="auvo-decision-panel">
+      <header className="auvo-decision-header">
+        <button type="button" className="button ghost auvo-decision-back" onClick={onBack}>
+          <ArrowLeft aria-hidden="true" size={16} /> Voltar para a fila
+        </button>
+        <div className="auvo-decision-title">
+          <Avatar name={suggestedCustomer?.nome ?? item.title} size="sm" />
+          <div>
+            <strong>{item.title}</strong>
+            <span className="auvo-queue-item-meta">{item.channelType ?? "canal desconhecido"} • {formatDateTime(item.createdAt)}</span>
+          </div>
+          <span className={`badge ${STATUS_BADGE_CLASS[item.status]}`}>{STATUS_LABELS[item.status]}</span>
         </div>
       </header>
 
-      {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
+      {(item.phoneNormalized || item.resolution || item.discardReason) ? (
+        <dl className="auvo-inbox-facts">
+          {item.phoneNormalized ? <div><dt>Telefone</dt><dd>{item.phoneNormalized}</dd></div> : null}
+          {item.resolution ? <div><dt>Resolução</dt><dd>{item.resolution}</dd></div> : null}
+          {item.discardReason ? <div><dt>Motivo</dt><dd>{item.discardReason}</dd></div> : null}
+        </dl>
+      ) : null}
 
-      {items.length ? (
-        <ul className="auvo-inbox-list">
-          {items.map((item) => {
-            const isOpen = activeItemId === item.id;
-            const isResolved = item.status === "processado" || item.status === "descartado";
-            const suggestedCustomer = customers.find((customer) => customer.id === item.suggestedCustomerId);
-            const matchPreview = buildCustomerMatchPreview(item, suggestedCustomer);
-            const isMoreMenuOpen = openMoreMenuItemId === item.id;
-            return (
-              <li key={item.id} className="auvo-inbox-item">
-                <div className="auvo-inbox-item-header">
-                  <Avatar name={suggestedCustomer?.nome ?? item.title} size="sm" />
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span className="auvo-inbox-item-meta">{item.channelType ?? "canal desconhecido"} - {formatDateTime(item.createdAt)}</span>
-                  </div>
-                  <span className={`badge ${STATUS_BADGE_CLASS[item.status]}`}>{STATUS_LABELS[item.status]}</span>
-                </div>
-                <dl className="auvo-inbox-facts">
-                  {item.phoneNormalized ? <div><dt>Telefone</dt><dd>{item.phoneNormalized}</dd></div> : null}
-                  {item.resolution ? <div><dt>Resolução</dt><dd>{item.resolution}</dd></div> : null}
-                  {item.discardReason ? <div><dt>Motivo</dt><dd>{item.discardReason}</dd></div> : null}
-                </dl>
-                <section className={`auvo-customer-match auvo-customer-match-${matchPreview.tone}`} aria-label="Match Cliente-Auvo">
-                  <div>
-                    <span className="auvo-customer-match-kicker">Match Cliente-Auvo</span>
-                    <strong>{matchPreview.label}</strong>
-                    <p>{matchPreview.description}</p>
-                  </div>
-                  <div className="auvo-customer-match-score" aria-label={`Confianca estimada de ${matchPreview.score}%`}>
-                    <span>{matchPreview.score}%</span>
-                    <small>estimado</small>
-                  </div>
-                  <ul className="auvo-customer-match-evidence">
-                    {matchPreview.evidence.map((evidence) => <li key={evidence}>{evidence}</li>)}
-                  </ul>
-                </section>
-                <div className="auvo-inbox-summary">
-                  <AuvoSignalSummary signals={item.auvoSignals} />
-                </div>
-
-                {!isResolved ? (
-                  <div className="auvo-inbox-action-bar">
-                    <div className="auvo-inbox-primary-actions">
-                      <button className="button primary" type="button" onClick={() => openAction(item, "create_opportunity")}>
-                        {ACTION_LABELS.create_opportunity}
-                      </button>
-                      <button className="button secondary" type="button" onClick={() => openAction(item, "link_opportunity")}>
-                        {ACTION_LABELS.link_opportunity}
-                      </button>
-                      <div className="dropdown-menu-wrapper" ref={isMoreMenuOpen ? moreMenuRef : undefined}>
-                        <button
-                          className="button ghost"
-                          type="button"
-                          aria-expanded={isMoreMenuOpen}
-                          onClick={() => setOpenMoreMenuItemId(isMoreMenuOpen ? null : item.id)}
-                        >
-                          Mais ações
-                          <ChevronDown aria-hidden="true" size={14} />
-                        </button>
-                        {isMoreMenuOpen ? (
-                          <ul className="dropdown-menu">
-                            {SECONDARY_MENU_ACTIONS.map((actionMode) => (
-                              <li key={actionMode}>
-                                <button type="button" onClick={() => openAction(item, actionMode)}>
-                                  {ACTION_LABELS[actionMode]}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="auvo-inbox-dismiss-actions">
-                      {DISMISS_ACTIONS.map((actionMode) => (
-                        <button key={actionMode} className="button ghost muted-action" type="button" onClick={() => openAction(item, actionMode)}>
-                          {ACTION_LABELS[actionMode]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {isOpen && mode ? (
-                  <form className="auvo-inbox-form" onSubmit={handleSubmit}>
-                    <h4>{ACTION_LABELS[mode]}</h4>
-                    {mode === "create_opportunity" || mode === "warranty" || mode === "support" || mode === "after_sales" || mode === "customer_only" ? (
-                      <label>Cliente
-                        <select required value={form.clienteId} onChange={(event) => setForm({ ...form, clienteId: event.target.value })}>
-                          <option value="">Selecione</option>
-                          {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.nome}</option>)}
-                        </select>
-                      </label>
-                    ) : null}
-                    {mode === "create_opportunity" ? (
-                      <>
-                        <label>Título<input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
-                        <label>Origem<input required value={form.origem} onChange={(event) => setForm({ ...form, origem: event.target.value })} /></label>
-                        <label>
-                          Tipo de demanda
-                          <select required value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
-                            {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
-                          </select>
-                        </label>
-                        <label>
-                          Situação
-                          <input required list="auvo-situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} />
-                        </label>
-                        <datalist id="auvo-situacao-suggestions">
-                          {SITUACAO_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
-                        </datalist>
-                        <label>Próxima ação<input required value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
-                        <label>Data da próxima ação<input required type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
-                      </>
-                    ) : null}
-                    {mode === "link_opportunity" ? (
-                      <label>ID da oportunidade<input required value={form.opportunityId} onChange={(event) => setForm({ ...form, opportunityId: event.target.value })} /></label>
-                    ) : null}
-                    {mode === "warranty" || mode === "support" || mode === "after_sales" ? (
-                      <label>Descrição<input required value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
-                    ) : null}
-                    {mode === "not_commercial" || mode === "duplicate" ? (
-                      <label>Motivo (opcional)<input value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} /></label>
-                    ) : null}
-                    <div className="form-actions">
-                      <button className="button primary" type="submit">Confirmar</button>
-                      <button className="button secondary" type="button" onClick={closeAction}>Cancelar</button>
-                    </div>
-                  </form>
-                ) : null}
-              </li>
-            );
-          })}
+      <section className={`auvo-customer-match auvo-customer-match-${matchPreview.tone}`} aria-label="Match Cliente-Auvo">
+        <div>
+          <span className="auvo-customer-match-kicker">Match Cliente-Auvo</span>
+          <strong>{matchPreview.label}</strong>
+          <p>{matchPreview.description}</p>
+        </div>
+        <div className="auvo-customer-match-score" aria-label={`Confianca estimada de ${matchPreview.score}%`}>
+          <span>{matchPreview.score}%</span>
+          <small>estimado</small>
+        </div>
+        <ul className="auvo-customer-match-evidence">
+          {matchPreview.evidence.map((evidence) => <li key={evidence}>{evidence}</li>)}
         </ul>
-      ) : (
-        <p className="quotes-empty">
-          <Inbox aria-hidden="true" size={16} /> Nenhum item nesta visualização.
-        </p>
-      )}
-    </section>
+      </section>
+
+      <div className="auvo-inbox-summary">
+        <AuvoSignalSummary signals={item.auvoSignals} showDetails />
+      </div>
+
+      {!isResolved ? (
+        <div className="auvo-inbox-action-bar">
+          <div className="auvo-inbox-primary-actions">
+            <button className="button primary" type="button" onClick={() => onOpenAction(item, "create_opportunity")}>
+              {ACTION_LABELS.create_opportunity}
+            </button>
+            <button className="button secondary" type="button" onClick={() => onOpenAction(item, "link_opportunity")}>
+              {ACTION_LABELS.link_opportunity}
+            </button>
+            <button className="button secondary" type="button" onClick={() => onOpenAction(item, "customer_only")}>
+              {ACTION_LABELS.customer_only}
+            </button>
+          </div>
+          <div className="auvo-inbox-secondary-actions">
+            {SECONDARY_ACTIONS.filter((actionMode) => actionMode !== "customer_only").map((actionMode) => (
+              <button key={actionMode} className="button ghost" type="button" onClick={() => onOpenAction(item, actionMode)}>
+                {ACTION_LABELS[actionMode]}
+              </button>
+            ))}
+          </div>
+          <div className="auvo-inbox-dismiss-actions">
+            {DISMISS_ACTIONS.map((actionMode) => (
+              <button key={actionMode} className="button ghost muted-action" type="button" onClick={() => onOpenAction(item, actionMode)}>
+                {ACTION_LABELS[actionMode]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {mode ? (
+        <form className="auvo-inbox-form" onSubmit={onSubmit}>
+          <h4>{ACTION_LABELS[mode]}</h4>
+          {mode === "create_opportunity" || mode === "warranty" || mode === "support" || mode === "after_sales" || mode === "customer_only" ? (
+            <label>Cliente
+              <select required value={form.clienteId} onChange={(event) => setForm({ ...form, clienteId: event.target.value })}>
+                <option value="">Selecione</option>
+                {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.nome}</option>)}
+              </select>
+            </label>
+          ) : null}
+          {mode === "create_opportunity" ? (
+            <>
+              <label>Título<input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
+              <label>Origem<input required value={form.origem} onChange={(event) => setForm({ ...form, origem: event.target.value })} /></label>
+              <label>
+                Tipo de demanda
+                <select required value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
+                  {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <label>
+                Situação
+                <input required list="auvo-situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} />
+              </label>
+              <datalist id="auvo-situacao-suggestions">
+                {SITUACAO_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
+              </datalist>
+              <label>Próxima ação<input required value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
+              <label>Data da próxima ação<input required type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
+            </>
+          ) : null}
+          {mode === "link_opportunity" ? (
+            <label>ID da oportunidade<input required value={form.opportunityId} onChange={(event) => setForm({ ...form, opportunityId: event.target.value })} /></label>
+          ) : null}
+          {mode === "warranty" || mode === "support" || mode === "after_sales" ? (
+            <label>Descrição<input required value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+          ) : null}
+          {mode === "not_commercial" || mode === "duplicate" ? (
+            <label>Motivo (opcional)<input value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} /></label>
+          ) : null}
+          <div className="form-actions">
+            <button className="button primary" type="submit">Confirmar</button>
+            <button className="button secondary" type="button" onClick={onCloseAction}>Cancelar</button>
+          </div>
+        </form>
+      ) : null}
+    </article>
   );
+}
+
+function emptyForm(): AuvoInboxForm {
+  return {
+    clienteId: "",
+    opportunityId: "",
+    titulo: "",
+    tipoDemanda: "instalacao",
+    origem: "Auvo",
+    situacao: "em andamento",
+    proximaAcao: "",
+    proximaAcaoEm: "",
+    description: "",
+    reason: "",
+  };
 }
 
 function buildOpportunityTitle(item: AuvoInboxItem): string {
@@ -457,7 +522,7 @@ function namesLookRelated(left: string, right: string): boolean {
 function normalizeSearchText(value: string): string {
   return value
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();

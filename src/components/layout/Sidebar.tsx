@@ -1,6 +1,20 @@
-import { BarChart3, Bell, Briefcase, Inbox, LayoutDashboard, ListChecks, Settings2, ShieldCheck, Users, Workflow } from "lucide-react";
-import { useEffect, useRef } from "react";
+import {
+  BarChart3,
+  Bell,
+  Briefcase,
+  ChevronsLeft,
+  ChevronsRight,
+  Inbox,
+  LayoutDashboard,
+  ListChecks,
+  Settings2,
+  ShieldCheck,
+  Users,
+  Workflow,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { cn } from "../../lib/utils";
 import { useEscapeKey, useOverlayScrollLockAndFocusRestore } from "../ui/useOverlayBehavior";
 
 export type SidebarNavItem = {
@@ -16,19 +30,26 @@ type SidebarNavGroup = {
 
 const OPERACAO_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Central Comercial", path: "/central-comercial", icon: LayoutDashboard },
+  { label: "Proximas Acoes", path: "/proximas-acoes", icon: ListChecks },
   { label: "Funil", path: "/pipeline", icon: Workflow },
-  { label: "Clientes", path: "/clientes", icon: Users },
   { label: "Oportunidades", path: "/oportunidades", icon: Briefcase },
-  { label: "Próximas ações", path: "/proximas-acoes", icon: ListChecks },
+  { label: "Clientes", path: "/clientes", icon: Users },
+  { label: "Caixa Auvo", path: "/caixa-auvo", icon: Inbox },
+  { label: "Notificacoes", path: "/notificacoes", icon: Bell },
 ];
 
-const REPORTS_NAV_ITEM: SidebarNavItem = { label: "Relatórios", path: "/relatorios", icon: BarChart3 };
-const AUVO_INBOX_NAV_ITEM: SidebarNavItem = { label: "Caixa Auvo", path: "/caixa-auvo", icon: Inbox };
-const NOTIFICATIONS_NAV_ITEM: SidebarNavItem = { label: "Notificações", path: "/notificacoes", icon: Bell };
-const ADMIN_NAV_ITEM: SidebarNavItem = { label: "Administração", path: "/configuracoes/administracao", icon: ShieldCheck };
-const INTEGRATIONS_NAV_ITEM: SidebarNavItem = { label: "Integração Auvo", path: "/configuracoes/integracoes/auvo", icon: Settings2 };
+const REPORTS_NAV_ITEM: SidebarNavItem = { label: "Relatorios", path: "/relatorios", icon: BarChart3 };
+const ADMIN_NAV_ITEM: SidebarNavItem = { label: "Administracao", path: "/configuracoes/administracao", icon: ShieldCheck };
+const INTEGRATIONS_NAV_ITEM: SidebarNavItem = { label: "Integracao Auvo", path: "/configuracoes/integracoes/auvo", icon: Settings2 };
 
-export function Sidebar({ canViewReports, canManageAuvoInbox, canManageUsers, canManageIntegrations, isMobileOpen, onCloseMobile }: {
+export function Sidebar({
+  canViewReports,
+  canManageAuvoInbox,
+  canManageUsers,
+  canManageIntegrations,
+  isMobileOpen,
+  onCloseMobile,
+}: {
   canViewReports: boolean;
   canManageAuvoInbox: boolean;
   canManageUsers: boolean;
@@ -38,21 +59,18 @@ export function Sidebar({ canViewReports, canManageAuvoInbox, canManageUsers, ca
 }) {
   const location = useLocation();
   const navRef = useRef<HTMLElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
-  const acompanhamentoItems = [
-    NOTIFICATIONS_NAV_ITEM,
-    ...(canManageAuvoInbox ? [AUVO_INBOX_NAV_ITEM] : []),
+  const operationItems = OPERACAO_NAV_ITEMS.filter((item) => item.path !== "/caixa-auvo" || canManageAuvoInbox);
+  const managementItems = [
     ...(canViewReports ? [REPORTS_NAV_ITEM] : []),
-  ];
-  const configuracoesItems = [
     ...(canManageUsers ? [ADMIN_NAV_ITEM] : []),
     ...(canManageIntegrations ? [INTEGRATIONS_NAV_ITEM] : []),
   ];
 
   const groups: SidebarNavGroup[] = [
-    { label: "Operação", items: OPERACAO_NAV_ITEMS },
-    { label: "Acompanhamento", items: acompanhamentoItems },
-    ...(configuracoesItems.length ? [{ label: "Configurações", items: configuracoesItems }] : []),
+    { label: "Operacao", items: operationItems },
+    ...(managementItems.length ? [{ label: "Gestao", items: managementItems }] : []),
   ];
   const isRootPath = location.pathname === "/";
 
@@ -64,40 +82,140 @@ export function Sidebar({ canViewReports, canManageAuvoInbox, canManageUsers, ca
     navRef.current?.querySelector<HTMLElement>("a")?.focus();
   }, [isMobileOpen]);
 
+  function isItemActive(item: SidebarNavItem): boolean {
+    return location.pathname === item.path || (item.path === "/central-comercial" && isRootPath);
+  }
+
   return (
     <>
-      {isMobileOpen ? <div className="sidebar-backdrop" role="presentation" onClick={onCloseMobile} /> : null}
-      <aside className={isMobileOpen ? "sidebar is-open" : "sidebar"} aria-label="Navegação principal">
-        <div className="brand-row">
-          <div className="brand-mark">A</div>
-          <div>
-            <strong>Artec CRM</strong>
-            <span>Comercial</span>
-          </div>
-        </div>
-        <nav ref={navRef}>
-          {groups.map((group) => (
-            <div key={group.label}>
-              <p className="nav-section-label">{group.label}</p>
-              {group.items.map((item) => {
-                const isActive = location.pathname === item.path || (item.path === "/central-comercial" && isRootPath);
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={isActive ? "nav-item active" : "nav-item"}
-                    aria-current={isActive ? "page" : undefined}
-                    onClick={onCloseMobile}
-                  >
-                    <item.icon aria-hidden="true" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
+      <aside className={cn("app-sidebar", collapsed && "is-collapsed")}>
+        <SidebarInner
+          collapsed={collapsed}
+          onToggle={() => setCollapsed((value) => !value)}
+          groups={groups}
+          isItemActive={isItemActive}
+          onNavigate={undefined}
+          navRef={navRef}
+        />
       </aside>
+
+      {isMobileOpen ? (
+        <div className="app-sidebar-drawer">
+          <div className="app-sidebar-backdrop" role="presentation" onClick={onCloseMobile} />
+          <aside className="app-sidebar app-sidebar-mobile" aria-label="Navegacao principal">
+            <SidebarInner
+              collapsed={false}
+              onToggle={onCloseMobile}
+              groups={groups}
+              isItemActive={isItemActive}
+              onNavigate={onCloseMobile}
+              navRef={navRef}
+              mobile
+            />
+          </aside>
+        </div>
+      ) : null}
     </>
+  );
+}
+
+function SidebarInner({
+  collapsed,
+  onToggle,
+  groups,
+  isItemActive,
+  onNavigate,
+  navRef,
+  mobile,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+  groups: SidebarNavGroup[];
+  isItemActive: (item: SidebarNavItem) => boolean;
+  onNavigate: (() => void) | undefined;
+  navRef: React.RefObject<HTMLElement | null>;
+  mobile?: boolean;
+}) {
+  return (
+    <>
+      <div className={cn("app-sidebar-brand", collapsed && "is-collapsed")}>
+        <div className="app-sidebar-logo">A</div>
+        {!collapsed ? (
+          <div className="app-sidebar-brand-copy">
+            <div>Artec CRM</div>
+            <span>Ambientes Climatizados</span>
+          </div>
+        ) : null}
+      </div>
+
+      <nav ref={navRef as React.RefObject<HTMLElement>} className="app-sidebar-nav" aria-label={mobile ? undefined : "Navegacao principal"}>
+        {groups.map((group) => (
+          <NavGroup key={group.label} group={group} collapsed={collapsed} isItemActive={isItemActive} onNavigate={onNavigate} />
+        ))}
+      </nav>
+
+      {!mobile ? (
+        <div className="app-sidebar-footer">
+          <div className="app-sidebar-user">
+            <span>AR</span>
+            {!collapsed ? (
+              <div>
+                <strong>Ana Ribeiro</strong>
+                <small>Gestor</small>
+              </div>
+            ) : null}
+          </div>
+          <button type="button" onClick={onToggle} className="app-sidebar-collapse" aria-label={collapsed ? "Expandir menu" : "Recolher menu"}>
+            {collapsed ? (
+              <ChevronsRight size={16} aria-hidden="true" />
+            ) : (
+              <>
+                <ChevronsLeft size={16} aria-hidden="true" /> Recolher
+              </>
+            )}
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function NavGroup({
+  group,
+  collapsed,
+  isItemActive,
+  onNavigate,
+}: {
+  group: SidebarNavGroup;
+  collapsed: boolean;
+  isItemActive: (item: SidebarNavItem) => boolean;
+  onNavigate: (() => void) | undefined;
+}) {
+  if (group.items.length === 0) return null;
+
+  return (
+    <div className="app-sidebar-group">
+      {!collapsed ? <p className="app-sidebar-group-label">{group.label}</p> : null}
+      <ul className="app-sidebar-list">
+        {group.items.map((item) => {
+          const active = isItemActive(item);
+          return (
+            <li key={item.path}>
+              <Link
+                to={item.path}
+                aria-current={active ? "page" : undefined}
+                aria-label={item.label}
+                title={collapsed ? item.label : undefined}
+                onClick={onNavigate}
+                className={cn("app-sidebar-link", active && "is-active", collapsed && "is-collapsed")}
+              >
+                <item.icon aria-hidden="true" size={18} />
+                {!collapsed ? <span>{item.label}</span> : null}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

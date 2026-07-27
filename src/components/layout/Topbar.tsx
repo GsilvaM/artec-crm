@@ -1,13 +1,19 @@
 import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Avatar } from "../ui/Avatar";
-import { IconButton } from "../ui/IconButton";
+import { Button } from "../ui/Button";
 import { NotificationList } from "../ui/NotificationList";
+import { Separator } from "../ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { globalSearch, type GlobalSearchResult } from "../../domain/crm";
 import { useNotifications } from "../../features/notifications/useNotifications";
 
-export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
+export function Topbar({
+  userEmail,
+  onLogout,
+  onOpenMobileNav,
+}: {
   userEmail: string | null;
   onLogout: () => void | Promise<void>;
   onOpenMobileNav: () => void;
@@ -22,10 +28,6 @@ export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
-  // Atalho global de busca — AGENTS.md pede "atalhos" e "busca global" como
-  // prioridade de UX; convencao cross-produto (Linear/GitHub/Slack) usa
-  // Ctrl/Cmd+K, preferida aqui a letra "F" do mockup do kit Venture por
-  // familiaridade do usuario com outras ferramentas.
   useEffect(() => {
     function handleGlobalKeyDown(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -72,86 +74,118 @@ export function Topbar({ userEmail, onLogout, onOpenMobileNav }: {
   function openResult(path: string) {
     navigate(path);
     setSearchResults(null);
+    setSearch("");
   }
 
+  const badgeCount = notifications.unreadCount > 9 ? "9+" : notifications.unreadCount;
+
   return (
-    <>
-      <header className="topbar">
-        <IconButton className="mobile-nav-toggle" label="Abrir menu de navegação" onClick={onOpenMobileNav}>
-          <Menu aria-hidden="true" />
-        </IconButton>
-        <div className="search-shell">
-          <label className="search-box">
-            <Search aria-hidden="true" />
-            <input
-              ref={searchInputRef}
-              type="search"
-              placeholder="Buscar no CRM"
-              aria-label="Buscar no CRM"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") setSearchResults(null);
-              }}
-            />
-            {search ? null : <kbd className="search-shortcut-hint">{isMac ? "⌘" : "Ctrl"} K</kbd>}
-          </label>
-          {searchResults && (searchResults.customers.length || searchResults.opportunities.length) ? (
-            <div className="search-dropdown" role="listbox" aria-label="Resultados da busca">
-              {searchResults.customers.length ? (
-                <div className="search-dropdown-group">
-                  <span className="search-dropdown-label">Clientes</span>
-                  {searchResults.customers.map((customer) => (
-                    <button key={customer.id} type="button" className="search-dropdown-item" onClick={() => openResult(`/clientes/${customer.id}`)}>
-                      <strong>{customer.nome}</strong>
-                      <span>{customer.telefone ?? customer.empresa ?? ""}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              {searchResults.opportunities.length ? (
-                <div className="search-dropdown-group">
-                  <span className="search-dropdown-label">Oportunidades</span>
-                  {searchResults.opportunities.map((opportunity) => (
-                    <button key={opportunity.id} type="button" className="search-dropdown-item" onClick={() => openResult(`/oportunidades/${opportunity.id}`)}>
-                      <strong>{opportunity.titulo}</strong>
-                      <span>{opportunity.clienteNome} - {opportunity.etapaNome}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <div className="user-chip">
-          <Avatar name={userEmail ?? "?"} size="sm" />
-          <span>{userEmail ?? "Sem e-mail"}</span>
-        </div>
-        <div className="notification-shell">
-          <IconButton
-            ref={bellButtonRef}
-            label="Abrir notificações"
-            aria-expanded={notificationPanelOpen}
-            badge={notifications.unreadCount > 0 ? (notifications.unreadCount > 9 ? "9+" : notifications.unreadCount) : undefined}
-            onClick={() => setNotificationPanelOpen((open) => !open)}
-          >
-            <Bell aria-hidden="true" />
-          </IconButton>
-          {notificationPanelOpen ? (
-            <div className="notification-popover" role="dialog" aria-label="Notificações recentes" ref={notificationPanelRef}>
-              <header>
-                <strong>Notificações</strong>
-                <button className="button ghost" type="button" onClick={() => void notifications.readAll()}>Ler todas</button>
-              </header>
-              <NotificationList items={notifications.notifications} onRead={notifications.read} onArchive={notifications.archive} onSnooze={notifications.snooze} />
-            </div>
-          ) : null}
-        </div>
-        <button className="button ghost" type="button" onClick={() => void onLogout()}>
-          <LogOut aria-hidden="true" />
-          Sair
+    <TooltipProvider delayDuration={250}>
+      <header className="app-topbar">
+      <div className="app-topbar-mobile-actions">
+        <button type="button" onClick={onOpenMobileNav} className="app-icon-button" aria-label="Abrir menu de navegacao">
+          <Menu size={20} aria-hidden="true" />
         </button>
+      </div>
+
+      <div className="app-search">
+        <label>
+          <Search size={18} aria-hidden="true" />
+          <input
+            ref={searchInputRef}
+            type="search"
+            placeholder="Buscar clientes, oportunidades..."
+            aria-label="Buscar clientes, oportunidades"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setSearchResults(null);
+            }}
+          />
+          {search ? null : <kbd>{isMac ? "⌘" : "Ctrl"} K</kbd>}
+        </label>
+        {searchResults && (searchResults.customers.length || searchResults.opportunities.length) ? (
+          <div role="listbox" aria-label="Resultados da busca" className="app-search-results">
+            {searchResults.customers.length ? (
+              <div>
+                <span>Clientes</span>
+                {searchResults.customers.map((customer) => (
+                  <button key={customer.id} type="button" onClick={() => openResult(`/clientes/${customer.id}`)}>
+                    <strong>{customer.nome}</strong>
+                    <small>{customer.telefone ?? customer.empresa ?? ""}</small>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {searchResults.opportunities.length ? (
+              <div>
+                <span>Oportunidades</span>
+                {searchResults.opportunities.map((opportunity) => (
+                  <button key={opportunity.id} type="button" onClick={() => openResult(`/oportunidades/${opportunity.id}`)}>
+                    <strong>{opportunity.titulo}</strong>
+                    <small>
+                      {opportunity.clienteNome} - {opportunity.etapaNome}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="app-topbar-spacer" />
+
+      <Button asChild variant="primary" className="app-topbar-new">
+        <Link to="/oportunidades">+ Nova oportunidade</Link>
+      </Button>
+
+      <div className="app-notification-shell">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              ref={bellButtonRef}
+              type="button"
+              aria-label="Abrir notificacoes"
+              aria-expanded={notificationPanelOpen}
+              onClick={() => setNotificationPanelOpen((open) => !open)}
+              className="app-icon-button"
+            >
+              <Bell size={18} aria-hidden="true" />
+              {notifications.unreadCount > 0 ? <span>{badgeCount}</span> : null}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="app-tooltip">Notificacoes</TooltipContent>
+        </Tooltip>
+        {notificationPanelOpen ? (
+          <div role="dialog" aria-label="Notificacoes recentes" ref={notificationPanelRef} className="app-notification-popover">
+            <header>
+              <strong>Notificacoes</strong>
+              <button type="button" onClick={() => void notifications.readAll()}>
+                Ler todas
+              </button>
+            </header>
+            <NotificationList items={notifications.notifications} onRead={notifications.read} onArchive={notifications.archive} onSnooze={notifications.snooze} />
+          </div>
+        ) : null}
+      </div>
+
+      <Separator orientation="vertical" className="app-topbar-separator" />
+
+      <div className="app-user-chip">
+        <Avatar name={userEmail ?? "AR"} size="sm" />
+        <span>{userEmail?.split("@")[0] ?? "Ana"}</span>
+      </div>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" onClick={() => void onLogout()} className="app-icon-button app-logout-button" aria-label="Sair">
+            <LogOut size={18} aria-hidden="true" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="app-tooltip">Sair</TooltipContent>
+      </Tooltip>
       </header>
-    </>
+    </TooltipProvider>
   );
 }

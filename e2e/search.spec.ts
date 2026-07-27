@@ -4,9 +4,9 @@ import { loginAsHomologationGestor } from "./support/auth";
 test("finds an existing customer via global search and opens its client page", async ({ page }) => {
   await loginAsHomologationGestor(page);
   await page.getByLabel("Buscar no CRM").fill("Homologacao");
-  const dropdown = page.locator(".search-dropdown");
+  const dropdown = page.getByRole("listbox", { name: "Resultados da busca" });
   await expect(dropdown).toBeVisible({ timeout: 15_000 });
-  const firstResult = dropdown.locator(".search-dropdown-item").first();
+  const firstResult = dropdown.getByRole("button").first();
   const label = await firstResult.locator("strong").textContent();
   await firstResult.click();
   await expect(dropdown).toHaveCount(0);

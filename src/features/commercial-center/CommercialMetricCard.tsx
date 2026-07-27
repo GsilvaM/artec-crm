@@ -14,8 +14,8 @@ export function CommercialMetricCard({ label, value, icon, tone = "neutral", onC
     <button type="button" className={`commercial-metric-card${toneClass}`} onClick={onClick} disabled={!onClick}>
       <span className="commercial-metric-card-icon" aria-hidden="true">{icon}</span>
       <span className="commercial-metric-card-body">
-        <span className="commercial-metric-card-value">{value}</span>
         <span className="commercial-metric-card-label">{label}</span>
+        <span className="commercial-metric-card-value">{value}</span>
       </span>
     </button>
   );

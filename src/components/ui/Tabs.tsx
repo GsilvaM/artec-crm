@@ -2,10 +2,17 @@ import { type KeyboardEvent, type ReactNode, useRef } from "react";
 
 export type TabItem = { id: string; label: string; content: ReactNode };
 
-// Abas simples controladas pelo pai (estado fica na URL via searchParams no
-// caller, nao aqui) — navegacao por teclado (setas esquerda/direita, Home/End)
-// segue o padrao WAI-ARIA APG de "manual activation" tabs.
-export function Tabs({ items, activeId, onChange, ariaLabel = "Seções" }: { items: TabItem[]; activeId: string; onChange: (id: string) => void; ariaLabel?: string }) {
+export function Tabs({
+  items,
+  activeId,
+  onChange,
+  ariaLabel = "Secoes",
+}: {
+  items: TabItem[];
+  activeId: string;
+  onChange: (id: string) => void;
+  ariaLabel?: string;
+}) {
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   function focusAndSelect(id: string) {
@@ -37,7 +44,9 @@ export function Tabs({ items, activeId, onChange, ariaLabel = "Seções" }: { it
         {items.map((item, index) => (
           <button
             key={item.id}
-            ref={(element) => { tabRefs.current[item.id] = element; }}
+            ref={(element) => {
+              tabRefs.current[item.id] = element;
+            }}
             role="tab"
             type="button"
             id={`tab-${item.id}`}

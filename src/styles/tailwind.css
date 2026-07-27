@@ -1,0 +1,86 @@
+/*
+ * Fundacao Tailwind v4 do piloto (docs/lovable-reference/TAILWIND-MIGRATION-PLAN.md).
+ *
+ * So tema + utilities, sem preflight (reset global): o legado (src/styles.css,
+ * ~4800 linhas) ainda estiliza a maioria das paginas com base em elementos
+ * puros (h1, button, input...) — o preflight do Tailwind reescreveria essas
+ * bases e quebraria as paginas nao migradas. Paginas migradas usam so classes
+ * utilitarias, nunca dependem de reset de elemento.
+ */
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
+
+/* novo layout/ e so referencia (nao e importada pelo app, sera apagada ao
+   fim da migracao) — sem isso, a deteccao automatica de fontes do Tailwind
+   escaneava as classes de la tambem, gerando CSS morto no bundle real. */
+@source not "../../novo layout";
+
+/*
+ * Ponte de tokens: os nomes semanticos do modelo Lovable (bg-canvas,
+ * text-content-primary, bg-brand, bg-critical-subtle...) apontam para as
+ * MESMAS variaveis ja definidas em src/styles.css, nao uma paleta paralela.
+ * Ganho real: essas variaveis ja tem par claro/escuro validado (ver Central
+ * Comercial/Caixa Auvo nesta mesma refatoracao) — apelidar em vez de duplicar
+ * evita reabrir o gap de dark mode ja corrigido nesta sessao (sidebar presa
+ * em branco por token sem override escuro).
+ *
+ * --color-*-subtle usa color-mix() em vez de um tom fixo: computado a partir
+ * de tokens que ja tem override escuro, entao o tom "subtle" tambem se adapta
+ * ao tema automaticamente, sem precisar de um segundo par claro/escuro manual.
+ */
+@theme {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Superficies */
+  --color-canvas: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-muted);
+  --color-surface-strong: var(--surface-sunken);
+
+  /* Conteudo */
+  --color-content-primary: var(--foreground);
+  --color-content-secondary: var(--foreground-muted);
+  --color-content-tertiary: var(--foreground-muted);
+  --color-content-inverse: var(--foreground-on-dark);
+
+  /* Bordas */
+  --color-border-subtle: var(--border);
+  --color-border-default: var(--border);
+  --color-border-strong: var(--border);
+
+  /* Marca — permanece neutra em superficie operacional (ADR-0003); tokens
+     disponiveis para uso pontual (CTA, foco, link, splash de login). */
+  --color-brand: var(--primary);
+  --color-brand-hover: var(--primary-hover);
+  --color-brand-subtle: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  --color-brand-foreground: var(--primary-foreground);
+
+  /* Semanticas de status — par base/subtle/foreground */
+  --color-critical: var(--danger);
+  --color-critical-subtle: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  --color-critical-foreground: var(--primary-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-subtle: color-mix(in srgb, var(--warning) 14%, var(--surface));
+  --color-warning-foreground: var(--foreground);
+
+  --color-positive: var(--success);
+  --color-positive-subtle: color-mix(in srgb, var(--success) 12%, var(--surface));
+  --color-positive-foreground: var(--primary-foreground);
+
+  --color-informative: var(--info);
+  --color-informative-subtle: color-mix(in srgb, var(--info) 12%, var(--surface));
+  --color-informative-foreground: var(--primary-foreground);
+
+  /* Raio — valores fixos, nao var(): os nomes de tema do Tailwind
+     (--radius-sm/md/lg/xl/2xl) sao identicos aos nomes ja usados em
+     src/styles.css; referenciar via var() dentro deste bloco seria
+     auto-referencia (valor invalido). --radius-md fica em 4px (nao 8px)
+     porque e a utility mais usada (rounded-md) e controles seguem 4px
+     (docs/cards.json, D001/D003); as demais replicam a escala existente. */
+  --radius-sm: 6px;
+  --radius-md: 4px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 28px;
+}

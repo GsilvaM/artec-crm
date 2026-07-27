@@ -20,6 +20,7 @@ import "@fontsource/inter/latin-ext-600.css";
 import "@fontsource/inter/latin-ext-700.css";
 import "@fontsource/inter/latin-ext-800.css";
 import "./styles.css";
+import "./styles/tailwind.css";
 
 const root = document.getElementById("root");
 

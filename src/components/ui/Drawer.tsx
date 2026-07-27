@@ -3,7 +3,17 @@ import { type ReactNode } from "react";
 import { IconButton } from "./IconButton";
 import { useEscapeKey, useOverlayScrollLockAndFocusRestore } from "./useOverlayBehavior";
 
-export function Drawer({ title, subtitle, onClose, children }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode }) {
+export function Drawer({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   useOverlayScrollLockAndFocusRestore(true);
   useEscapeKey(true, onClose);
 

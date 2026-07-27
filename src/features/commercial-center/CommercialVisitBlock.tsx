@@ -4,16 +4,14 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { formatDateTime, formatVisitStatus } from "../../domain/format";
 import type { CommercialCenterVisitItem } from "../../domain/crm";
 
-export function CommercialVisitBlock({ items, limit = 8 }: { items: CommercialCenterVisitItem[]; limit?: number }) {
-  const visibleItems = items.slice(0, limit);
-
-  if (!visibleItems.length) {
+export function CommercialVisitBlock({ items }: { items: CommercialCenterVisitItem[] }) {
+  if (!items.length) {
     return <EmptyState title="Nenhuma visita proxima" text="As visitas agendadas aparecerao aqui." />;
   }
 
   return (
     <ul className="commercial-visit-list">
-      {visibleItems.map((visit) => (
+      {items.map((visit) => (
         <li key={visit.id}>
           <div className="commercial-visit-list-icon"><CalendarClock aria-hidden="true" size={18} /></div>
           <div className="commercial-visit-list-body">

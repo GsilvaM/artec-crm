@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, CalendarClock, Clock, Inbox, ListChecks, Plus, RefreshCw, SlidersHorizontal, Undo2, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Clock, FileText, Inbox, ListChecks, Plus, RefreshCw, SlidersHorizontal, Target, Undo2, Users, Wallet, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Drawer } from "../../components/ui/Drawer";
 import { Tabs } from "../../components/ui/Tabs";
 import { NotificationList } from "../../components/ui/NotificationList";
+import { Card, CardContent } from "../../components/ui/card";
 import { formatDateTime, formatMoney } from "../../domain/format";
 import {
   loadCommercialCenter,
@@ -81,8 +82,12 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
     navigate(`/oportunidades/${id}`);
   }
 
-  function scrollTo(ref: typeof priorityRef) {
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Os 6 paineis operacionais ficam sempre visiveis (grid de altura fixa,
+  // ADR-0004) — nao ha mais "rolar ate o bloco". O clique no metric card move
+  // o foco de teclado/leitor de tela para o painel correspondente (e troca a
+  // aba, quando existe) em vez de scrollIntoView.
+  function focusPanel(ref: typeof priorityRef) {
+    ref.current?.focus({ preventScroll: true });
   }
 
   function toActionTarget(item: { id: string; customerId: string; customerName: string; opportunityId: string | null; category: ActionOperationTarget["category"]; dueAt: string }): ActionOperationTarget {
@@ -156,32 +161,39 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
       ) : (
         <>
           <div className="commercial-metrics-strip" aria-label="Indicadores comerciais do dia">
-            <CommercialMetricCard label="Vencidas" value={center.overdueActions.length} tone="danger" icon={<AlertTriangle aria-hidden="true" />} onClick={() => { setQueueTab("overdue"); scrollTo(priorityRef); }} />
-            <CommercialMetricCard label="Hoje" value={center.todayActions.length} tone="warning" icon={<Clock aria-hidden="true" />} onClick={() => { setQueueTab("today"); scrollTo(priorityRef); }} />
-            <CommercialMetricCard label="Visitas" value={center.upcomingVisits.length} tone="informative" icon={<CalendarClock aria-hidden="true" />} onClick={() => scrollTo(agendaRef)} />
-            <CommercialMetricCard label="Retornos" value={center.quotesAwaitingReturn.length} tone="informative" icon={<Undo2 aria-hidden="true" />} onClick={() => scrollTo(quotesRef)} />
-            <CommercialMetricCard label="Sem ação" value={center.opportunitiesWithoutNextAction.length} tone="warning" icon={<ListChecks aria-hidden="true" />} onClick={() => { setHygieneTab("without-action"); scrollTo(hygieneRef); }} />
+            <CommercialMetricCard label="Ações vencidas" value={center.overdueActions.length} tone="danger" icon={<AlertTriangle aria-hidden="true" />} onClick={() => { setQueueTab("overdue"); focusPanel(priorityRef); }} />
+            <CommercialMetricCard label="Ações para hoje" value={center.todayActions.length} tone="warning" icon={<Clock aria-hidden="true" />} onClick={() => { setQueueTab("today"); focusPanel(priorityRef); }} />
+            <CommercialMetricCard label="Visitas agendadas" value={center.upcomingVisits.length} tone="informative" icon={<CalendarClock aria-hidden="true" />} onClick={() => focusPanel(agendaRef)} />
+            <CommercialMetricCard label="Orçamentos aguardando" value={center.quotesAwaitingReturn.length} tone="informative" icon={<Undo2 aria-hidden="true" />} onClick={() => focusPanel(quotesRef)} />
+            <CommercialMetricCard label="Sem próxima ação" value={center.opportunitiesWithoutNextAction.length} tone="warning" icon={<ListChecks aria-hidden="true" />} onClick={() => { setHygieneTab("without-action"); focusPanel(hygieneRef); }} />
             <CommercialMetricCard label="Caixa Auvo" value={auvoPending} tone={auvoPending > 0 ? "informative" : "neutral"} icon={<Inbox aria-hidden="true" />} onClick={() => navigate("/caixa-auvo")} />
           </div>
 
-          <section className="commercial-filter-toolbar" aria-label="Filtros da Central Comercial">
-            <label>De<input type="date" value={filters.from ?? ""} onChange={(event) => setFilters({ ...filters, from: event.target.value })} /></label>
-            <label>Até<input type="date" value={filters.to ?? ""} onChange={(event) => setFilters({ ...filters, to: event.target.value })} /></label>
-            <label>Etapa
-              <select value={filters.stageId ?? ""} onChange={(event) => setFilters({ ...filters, stageId: event.target.value || undefined })}>
-                <option value="">Todas</option>
-                {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
-              </select>
-            </label>
-            <div className="commercial-filter-toolbar-spacer" />
-            <div className="commercial-filter-toolbar-actions">
-              <button className="button secondary" type="button" onClick={() => setIsFilterDrawerOpen(true)}>
-                <SlidersHorizontal aria-hidden="true" />
-                Filtros{drawerFilterCount ? ` (${drawerFilterCount})` : ""}
+          <section className="commercial-filter-toolbar" aria-label="Filas da Central Comercial">
+            <div className="commercial-filter-tabs" role="tablist" aria-label="Filas comerciais">
+              <button type="button" onClick={() => { setQueueTab("overdue"); focusPanel(priorityRef); }} className={queueTab === "overdue" ? "is-active" : undefined}>
+                Vencidas <span>{center.overdueActions.length}</span>
               </button>
-              <button className="button secondary" type="button" onClick={() => void refresh()} disabled={isLoading}>Aplicar</button>
-              <button className="button ghost" type="button" onClick={() => { setFilters({}); void refresh({}); }} disabled={isLoading || !hasFilters}>Limpar</button>
+              <button type="button" onClick={() => { setQueueTab("today"); focusPanel(priorityRef); }} className={queueTab === "today" ? "is-active" : undefined}>
+                Hoje <span>{center.todayActions.length}</span>
+              </button>
+              <button type="button" onClick={() => focusPanel(agendaRef)}>
+                Visitas <span>{center.upcomingVisits.length}</span>
+              </button>
+              <button type="button" onClick={() => focusPanel(quotesRef)}>
+                Retornos <span>{center.quotesAwaitingReturn.length}</span>
+              </button>
+              <button type="button" onClick={() => { setHygieneTab("without-action"); focusPanel(hygieneRef); }}>
+                Sem ação <span>{center.opportunitiesWithoutNextAction.length}</span>
+              </button>
+              <button type="button" onClick={() => navigate("/caixa-auvo")}>
+                Caixa Auvo <span>{auvoPending}</span>
+              </button>
             </div>
+            <button className="button secondary commercial-filter-button" type="button" onClick={() => setIsFilterDrawerOpen(true)}>
+              <SlidersHorizontal aria-hidden="true" />
+              Filtros{activeFilterChips.length ? ` (${activeFilterChips.length})` : ""}
+            </button>
           </section>
 
           {activeFilterChips.length ? (
@@ -200,6 +212,14 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
           {isFilterDrawerOpen ? (
             <Drawer title="Mais filtros" subtitle="Central Comercial" onClose={() => setIsFilterDrawerOpen(false)}>
               <div className="commercial-filter-drawer-grid">
+                <label>De<input type="date" value={filters.from ?? ""} onChange={(event) => setFilters({ ...filters, from: event.target.value })} /></label>
+                <label>Até<input type="date" value={filters.to ?? ""} onChange={(event) => setFilters({ ...filters, to: event.target.value })} /></label>
+                <label>Etapa
+                  <select value={filters.stageId ?? ""} onChange={(event) => setFilters({ ...filters, stageId: event.target.value || undefined })}>
+                    <option value="">Todas</option>
+                    {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
+                  </select>
+                </label>
                 <label>Situação
                   <input value={filters.situation ?? ""} onChange={(event) => setFilters({ ...filters, situation: event.target.value || undefined })} placeholder="ex: aguardando cliente" />
                 </label>
@@ -227,15 +247,22 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
                   </select>
                 </label>
                 <button className="button primary" type="button" onClick={() => void applyAndCloseDrawer()}>Aplicar filtros</button>
+                <button className="button ghost" type="button" onClick={() => { setFilters({}); void refresh({}); }} disabled={!hasFilters}>Limpar filtros</button>
               </div>
             </Drawer>
           ) : null}
 
-          <section className="commercial-center" aria-label="Central Comercial">
+          <section className="commercial-center commercial-boards" aria-label="Central Comercial">
           <div className="commercial-main-grid">
-            <article className="panel commercial-panel" ref={priorityRef} aria-label="Prioridade agora">
+            <article className="panel commercial-panel" ref={priorityRef} tabIndex={-1} aria-label="Prioridade agora">
               <header>
-                <h2>Prioridade agora</h2>
+                <div>
+                  <h2>Prioridade agora</h2>
+                  <p>Ações que exigem sua atenção nas próximas horas.</p>
+                </div>
+                <Link to="/proximas-acoes">
+                  Ver todas <ArrowRight aria-hidden="true" size={12} />
+                </Link>
               </header>
               <Tabs
                 ariaLabel="Fila de ações prioritárias"
@@ -270,30 +297,45 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
               />
             </article>
 
-            <article className="panel commercial-panel" ref={agendaRef} aria-label="Agenda e visitas">
+            <article className="panel commercial-panel" ref={agendaRef} tabIndex={-1} aria-label="Agenda e visitas">
               <header>
-                <h2>Agenda e visitas</h2>
+                <div>
+                  <h2>Agenda e visitas</h2>
+                  <p>Compromissos de hoje.</p>
+                </div>
+                <Link to="/proximas-acoes">Ver agenda</Link>
               </header>
-              <CommercialVisitBlock items={center.upcomingVisits} limit={8} />
+              <div className="commercial-panel-body">
+                <CommercialVisitBlock items={center.upcomingVisits} />
+              </div>
             </article>
           </div>
 
           <div className="commercial-secondary-grid">
-            <article className="panel commercial-panel" ref={quotesRef} aria-label="Orçamentos aguardando retorno">
+            <article className="panel commercial-panel" ref={quotesRef} tabIndex={-1} aria-label="Orçamentos aguardando retorno">
               <header>
-                <h2>Orçamentos aguardando retorno</h2>
+                <div>
+                  <h2>Orçamentos aguardando retorno</h2>
+                  <p>Follow-up pendente após envio do orçamento.</p>
+                </div>
+                <Link to="/oportunidades">Ver todos</Link>
               </header>
-              <CommercialOpportunityBlock
-                items={center.quotesAwaitingReturn}
-                emptyText="Nenhum orçamento aguardando retorno"
-                onOpen={openOpportunity}
-                showBudget
-              />
+              <div className="commercial-panel-body">
+                <CommercialOpportunityBlock
+                  items={center.quotesAwaitingReturn}
+                  emptyText="Nenhum orçamento aguardando retorno"
+                  onOpen={openOpportunity}
+                  showBudget
+                />
+              </div>
             </article>
 
-            <article className="panel commercial-panel" ref={hygieneRef} aria-label="Higiene do funil">
+            <article className="panel commercial-panel" ref={hygieneRef} tabIndex={-1} aria-label="Higiene do funil">
               <header>
-                <h2>Higiene do funil</h2>
+                <div>
+                  <h2>Higiene do funil</h2>
+                  <p>Oportunidades que precisam de ajuste.</p>
+                </div>
               </header>
               <Tabs
                 ariaLabel="Higiene do funil"
@@ -329,29 +371,41 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
             </article>
           </div>
 
-          <div className="commercial-bottom-grid">
-            <article className="panel commercial-panel" aria-label="Alertas e notificações">
+          <div className="commercial-footer-grid">
+            <article className="panel commercial-footer-panel" aria-label="Alertas e notificações">
               <header>
-                <h2>Alertas e notificações</h2>
+                <div>
+                  <h2>Alertas relevantes</h2>
+                  <p>Notificações operacionais que merecem uma ação humana.</p>
+                </div>
                 <Link to="/notificacoes">Ver todas</Link>
               </header>
-              <NotificationList items={notifications.notifications} onRead={notifications.read} onArchive={notifications.archive} onSnooze={notifications.snooze} />
-              <p className="commercial-panel-hint">{center.auvoInbox.message}</p>
-              <Link className="button secondary" to="/caixa-auvo">Abrir Caixa Auvo</Link>
+              <div className="commercial-footer-notifications">
+                <NotificationList items={notifications.notifications} onRead={notifications.read} onArchive={notifications.archive} onSnooze={notifications.snooze} />
+              </div>
+              <div className="commercial-footer-panel-actions">
+                <p className="commercial-panel-hint">{center.auvoInbox.message}</p>
+                <Link className="button secondary" to="/caixa-auvo">Abrir Caixa Auvo</Link>
+              </div>
             </article>
 
-            <article className="panel commercial-panel" aria-label="Resumo comercial">
+            <Card className="panel commercial-footer-panel" role="region" aria-label="Resumo comercial">
               <header>
-                <h2>Resumo comercial</h2>
+                <div>
+                  <h2>Resumo comercial</h2>
+                  <p>Últimos 7 dias.</p>
+                </div>
               </header>
-              <dl className="commercial-summary-grid">
-                <div className="commercial-summary-stat"><dt>Novas oportunidades</dt><dd>{center.summary.newOpportunities}</dd></div>
-                <div className="commercial-summary-stat"><dt>Aprovadas</dt><dd>{center.summary.approvedOpportunities}</dd></div>
-                <div className="commercial-summary-stat"><dt>Perdidas</dt><dd>{center.summary.lostOpportunities}</dd></div>
-                <div className="commercial-summary-stat"><dt>Valor aprovado</dt><dd>{formatMoney(center.summary.approvedValue)}</dd></div>
-                <div className="commercial-summary-stat"><dt>Ticket médio</dt><dd>{formatMoney(center.summary.averageApprovedTicket)}</dd></div>
-              </dl>
-            </article>
+              <CardContent className="commercial-footer-card-content">
+                <dl className="commercial-summary-strip">
+                  <div className="commercial-summary-stat informative"><dt><Users aria-hidden="true" size={14} /> Novas</dt><dd>{center.summary.newOpportunities}</dd></div>
+                  <div className="commercial-summary-stat warning"><dt><FileText aria-hidden="true" size={14} /> Orçados</dt><dd>{center.summary.approvedOpportunities + center.summary.lostOpportunities}</dd></div>
+                  <div className="commercial-summary-stat positive"><dt><CheckCircle2 aria-hidden="true" size={14} /> Aprovadas</dt><dd>{center.summary.approvedOpportunities}</dd></div>
+                  <div className="commercial-summary-stat brand"><dt><Target aria-hidden="true" size={14} /> Conversão</dt><dd>{center.summary.newOpportunities ? Math.round((center.summary.approvedOpportunities / center.summary.newOpportunities) * 100) : 0}%</dd></div>
+                  <div className="commercial-summary-stat commercial-summary-wide"><dt><Wallet aria-hidden="true" size={14} /> Ticket médio aprovado</dt><dd>{formatMoney(center.summary.averageApprovedTicket)}</dd></div>
+                </dl>
+              </CardContent>
+            </Card>
           </div>
           </section>
         </>
@@ -373,16 +427,38 @@ function CommercialCenterSkeleton() {
           </div>
         ))}
       </div>
-      <div className="commercial-main-grid">
-        <div className="panel commercial-panel">
-          <div className="skeleton skeleton-title" />
-          <div className="skeleton skeleton-line" />
-          <div className="skeleton skeleton-line" />
-          <div className="skeleton skeleton-line short" />
+      <div className="commercial-boards">
+        <div className="commercial-main-grid">
+          <div className="panel commercial-panel">
+            <div className="skeleton skeleton-title" />
+            <div className="skeleton skeleton-line" />
+            <div className="skeleton skeleton-line" />
+            <div className="skeleton skeleton-line short" />
+          </div>
+          <div className="panel commercial-panel">
+            <div className="skeleton skeleton-title" />
+            <div className="skeleton skeleton-line short" />
+          </div>
         </div>
-        <div className="panel commercial-panel">
-          <div className="skeleton skeleton-title" />
-          <div className="skeleton skeleton-line short" />
+        <div className="commercial-secondary-grid">
+          <div className="panel commercial-panel">
+            <div className="skeleton skeleton-title" />
+            <div className="skeleton skeleton-line short" />
+          </div>
+          <div className="panel commercial-panel">
+            <div className="skeleton skeleton-title" />
+            <div className="skeleton skeleton-line short" />
+          </div>
+        </div>
+        <div className="commercial-footer-grid">
+          <div className="panel commercial-footer-panel">
+            <div className="skeleton skeleton-title" />
+            <div className="skeleton skeleton-line short" />
+          </div>
+          <div className="panel commercial-footer-panel">
+            <div className="skeleton skeleton-title" />
+            <div className="skeleton skeleton-line short" />
+          </div>
         </div>
       </div>
     </div>
