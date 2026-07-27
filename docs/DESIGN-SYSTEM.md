@@ -75,6 +75,32 @@ Padroes:
 - Filtros visiveis por responsavel, categoria e prioridade.
 - Acoes frequentes visiveis: concluir, reagendar, cancelar.
 
+## Fichas Operacionais
+
+Padroes:
+
+- O topo da oportunidade e do cliente deve responder qual e a proxima decisao.
+- Painel de decisao usa tom semantico: vermelho para vencido, amarelo para revisar, azul para proxima acao e verde para fluxo limpo.
+- Acoes principais ficam proximas do contexto, sem esconder follow-up, garantia/suporte ou nova oportunidade.
+
+## Caixa Auvo
+
+Padroes:
+
+- Split-view: fila de atendimentos a esquerda e painel de decisao a direita.
+- No mobile, iniciar na fila e abrir o detalhe so apos selecao.
+- Painel de decisao deve conter match Cliente-Auvo, recomendacao, checklist humano, resumo de sinais e acoes de resolucao.
+- Checklist usa estados visuais compactos: concluido, atencao e pendente.
+
+## Relatorios
+
+Padroes:
+
+- Linguagem operacional, sem termos de financeiro.
+- Indicadores principais em cards pequenos.
+- Listas com barras para etapa, origem, motivo de perda e gargalos por responsavel.
+- Gargalos devem evidenciar oportunidades ativas, follow-ups vencidos/concluidos e score de atencao.
+
 ## Linguagem Visual
 
 Evitar:

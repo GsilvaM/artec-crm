@@ -95,6 +95,7 @@ Verificar:
 - dados principais;
 - etapa e situacao;
 - proxima acao sempre visivel;
+- painel de proxima decisao apontando para follow-up, visita, orcamento, aprovacao ou historico;
 - historico;
 - visitas;
 - orcamentos;
@@ -111,6 +112,7 @@ Verificar:
 - oportunidades;
 - atividades;
 - aba de garantia e suporte;
+- painel de proxima decisao do cliente;
 - aviso de possivel telefone duplicado.
 
 ### 7. Garantia, Suporte e Pos-venda
@@ -129,6 +131,8 @@ Verificar:
 - painel de decisao;
 - resumo de sinais;
 - match Cliente-Auvo;
+- recomendacao de triagem;
+- checklist humano antes da resolucao;
 - criar oportunidade;
 - vincular oportunidade;
 - registrar garantia;
@@ -145,6 +149,7 @@ Verificar:
 - indicadores principais;
 - oportunidades por etapa;
 - conversao por origem;
+- gargalos por responsavel;
 - eficiencia de follow-up;
 - linguagem comercial sem termos financeiros.
 

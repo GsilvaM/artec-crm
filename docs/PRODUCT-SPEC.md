@@ -24,16 +24,16 @@ O CRM nao e ERP e nao e financeiro. Valores orcados e aprovados existem para ges
    Criar cliente com poucos campos, detectar duplicidade por telefone, criar oportunidade e definir responsavel/proxima acao.
 
 4. Ficha da Oportunidade
-   Mostrar cliente, demanda, etapa, situacao, responsavel, valores comerciais, visitas, historico e proxima acao.
+   Mostrar cliente, demanda, etapa, situacao, responsavel, valores comerciais, visitas, historico, proxima acao e proxima decisao.
 
 5. Ficha do Cliente
-   Reunir cadastro, telefones, empresa, enderecos, equipamentos, oportunidades, atividades, garantia, suporte e pos-venda.
+   Reunir cadastro, telefones, empresa, enderecos, equipamentos, oportunidades, atividades, garantia, suporte, pos-venda e proxima decisao do relacionamento.
 
 6. Caixa Auvo
-   Triagem assistida de atendimentos vindos do Auvo. Nada deve ser classificado silenciosamente.
+   Triagem assistida de atendimentos vindos do Auvo, com sinais, match Cliente-Auvo, recomendacao e checklist humano. Nada deve ser classificado silenciosamente.
 
 7. Relatorios Comerciais
-   Mostrar desempenho e gargalos sem linguagem financeira.
+   Mostrar desempenho, follow-up e gargalos por responsavel sem linguagem financeira.
 
 ## Regras de Negocio
 
@@ -95,6 +95,7 @@ Evitar:
 - Follow-up pode ser registrado em poucos cliques.
 - Cadastro rapido nao exige formulario longo.
 - Garantia e suporte nao poluem o funil.
-- Caixa Auvo mostra sinais, sugestoes e bloqueios de decisao.
+- Caixa Auvo mostra sinais, sugestoes, checklist e bloqueios de decisao.
 - Relatorios usam linguagem comercial, nao financeira.
+- Gestor consegue identificar gargalos por responsavel.
 - RBAC e auditoria continuam no backend.
