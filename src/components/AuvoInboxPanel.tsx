@@ -25,6 +25,14 @@ type CustomerMatchPreview = {
   tone: "strong" | "medium" | "weak";
 };
 
+type TriageRecommendation = {
+  title: string;
+  description: string;
+  action: ActionMode;
+  tone: "strong" | "warning" | "neutral";
+  blockers: string[];
+};
+
 const STATUS_LABELS: Record<AuvoInboxStatus, string> = {
   novo: "Novo",
   em_analise: "Em análise",
@@ -268,6 +276,7 @@ function AuvoDecisionPanel({
   const isResolved = item.status === "processado" || item.status === "descartado";
   const suggestedCustomer = customers.find((customer) => customer.id === item.suggestedCustomerId);
   const matchPreview = buildCustomerMatchPreview(item, suggestedCustomer);
+  const recommendation = buildTriageRecommendation(item, matchPreview);
 
   return (
     <article className="auvo-decision-panel">
@@ -306,6 +315,22 @@ function AuvoDecisionPanel({
         <ul className="auvo-customer-match-evidence">
           {matchPreview.evidence.map((evidence) => <li key={evidence}>{evidence}</li>)}
         </ul>
+      </section>
+
+      <section className={`auvo-triage-guidance auvo-triage-guidance-${recommendation.tone}`} aria-label="Recomendacao de triagem">
+        <div>
+          <span>Recomendacao de triagem</span>
+          <strong>{recommendation.title}</strong>
+          <p>{recommendation.description}</p>
+        </div>
+        <button className="button secondary" type="button" disabled={isResolved} onClick={() => onOpenAction(item, recommendation.action)}>
+          Seguir recomendacao
+        </button>
+        {recommendation.blockers.length ? (
+          <ul>
+            {recommendation.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
+          </ul>
+        ) : null}
       </section>
 
       <div className="auvo-inbox-summary">
@@ -506,6 +531,52 @@ function buildCustomerMatchPreview(item: AuvoInboxItem, suggestedCustomer: Custo
     description: "Faltam dados para comparar este atendimento com a base de clientes.",
     evidence: ["Solicitar telefone ou identificar cliente", "Revisao manual recomendada"],
     tone: "weak",
+  };
+}
+
+function buildTriageRecommendation(item: AuvoInboxItem, match: CustomerMatchPreview): TriageRecommendation {
+  const derived = item.auvoSignals.derived;
+  const blockers = [
+    ...derived.missingData.map((value) => `Falta ${formatMissingDataForAction([value])}`),
+    ...(match.tone === "weak" ? ["Match com cliente ainda fraco"] : []),
+  ];
+
+  if (derived.suggestedAction === "register_warranty" || derived.intent === "garantia") {
+    return {
+      title: "Registrar fora do funil comercial",
+      description: "O atendimento parece garantia. Preserve o historico na ficha do cliente sem criar oportunidade comercial.",
+      action: "warranty",
+      tone: blockers.length ? "warning" : "strong",
+      blockers,
+    };
+  }
+
+  if (derived.suggestedAction === "register_support" || derived.intent === "suporte" || derived.intent === "pos_venda") {
+    return {
+      title: "Registrar atendimento tecnico",
+      description: "O sinal indica suporte ou pos-venda. Use a ficha do cliente para manter o funil comercial limpo.",
+      action: derived.intent === "pos_venda" ? "after_sales" : "support",
+      tone: blockers.length ? "warning" : "strong",
+      blockers,
+    };
+  }
+
+  if (derived.needsHumanReview || blockers.length) {
+    return {
+      title: "Revisar antes de resolver",
+      description: "Complete os dados ou confirme o cliente antes de criar oportunidade, para evitar duplicidade e follow-up errado.",
+      action: match.score >= 40 ? "customer_only" : "not_commercial",
+      tone: "warning",
+      blockers,
+    };
+  }
+
+  return {
+    title: "Criar oportunidade comercial",
+    description: "Os sinais apontam demanda comercial com dados suficientes para iniciar o acompanhamento.",
+    action: "create_opportunity",
+    tone: "strong",
+    blockers: [],
   };
 }
 

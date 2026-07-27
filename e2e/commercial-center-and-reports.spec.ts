@@ -25,17 +25,22 @@ test.describe("Central Comercial", () => {
     await expect(todayTab).toHaveAttribute("aria-selected", "true");
   });
 
-  test("compact filter toolbar applies a stage filter and shows a removable chip", async ({ page }) => {
+  test("filter drawer applies a stage filter and shows a removable chip", async ({ page }) => {
     await loginAsHomologationGestor(page);
     const toolbar = page.locator("section.commercial-filter-toolbar");
     await expect(toolbar).toBeVisible();
 
-    const stageSelect = toolbar.getByLabel("Etapa");
+    await toolbar.getByRole("button", { name: /^Filtros/ }).click();
+    const drawer = page.getByRole("dialog", { name: "Mais filtros" });
+    await expect(drawer).toBeVisible();
+
+    const stageSelect = drawer.getByLabel("Etapa");
     const options = await stageSelect.locator("option").all();
     const secondOption = await options[1]?.getAttribute("value");
     if (secondOption) {
       await stageSelect.selectOption(secondOption);
-      await toolbar.getByRole("button", { name: "Aplicar" }).click();
+      await drawer.getByRole("button", { name: "Aplicar filtros" }).click();
+      await expect(drawer).not.toBeVisible();
       const chips = page.locator(".active-filter-chips li");
       await expect(chips).toHaveCount(1);
       await chips.first().getByRole("button").click();
@@ -54,7 +59,7 @@ test.describe("Central Comercial", () => {
     await expect(page.locator(".active-filter-chips").getByText(/aguardando cliente/)).toBeVisible();
   });
 
-  test("clearing filters removes all chips and disables the Limpar button", async ({ page }) => {
+  test("clearing filters from the drawer removes all chips", async ({ page }) => {
     await loginAsHomologationGestor(page);
     await page.getByRole("button", { name: /^Filtros/ }).click();
     const drawer = page.getByRole("dialog", { name: "Mais filtros" });
@@ -62,9 +67,9 @@ test.describe("Central Comercial", () => {
     await drawer.getByRole("button", { name: "Aplicar filtros" }).click();
     await expect(page.locator(".active-filter-chips li")).toHaveCount(1);
 
-    await page.getByRole("button", { name: "Limpar" }).click();
+    await page.getByRole("button", { name: /^Filtros/ }).click();
+    await page.getByRole("dialog", { name: "Mais filtros" }).getByRole("button", { name: "Limpar filtros" }).click();
     await expect(page.locator(".active-filter-chips")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Limpar" })).toBeDisabled();
   });
 });
 

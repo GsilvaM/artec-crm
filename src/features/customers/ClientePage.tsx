@@ -257,6 +257,14 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
   const openVisits = visits.filter((visit) => !["completed", "cancelled", "no_show"].includes(visit.status));
   const activeOpportunities = opportunities.filter((opportunity) => opportunity.status === "ativa");
   const overdueNextAction = nextUpAction ? new Date(nextUpAction.dueAt).getTime() < Date.now() : false;
+  const latestActivity = activities[0] ?? null;
+  const relationshipState = getRelationshipState(nextUpAction, activeOpportunities.length, supportActivities.length);
+  const customerSignals = [
+    { label: "Oportunidades ativas", value: String(activeOpportunities.length) },
+    { label: "Garantia/suporte", value: String(supportActivities.length) },
+    { label: "Equipamentos", value: String(equipment.length) },
+    { label: "Ultima interacao", value: latestActivity ? formatDateTime(latestActivity.occurredAt) : "Sem historico" },
+  ];
 
   const tabs: TabItem[] = [
     {
@@ -626,13 +634,38 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
         <div className="alert" role="status">Este telefone também aparece em {customer.duplicatePhoneCustomerIds.length} outro(s) cadastro(s) — verifique possível duplicidade.</div>
       ) : null}
 
-      <div className="alert" role="status">
-        {nextUpAction ? (
-          <>Próxima ação: <strong>{nextUpAction.title}</strong> — {formatDateTime(nextUpAction.dueAt)}</>
-        ) : (
-          "Nenhuma ação pendente para este cliente."
-        )}
-      </div>
+      <section className="panel customer-control-panel" aria-label="Resumo operacional do cliente">
+        <div className={`customer-next-action-card ${relationshipState.tone}`}>
+          <span className="customer-overview-icon"><ListChecks aria-hidden="true" size={18} /></span>
+          <div>
+            <span>{relationshipState.label}</span>
+            <strong>{relationshipState.title}</strong>
+            <p>{relationshipState.detail}</p>
+          </div>
+          <span className={`badge ${relationshipState.badgeClass}`}>{relationshipState.badge}</span>
+        </div>
+
+        <div className="customer-signal-grid">
+          {customerSignals.map((signal) => (
+            <article key={signal.label}>
+              <span>{signal.label}</span>
+              <strong>{signal.value}</strong>
+            </article>
+          ))}
+        </div>
+
+        <div className="customer-control-actions">
+          <Link className="button primary" to={`/oportunidades?clienteId=${customer.id}`}>
+            <Plus aria-hidden="true" size={16} />Nova oportunidade
+          </Link>
+          <button className="button secondary" type="button" onClick={() => setActiveTab("garantia-suporte")}>
+            <ShieldAlert aria-hidden="true" size={16} />Garantia/suporte
+          </button>
+          <button className="button secondary" type="button" onClick={() => setActiveTab("proximas-acoes")}>
+            <CalendarClock aria-hidden="true" size={16} />Nova acao
+          </button>
+        </div>
+      </section>
 
       <Tabs items={tabs} activeId={activeTab} onChange={setActiveTab} />
 
@@ -666,4 +699,46 @@ function formatEquipmentTitle(equipment: Equipment): string {
 
 function formatCustomerLocation(customer: Customer): string {
   return [customer.bairro, customer.cidade].filter(Boolean).join(" - ") || "Localizacao ainda nao informada";
+}
+
+function getRelationshipState(nextAction: NextAction | null, activeOpportunityCount: number, supportActivityCount: number): {
+  label: string;
+  title: string;
+  detail: string;
+  badge: string;
+  badgeClass: string;
+  tone: string;
+} {
+  if (nextAction) {
+    const dueAt = new Date(nextAction.dueAt).getTime();
+    const isOverdue = Number.isFinite(dueAt) && dueAt < Date.now();
+    return {
+      label: isOverdue ? "Acao vencida" : "Proxima acao",
+      title: nextAction.title,
+      detail: `${nextAction.opportunityTitle ?? "Atendimento"} - ${formatDateTime(nextAction.dueAt)}`,
+      badge: isOverdue ? "vencida" : "pendente",
+      badgeClass: isOverdue ? "badge-alert-danger" : "badge-informative",
+      tone: isOverdue ? "is-danger" : "is-today",
+    };
+  }
+
+  if (activeOpportunityCount > 0) {
+    return {
+      label: "Sem follow-up",
+      title: "Definir proxima acao",
+      detail: "Cliente tem oportunidade ativa sem acao pendente vinculada ao cadastro.",
+      badge: "revisar",
+      badgeClass: "badge-alert-warning",
+      tone: "is-warning",
+    };
+  }
+
+  return {
+    label: supportActivityCount > 0 ? "Atendimento tecnico" : "Relacionamento",
+    title: supportActivityCount > 0 ? "Garantia/suporte separado do funil" : "Sem urgencia aberta",
+    detail: supportActivityCount > 0 ? "Historico tecnico preservado na ficha do cliente." : "Abra uma oportunidade quando surgir nova demanda comercial.",
+    badge: "ok",
+    badgeClass: "badge-positive",
+    tone: "is-ok",
+  };
 }

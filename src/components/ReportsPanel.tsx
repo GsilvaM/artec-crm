@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, DollarSign, Filter, TrendingUp } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Clock3, Filter, TrendingUp } from "lucide-react";
 import { formatMoney } from "../domain/format";
 import { loadCommercialReport, type CommercialReport, type CommercialReportFilters, type PipelineStage } from "../domain/crm";
 
@@ -46,7 +46,7 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
         <div>
           <p className="eyebrow">Relatorios</p>
           <h2>Desempenho comercial</h2>
-          <p>Leia conversao, receita aprovada e pendencias de follow-up antes de abrir a carteira.</p>
+          <p>Leia conversao, volume aprovado e pendencias de follow-up antes de abrir a carteira.</p>
         </div>
       </header>
 
@@ -103,7 +103,7 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
 
             <article className="report-section" aria-label="Conversao por origem">
               <header>
-                <DollarSign aria-hidden="true" size={18} />
+                <ClipboardList aria-hidden="true" size={18} />
                 <h3>Conversao por origem</h3>
               </header>
               {report.conversionByOrigin.length ? (
@@ -169,9 +169,9 @@ function buildReportMetrics(report: CommercialReport): ReportMetric[] {
   const openBudget = Math.max(0, report.budgetValue - report.approvedValue);
   return [
     {
-      label: "Valor aprovado",
+      label: "Aprovado no periodo",
       value: formatMoney(report.approvedValue),
-      detail: `${report.approvedCount} aprovacao(oes) - ticket medio ${formatMoney(report.averageApprovedTicket)}`,
+      detail: `${report.approvedCount} aprovacao(oes) - ticket comercial ${formatMoney(report.averageApprovedTicket)}`,
       tone: report.approvedValue > 0 ? "good" : "neutral",
     },
     {
@@ -181,9 +181,9 @@ function buildReportMetrics(report: CommercialReport): ReportMetric[] {
       tone: report.conversionRate >= 0.35 ? "good" : report.conversionRate > 0 ? "warning" : "neutral",
     },
     {
-      label: "Valor em aberto",
+      label: "Orcamento em retorno",
       value: formatMoney(openBudget),
-      detail: `${formatMoney(report.budgetValue)} orcado no periodo`,
+      detail: `${formatMoney(report.budgetValue)} enviado ou revisado no periodo`,
       tone: openBudget > 0 ? "warning" : "neutral",
     },
     {

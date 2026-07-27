@@ -1,4 +1,4 @@
-import { AlertCircle, Eye, EyeOff, ListChecks, Loader2, LogIn, LogOut, ShieldCheck, Wind } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, ListChecks, Loader2, LogOut, ShieldCheck, Wind } from "lucide-react";
 import { type FormEvent, type ReactNode, lazy, useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { readSupabaseSession, signInWithPassword, signOut, type AuthState } from "./domain/auth";
@@ -97,6 +97,7 @@ export function App() {
       <AuthShell>
         <p className="text-xs font-bold uppercase tracking-wide text-brand">Artec CRM</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-content-primary">Acesse o Artec CRM</h1>
+        <p className="auth-demo-copy mt-2 text-sm leading-relaxed text-content-secondary">Use suas credenciais para entrar. Qualquer e-mail e senha com 4+ caracteres funcionam nesta versao de demonstracao.</p>
         <p className="mt-1 text-sm text-content-secondary">Organize clientes, oportunidades e follow-up comercial em um só lugar.</p>
         <LoginForm email={email} password={password} isSubmitting={isSubmitting} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={handleLogin} />
       </AuthShell>
@@ -221,8 +222,8 @@ function LoginForm({ email, password, isSubmitting, onEmailChange, onPasswordCha
           "disabled:opacity-70 disabled:cursor-not-allowed",
         )}
       >
-        {isSubmitting ? <Loader2 size={16} aria-hidden="true" className="animate-spin" /> : <LogIn size={16} aria-hidden="true" />}
-        {isSubmitting ? "Entrando" : "Entrar no CRM"}
+        {isSubmitting ? <Loader2 size={16} aria-hidden="true" className="animate-spin" /> : null}
+        {isSubmitting ? "Entrando" : "Entrar"}
       </button>
     </form>
   );
@@ -273,8 +274,8 @@ function AuthShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <section className="flex items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-sm">
+      <section className="flex items-start justify-center p-6 pt-28 md:p-10 md:pt-32 lg:pt-[266px]">
+        <div className="auth-panel w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-brand text-brand-foreground grid place-items-center font-black">A</div>
             <div>
@@ -283,6 +284,7 @@ function AuthShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           {children}
+          <p className="mt-8 text-center text-xs text-content-tertiary">Ao entrar voce concorda com as politicas internas da Artec.</p>
         </div>
       </section>
     </div>

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { CalendarClock, CheckCircle2, MapPin, Plus, Snowflake, XCircle } from "lucide-react";
+import { CalendarClock, CheckCircle2, ClipboardList, MapPin, Plus, Snowflake, XCircle } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
@@ -312,6 +312,15 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
   const isOverdueAction = currentNextAction && currentNextAction.status === "pending" && new Date(currentNextAction.dueAt).getTime() < Date.now();
   const isActive = opportunity.status === "ativa";
   const openVisits = visits.filter((visit) => !["completed", "cancelled", "no_show"].includes(visit.status));
+  const nextActionState = getNextActionState(opportunity, currentNextAction);
+  const latestQuote = quotes[0] ?? null;
+  const latestActivity = activities[0] ?? null;
+  const opportunitySignals = [
+    { label: "Etapa", value: opportunity.etapaNome },
+    { label: "Orcamento", value: latestQuote ? `${formatMoney(latestQuote.valor)} - ${formatQuoteStatus(latestQuote.status)}` : "Sem orcamento" },
+    { label: "Visitas abertas", value: String(openVisits.length) },
+    { label: "Ultima interacao", value: latestActivity ? formatDateTime(latestActivity.occurredAt) : "Sem historico" },
+  ];
 
   return (
     <>
@@ -327,7 +336,34 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
 
-      <section className="panel" aria-label="Resumo da oportunidade">
+      <section className="panel opportunity-control-panel" aria-label="Resumo da oportunidade">
+        <div className={`opportunity-next-action-card ${nextActionState.tone}`}>
+          <div className="opportunity-next-action-icon">
+            <CalendarClock aria-hidden="true" />
+          </div>
+          <div className="opportunity-next-action-main">
+            <span>{nextActionState.label}</span>
+            <strong>{nextActionState.title}</strong>
+            <p>{nextActionState.detail}</p>
+          </div>
+          <span className={`badge ${nextActionState.badgeClass}`}>{nextActionState.badge}</span>
+        </div>
+
+        <aside className="opportunity-health-panel" aria-label="Higiene da oportunidade">
+          <header>
+            <ClipboardList aria-hidden="true" />
+            <h2>Higiene operacional</h2>
+          </header>
+          <ul>
+            {opportunitySignals.map((signal) => (
+              <li key={signal.label}>
+                <span>{signal.label}</span>
+                <strong>{signal.value}</strong>
+              </li>
+            ))}
+          </ul>
+        </aside>
+
         <dl className="detail-list">
           <div><dt>Cliente</dt><dd><Link to={`/clientes/${opportunity.clienteId}`}>{opportunity.clienteNome}</Link></dd></div>
           <div><dt>Demanda</dt><dd>{opportunity.tipoDemanda}</dd></div>
@@ -657,4 +693,74 @@ function formatAddressLine(address: Address): string {
 function formatEquipmentTitle(equipment: Equipment): string {
   const title = [equipment.brand, equipment.model].filter(Boolean).join(" ");
   return title || equipment.environment || formatEquipmentType(equipment.type);
+}
+
+function getNextActionState(opportunity: Opportunity, currentNextAction: NextAction | null): {
+  label: string;
+  title: string;
+  detail: string;
+  badge: string;
+  badgeClass: string;
+  tone: string;
+} {
+  const title = currentNextAction?.title ?? opportunity.proximaAcao;
+  const dueAt = currentNextAction?.dueAt ?? opportunity.proximaAcaoEm;
+  if (!title || !dueAt) {
+    if (opportunity.status !== "ativa") {
+      return {
+        label: "Proxima acao",
+        title: "Sem acao pendente",
+        detail: `Oportunidade ${formatOpportunityStatus(opportunity.status).toLowerCase()}.`,
+        badge: "fechada",
+        badgeClass: "badge-neutral",
+        tone: "is-ok",
+      };
+    }
+    return {
+      label: "Proxima acao",
+      title: "Definir proxima acao",
+      detail: "Esta oportunidade esta ativa sem um compromisso comercial claro.",
+      badge: "sem acao",
+      badgeClass: "badge-alert-danger",
+      tone: "is-danger",
+    };
+  }
+
+  const dueDate = new Date(dueAt);
+  const dueTime = dueDate.getTime();
+  if (!Number.isFinite(dueTime)) {
+    return {
+      label: "Proxima acao",
+      title,
+      detail: "Prazo cadastrado precisa ser revisado.",
+      badge: "revisar",
+      badgeClass: "badge-alert-warning",
+      tone: "is-warning",
+    };
+  }
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfTomorrow = startOfToday + 24 * 60 * 60 * 1000;
+  const detail = formatDateTime(dueAt);
+
+  if (dueTime < now.getTime()) {
+    return { label: "Acao vencida", title, detail, badge: "vencida", badgeClass: "badge-alert-danger", tone: "is-danger" };
+  }
+  if (dueTime < startOfTomorrow) {
+    return { label: "Acao para hoje", title, detail, badge: "hoje", badgeClass: "badge-informative", tone: "is-today" };
+  }
+  return { label: "Proxima acao", title, detail, badge: "agendada", badgeClass: "badge-positive", tone: "is-ok" };
+}
+
+function formatQuoteStatus(status: QuoteStatus): string {
+  const labels: Record<QuoteStatus, string> = {
+    rascunho: "rascunho",
+    enviado: "enviado",
+    revisado: "revisado",
+    aprovado: "aprovado",
+    recusado: "recusado",
+    expirado: "expirado",
+  };
+  return labels[status];
 }

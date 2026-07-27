@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CalendarClock, CircleDollarSign, Plus, Search, UserRound } from "lucide-react";
 import { Avatar } from "../../components/ui/Avatar";
 import { formatDateTime, formatMoney, formatOpportunityStatus, opportunityStatusBadgeClass } from "../../domain/format";
@@ -8,6 +8,7 @@ import { createOpportunity, loadCustomersPage, loadOpportunitiesPage, SITUACAO_S
 const EMPTY_FORM = { clienteId: "", titulo: "", tipoDemanda: "instalacao", situacao: "em andamento", proximaAcao: "", proximaAcaoEm: "" };
 
 export function OportunidadesPage({ currentUserId }: { currentUserId: string }) {
+  const [searchParams] = useSearchParams();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -17,6 +18,7 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const preselectedCustomerId = searchParams.get("clienteId") ?? "";
 
   async function refresh() {
     setIsLoading(true);
@@ -26,7 +28,8 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
       setOpportunities(page.opportunities);
       setNextCursor(page.nextCursor);
       setCustomers(customersPage.customers);
-      setForm((current) => ({ ...current, clienteId: current.clienteId || customersPage.customers[0]?.id || "" }));
+      setForm((current) => ({ ...current, clienteId: current.clienteId || preselectedCustomerId || customersPage.customers[0]?.id || "" }));
+      if (preselectedCustomerId) setShowCreateForm(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nao foi possivel carregar as oportunidades.");
     } finally {

@@ -60,6 +60,7 @@ export function ActionOperationForm({ operation, error, onChange, onSubmit, onCa
         {operation.requiresReplacement && operation.mode !== "postpone" ? (
           <fieldset className="replacement-fields">
             <legend>Nova próxima ação obrigatória</legend>
+            <p className="form-hint">Sugestão preenchida automaticamente. Ajuste se o combinado com o cliente for diferente.</p>
             <label>Ação<input required value={operation.nextTitle} onChange={(event) => onChange({ nextTitle: event.target.value })} /></label>
             <label>Vencimento<input required type="datetime-local" value={operation.nextDueAt} onChange={(event) => onChange({ nextDueAt: event.target.value })} /></label>
             <label>Categoria

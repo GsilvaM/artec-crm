@@ -32,6 +32,21 @@ function toDateTimeLocalValue(value: string | null): string {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
+function defaultReplacementDueAt(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(9, 0, 0, 0);
+  return toDateTimeLocalValue(date.toISOString());
+}
+
+function defaultReplacementTitle(mode: ActionOperationMode, category: NextAction["category"]): string {
+  if (mode === "cancel") return "Definir novo encaminhamento";
+  if (category === "warranty") return "Retornar sobre garantia";
+  if (category === "support") return "Retornar suporte ao cliente";
+  if (category === "after_sales") return "Acompanhar pos-venda";
+  return "Dar continuidade ao atendimento";
+}
+
 async function checkNeedsReplacement(action: ActionOperationTarget): Promise<boolean> {
   if (!action.opportunityId) return false;
   const opportunity = await loadOpportunity(action.opportunityId);
@@ -57,7 +72,16 @@ export function useActionOperation(currentUserId: string, onSuccess: () => void 
       requiresReplacement: false,
     });
     const requiresReplacement = await checkNeedsReplacement(action).catch(() => false);
-    setOperation((current) => (current && current.action.id === action.id ? { ...current, requiresReplacement } : current));
+    setOperation((current) => {
+      if (!current || current.action.id !== action.id) return current;
+      if (!requiresReplacement || mode === "postpone") return { ...current, requiresReplacement };
+      return {
+        ...current,
+        requiresReplacement,
+        nextTitle: current.nextTitle || defaultReplacementTitle(mode, action.category),
+        nextDueAt: current.nextDueAt || defaultReplacementDueAt(),
+      };
+    });
   }
 
   function update(patch: Partial<ActionOperationState>) {

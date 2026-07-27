@@ -1,12 +1,22 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, MapPin, Phone, Plus, Search } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, MapPin, Phone, Plus, Search } from "lucide-react";
 import { Avatar } from "../../components/ui/Avatar";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
 import { archiveCustomer, createCustomer, loadCustomersPage, type Customer } from "../../domain/crm";
 
-const EMPTY_FORM = { nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" };
+type CustomerForm = {
+  tipoPessoa: "fisica" | "juridica";
+  nome: string;
+  telefone: string;
+  email: string;
+  empresa: string;
+  bairro: string;
+  cidade: string;
+};
+
+const EMPTY_FORM: CustomerForm = { tipoPessoa: "fisica", nome: "", telefone: "", email: "", empresa: "", bairro: "", cidade: "" };
 
 export function ClientesPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -18,6 +28,7 @@ export function ClientesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [customerToArchive, setCustomerToArchive] = useState<Customer | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [lastCreatedCustomer, setLastCreatedCustomer] = useState<Customer | null>(null);
   const { showToast } = useToast();
 
   async function refresh() {
@@ -69,9 +80,10 @@ export function ClientesPage() {
     event.preventDefault();
     setError(null);
     try {
-      await createCustomer({ tipoPessoa: "fisica", ...form });
+      const customer = await createCustomer({ ...form });
       setForm(EMPTY_FORM);
       setShowCreateForm(false);
+      setLastCreatedCustomer(customer);
       showToast("Cliente salvo.");
       await refresh();
     } catch (err) {
@@ -83,6 +95,7 @@ export function ClientesPage() {
   const duplicateCount = activeCustomers.filter((customer) => customer.duplicatePhoneCustomerIds.length > 0).length;
   const opportunitiesCount = activeCustomers.reduce((total, customer) => total + customer.opportunitiesCount, 0);
   const customerLanes = useMemo(() => groupCustomersBySegment(activeCustomers), [activeCustomers]);
+  const duplicateCandidates = useMemo(() => findDuplicateCandidates(activeCustomers, form.telefone), [activeCustomers, form.telefone]);
 
   return (
     <>
@@ -91,18 +104,54 @@ export function ClientesPage() {
           <p className="eyebrow">Cadastro</p>
           <h1>Clientes</h1>
         </div>
-        <button className="button primary" type="button" onClick={() => setShowCreateForm((open) => !open)}>
+        <button className="button primary" type="button" onClick={() => {
+          setLastCreatedCustomer(null);
+          setShowCreateForm((open) => !open);
+        }}>
           <Plus aria-hidden="true" />{showCreateForm ? "Fechar criacao" : "Novo cliente"}
         </button>
       </section>
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
+      {lastCreatedCustomer ? (
+        <div className="alert success-alert customer-created-alert" role="status">
+          <CheckCircle2 aria-hidden="true" />
+          <div>
+            <strong>{lastCreatedCustomer.nome} cadastrado.</strong>
+            <span>Continue o atendimento criando a oportunidade com o cliente ja selecionado.</span>
+          </div>
+          <Link className="button primary" to={`/oportunidades?clienteId=${lastCreatedCustomer.id}`}>
+            <Plus aria-hidden="true" />Criar oportunidade
+          </Link>
+        </div>
+      ) : null}
 
       {showCreateForm ? (
         <form className="panel compact-form customer-create-form" onSubmit={handleCreate}>
-          <h2>Novo cliente</h2>
+          <div className="form-heading">
+            <div>
+              <h2>Novo cliente</h2>
+              <p>Capture o essencial agora; endereco e equipamentos ficam para a ficha do cliente.</p>
+            </div>
+            <span className="badge neutral">cadastro rapido</span>
+          </div>
+          <label>Tipo de pessoa
+            <select value={form.tipoPessoa} onChange={(event) => setForm({ ...form, tipoPessoa: event.target.value as "fisica" | "juridica" })}>
+              <option value="fisica">Pessoa fisica</option>
+              <option value="juridica">Pessoa juridica</option>
+            </select>
+          </label>
           <label>Nome<input required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} /></label>
           <label>Telefone<input value={form.telefone} onChange={(event) => setForm({ ...form, telefone: event.target.value })} /></label>
+          {duplicateCandidates.length ? (
+            <div className="inline-warning" role="status">
+              <AlertTriangle aria-hidden="true" />
+              <div>
+                <strong>Telefone parecido ja existe</strong>
+                <span>{duplicateCandidates.map((customer) => customer.nome).join(", ")}</span>
+              </div>
+            </div>
+          ) : null}
           <label>E-mail<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
           <label>Empresa<input value={form.empresa} onChange={(event) => setForm({ ...form, empresa: event.target.value })} /></label>
           <div className="form-row">
@@ -234,4 +283,16 @@ function groupCustomersBySegment(customers: Customer[]): Array<{ id: string; tit
 
 function formatCustomerLocation(customer: Customer): string {
   return [customer.bairro, customer.cidade].filter(Boolean).join(" - ") || "Sem localizacao";
+}
+
+function findDuplicateCandidates(customers: Customer[], phone: string): Customer[] {
+  const normalizedPhone = normalizePhone(phone);
+  if (normalizedPhone.length < 8) return [];
+  return customers
+    .filter((customer) => normalizePhone(customer.telefone ?? "") === normalizedPhone || customer.telefoneNormalizado === normalizedPhone)
+    .slice(0, 3);
+}
+
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "");
 }
