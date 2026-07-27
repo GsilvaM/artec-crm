@@ -148,11 +148,12 @@ Evidencia:
 - API: `GET /api/reports/commercial`.
 - E2E: `e2e/commercial-center-and-reports.spec.ts`.
 - Linguagem revisada para leitura operacional: aprovado no periodo, conversao, orcamento em retorno e eficiencia de follow-up.
+- API e tela agora expõem gargalos por responsavel com oportunidades ativas, follow-ups vencidos/concluidos e score de atencao.
 - CSS especifico adicionado para filtros, cards de decisao, listas por etapa/origem/perda e blocos de follow-up.
+- E2E verifica a presenca da secao de gargalos por responsavel.
 
 Pendencias:
 
-- Adicionar gargalos por responsavel e follow-up quando dados permitirem.
 - Validar visual autenticado em desktop/mobile com dados reais.
 
 ### 9. Recriar Documentacao Essencial

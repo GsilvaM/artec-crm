@@ -309,6 +309,14 @@ export type CommercialReport = {
   averageDaysToLoss: number | null;
   overdueFollowUps: number;
   completedFollowUps: number;
+  responsibleBottlenecks: {
+    responsibleUserId: string;
+    label: string;
+    activeOpportunities: number;
+    overdueFollowUps: number;
+    completedFollowUps: number;
+    attentionScore: number;
+  }[];
 };
 
 export type CrmSnapshot = {

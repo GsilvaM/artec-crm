@@ -922,6 +922,7 @@ describe("CRM activities and next actions API", () => {
     expect(response.json().report.opportunitiesCreated).toBeGreaterThan(0);
     expect(response.json().report).toHaveProperty("conversionRate");
     expect(response.json().report).toHaveProperty("averageDaysToApproval");
+    expect(response.json().report.responsibleBottlenecks[0]).toHaveProperty("attentionScore");
     expect(invalidFilter.statusCode).toBe(400);
   });
 
@@ -1967,6 +1968,14 @@ class FakeCrmRepository implements CrmDataRepository {
       averageDaysToLoss: null,
       overdueFollowUps: this.nextActions.filter((action) => action.status === "pending" && action.category === "commercial" && action.dueAt < now).length,
       completedFollowUps: this.nextActions.filter((action) => action.status === "completed" && action.category === "commercial").length,
+      responsibleBottlenecks: [{
+        responsibleUserId: actorId,
+        label: `Usuario ${actorId.slice(0, 8)}`,
+        activeOpportunities: scoped.filter((opportunity) => ["ativa", "rascunho"].includes(opportunity.status)).length,
+        overdueFollowUps: this.nextActions.filter((action) => action.status === "pending" && action.category === "commercial" && action.dueAt < now).length,
+        completedFollowUps: this.nextActions.filter((action) => action.status === "completed" && action.category === "commercial").length,
+        attentionScore: scoped.filter((opportunity) => ["ativa", "rascunho"].includes(opportunity.status)).length + this.nextActions.filter((action) => action.status === "pending" && action.category === "commercial" && action.dueAt < now).length * 2,
+      }],
     };
   }
 

@@ -1263,25 +1263,28 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       ...(filters.stageId ? { etapaId: filters.stageId } : {}),
     };
 
-    const [periodOpportunities, newLeads, overdueFollowUps, completedFollowUps] = await Promise.all([
+    const followUpResponsibleScope = actor.role === "vendedor" ? { responsibleUserId: actor.id } : filters.responsibleUserId ? { responsibleUserId: filters.responsibleUserId } : {};
+    const [periodOpportunities, newLeads, overdueFollowUpRows, completedFollowUpRows] = await Promise.all([
       this.prisma.opportunity.findMany({ where: opportunityWhere, include: opportunityInclude }),
       this.prisma.customer.count({ where: { createdAt: { gte: from, lt: to }, archivedAt: null, isTestFixture: false } }),
-      this.prisma.nextAction.count({
+      this.prisma.nextAction.findMany({
         where: {
           status: "pending",
           dueAt: { lt: now },
           category: "commercial",
           archivedAt: null,
-          ...(actor.role === "vendedor" ? { responsibleUserId: actor.id } : filters.responsibleUserId ? { responsibleUserId: filters.responsibleUserId } : {}),
+          ...followUpResponsibleScope,
         },
+        select: { responsibleUserId: true },
       }),
-      this.prisma.nextAction.count({
+      this.prisma.nextAction.findMany({
         where: {
           status: "completed",
           completedAt: { gte: from, lt: to },
           category: "commercial",
-          ...(actor.role === "vendedor" ? { responsibleUserId: actor.id } : filters.responsibleUserId ? { responsibleUserId: filters.responsibleUserId } : {}),
+          ...followUpResponsibleScope,
         },
+        select: { responsibleUserId: true },
       }),
     ]);
 
@@ -1313,6 +1316,12 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       lossReasonCounts.set(key, (lossReasonCounts.get(key) ?? 0) + 1);
     }
 
+    const responsibleBottlenecks = buildResponsibleBottlenecks(
+      periodOpportunities.map((opportunity) => ({ responsibleUserId: opportunity.responsavelId, status: opportunity.status })),
+      overdueFollowUpRows,
+      completedFollowUpRows,
+    );
+
     return {
       generatedAt: now.toISOString(),
       filters,
@@ -1334,8 +1343,9 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       averageDaysToQuote: averageDays(periodOpportunities.map((opportunity) => [opportunity.dataEntrada, opportunity.dataOrcamento])),
       averageDaysToApproval: averageDays(approved.map((opportunity) => [opportunity.dataEntrada, opportunity.dataAprovacao])),
       averageDaysToLoss: averageDays(lost.map((opportunity) => [opportunity.dataEntrada, opportunity.dataPerda])),
-      overdueFollowUps,
-      completedFollowUps,
+      overdueFollowUps: overdueFollowUpRows.length,
+      completedFollowUps: completedFollowUpRows.length,
+      responsibleBottlenecks,
     };
   }
 
@@ -3362,10 +3372,46 @@ function averageDays(pairs: Array<[Date, Date | null]>): number | null {
   return Math.round((diffs.reduce((sum, value) => sum + value, 0) / diffs.length) * 10) / 10;
 }
 
-// America/Sao_Paulo nao observa horario de verao desde 2019 (Lei/Decreto federal) — offset fixo
-// UTC-3 e seguro. Calculado via getters UTC para nao depender do fuso ambiente do processo Node
-// (em serverless/producao roda em UTC; em dev local pode ser qualquer fuso), que era a causa raiz
-// de acoes classificadas como vencidas/futuras incorretamente perto da meia-noite.
+function buildResponsibleBottlenecks(
+  opportunities: Array<{ responsibleUserId: string; status: string }>,
+  overdueFollowUps: Array<{ responsibleUserId: string }>,
+  completedFollowUps: Array<{ responsibleUserId: string }>,
+): CommercialReportRecord["responsibleBottlenecks"] {
+  const rows = new Map<string, CommercialReportRecord["responsibleBottlenecks"][number]>();
+
+  function getRow(responsibleUserId: string): CommercialReportRecord["responsibleBottlenecks"][number] {
+    const current = rows.get(responsibleUserId);
+    if (current) return current;
+    const created = {
+      responsibleUserId,
+      label: `Usuario ${responsibleUserId.slice(0, 8)}`,
+      activeOpportunities: 0,
+      overdueFollowUps: 0,
+      completedFollowUps: 0,
+      attentionScore: 0,
+    };
+    rows.set(responsibleUserId, created);
+    return created;
+  }
+
+  for (const opportunity of opportunities) {
+    if (["ativa", "rascunho"].includes(opportunity.status)) getRow(opportunity.responsibleUserId).activeOpportunities += 1;
+  }
+  for (const action of overdueFollowUps) getRow(action.responsibleUserId).overdueFollowUps += 1;
+  for (const action of completedFollowUps) getRow(action.responsibleUserId).completedFollowUps += 1;
+
+  return [...rows.values()]
+    .map((row) => ({
+      ...row,
+      attentionScore: Math.max(0, row.activeOpportunities + row.overdueFollowUps * 2 - row.completedFollowUps),
+    }))
+    .filter((row) => row.activeOpportunities > 0 || row.overdueFollowUps > 0 || row.completedFollowUps > 0)
+    .sort((left, right) => right.attentionScore - left.attentionScore || right.overdueFollowUps - left.overdueFollowUps || right.activeOpportunities - left.activeOpportunities)
+    .slice(0, 5);
+}
+
+// America/Sao_Paulo nao observa horario de verao desde 2019 (Lei/Decreto federal) - offset fixo.
+// UTC-3 e seguro. Calculado via getters UTC para nao depender do fuso ambiente do processo Node.
 const SAO_PAULO_UTC_OFFSET_HOURS = 3;
 
 export function startOfLocalDay(date: Date): Date {

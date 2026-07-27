@@ -2134,7 +2134,8 @@
   }
 
   .report-bar-list,
-  .report-origin-list {
+  .report-origin-list,
+  .report-responsible-list {
     display: grid;
     gap: 0;
     margin: 0;
@@ -2143,7 +2144,8 @@
   }
 
   .report-bar-list li,
-  .report-origin-list li {
+  .report-origin-list li,
+  .report-responsible-list li {
     display: grid;
     gap: 10px;
     padding: 13px 16px;
@@ -2151,12 +2153,14 @@
   }
 
   .report-bar-list li:last-child,
-  .report-origin-list li:last-child {
+  .report-origin-list li:last-child,
+  .report-responsible-list li:last-child {
     border-bottom: 0;
   }
 
   .report-bar-list li > div,
-  .report-origin-list li > div {
+  .report-origin-list li > div,
+  .report-responsible-list li > div {
     display: flex;
     justify-content: space-between;
     gap: 12px;
@@ -2165,11 +2169,13 @@
     font-weight: 850;
   }
 
-  .report-origin-list li > div {
+  .report-origin-list li > div,
+  .report-responsible-list li > div {
     display: grid;
   }
 
-  .report-origin-list span {
+  .report-origin-list span,
+  .report-responsible-list span {
     margin-top: 3px;
     color: #66748a;
     font-size: 12px;
@@ -2177,23 +2183,30 @@
   }
 
   .report-bar-list meter,
-  .report-origin-list meter {
+  .report-origin-list meter,
+  .report-responsible-list meter {
     width: 100%;
     height: 8px;
     border: 0;
   }
 
   .report-bar-list meter::-webkit-meter-bar,
-  .report-origin-list meter::-webkit-meter-bar {
+  .report-origin-list meter::-webkit-meter-bar,
+  .report-responsible-list meter::-webkit-meter-bar {
     border: 0;
     border-radius: 999px;
     background: #eef3f9;
   }
 
   .report-bar-list meter::-webkit-meter-optimum-value,
-  .report-origin-list meter::-webkit-meter-optimum-value {
+  .report-origin-list meter::-webkit-meter-optimum-value,
+  .report-responsible-list meter::-webkit-meter-optimum-value {
     border-radius: 999px;
     background: #294da7;
+  }
+
+  .report-responsible-list meter::-webkit-meter-optimum-value {
+    background: #d8860b;
   }
 
   .report-followup-grid {

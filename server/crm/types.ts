@@ -539,6 +539,14 @@ export type CommercialReportRecord = {
   averageDaysToLoss: number | null;
   overdueFollowUps: number;
   completedFollowUps: number;
+  responsibleBottlenecks: {
+    responsibleUserId: string;
+    label: string;
+    activeOpportunities: number;
+    overdueFollowUps: number;
+    completedFollowUps: number;
+    attentionScore: number;
+  }[];
 };
 
 export type QuoteStatus = "rascunho" | "enviado" | "revisado" | "aprovado" | "recusado" | "expirado";

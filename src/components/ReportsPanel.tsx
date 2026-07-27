@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, ClipboardList, Clock3, Filter, TrendingUp } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Clock3, Filter, TrendingUp, UserRoundCheck } from "lucide-react";
 import { formatMoney } from "../domain/format";
 import { loadCommercialReport, type CommercialReport, type CommercialReportFilters, type PipelineStage } from "../domain/crm";
 
@@ -37,6 +37,7 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
   const maxStageCount = Math.max(1, ...(report?.opportunitiesByStage.map((row) => row.count) ?? [0]));
   const maxOriginCount = Math.max(1, ...(report?.conversionByOrigin.map((row) => row.created) ?? [0]));
   const maxLossCount = Math.max(1, ...(report?.lossReasons.map((row) => row.count) ?? [0]));
+  const maxResponsibleScore = Math.max(1, ...(report?.responsibleBottlenecks.map((row) => row.attentionScore) ?? [0]));
   const followUpTotal = report ? report.completedFollowUps + report.overdueFollowUps : 0;
   const followUpCompletion = followUpTotal ? report!.completedFollowUps / followUpTotal : null;
 
@@ -125,6 +126,28 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
           </section>
 
           <section className="reports-secondary-grid">
+            <article className="report-section" aria-label="Gargalos por responsavel">
+              <header>
+                <UserRoundCheck aria-hidden="true" size={18} />
+                <h3>Gargalos por responsavel</h3>
+              </header>
+              {report.responsibleBottlenecks.length ? (
+                <ol className="report-responsible-list">
+                  {report.responsibleBottlenecks.map((row) => (
+                    <li key={row.responsibleUserId}>
+                      <div>
+                        <strong>{row.label}</strong>
+                        <span>{row.activeOpportunities} ativas - {row.overdueFollowUps} follow-ups vencidos - {row.completedFollowUps} concluidos</span>
+                      </div>
+                      <meter min={0} max={maxResponsibleScore} value={row.attentionScore} aria-label={`${row.label}: score de atencao ${row.attentionScore}`} />
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="quotes-empty">Sem gargalo por responsavel no periodo.</p>
+              )}
+            </article>
+
             <article className="report-section" aria-label="Eficiencia de follow-up">
               <header>
                 <CheckCircle2 aria-hidden="true" size={18} />

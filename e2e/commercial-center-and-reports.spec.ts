@@ -82,5 +82,6 @@ test("shows the commercial reports dashboard with operational sections", async (
   await expect(reports.getByLabel("Indicadores principais")).toBeVisible({ timeout: 15_000 });
   await expect(reports.getByText("Oportunidades por etapa")).toBeVisible();
   await expect(reports.getByText("Conversao por origem")).toBeVisible();
+  await expect(reports.getByLabel("Gargalos por responsavel")).toBeVisible();
   await expect(reports.getByLabel("Eficiencia de follow-up")).toBeVisible();
 });
