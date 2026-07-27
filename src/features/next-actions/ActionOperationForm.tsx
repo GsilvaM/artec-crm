@@ -9,6 +9,27 @@ function formatOperationTitle(mode: ActionOperationState["mode"]): string {
   return "Cancelar próxima ação";
 }
 
+const COMPLETION_PRESETS = ["Cliente respondeu", "Orcamento reenviado", "Sem retorno do cliente"];
+const CANCELLATION_PRESETS = ["Cliente pediu para pausar", "Atendimento duplicado", "Nao e mais necessario"];
+
+function toDateTimeLocalValue(date: Date): string {
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function nextBusinessDateTime(daysToAdd: number, hour: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + daysToAdd);
+  date.setHours(hour, 0, 0, 0);
+  return toDateTimeLocalValue(date);
+}
+
+function appendPreset(current: string, preset: string): string {
+  if (!current.trim()) return preset;
+  if (current.includes(preset)) return current;
+  return `${current.trim()} - ${preset}`;
+}
+
 // No mobile este formulario vira uma folha inferior (bottom sheet: canto
 // superior arredondado + indicador "grabber"), inspirada nos tokens de forma
 // de dispositivo do kit de referencia (design-system/spacing-shape/
@@ -49,13 +70,38 @@ export function ActionOperationForm({ operation, error, onChange, onSubmit, onCa
         </div>
         {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
         {operation.mode === "complete" ? (
-          <label>Resultado<input required value={operation.completionResult} onChange={(event) => onChange({ completionResult: event.target.value })} /></label>
+          <>
+            <label>Resultado<input required value={operation.completionResult} onChange={(event) => onChange({ completionResult: event.target.value })} /></label>
+            <div className="operation-presets" aria-label="Atalhos de resultado">
+              {COMPLETION_PRESETS.map((preset) => (
+                <button key={preset} className="button ghost" type="button" onClick={() => onChange({ completionResult: appendPreset(operation.completionResult, preset) })}>
+                  {preset}
+                </button>
+              ))}
+            </div>
+          </>
         ) : null}
         {operation.mode === "postpone" ? (
-          <label>Novo vencimento<input required type="datetime-local" value={operation.dueAt} onChange={(event) => onChange({ dueAt: event.target.value })} /></label>
+          <>
+            <label>Novo vencimento<input required type="datetime-local" value={operation.dueAt} onChange={(event) => onChange({ dueAt: event.target.value })} /></label>
+            <div className="operation-presets" aria-label="Atalhos de vencimento">
+              <button className="button ghost" type="button" onClick={() => onChange({ dueAt: nextBusinessDateTime(1, 9) })}>Amanhã 09:00</button>
+              <button className="button ghost" type="button" onClick={() => onChange({ dueAt: nextBusinessDateTime(2, 9) })}>+2 dias</button>
+              <button className="button ghost" type="button" onClick={() => onChange({ dueAt: nextBusinessDateTime(7, 9) })}>+7 dias</button>
+            </div>
+          </>
         ) : null}
         {operation.mode === "cancel" ? (
-          <label>Motivo do cancelamento<input required value={operation.cancellationReason} onChange={(event) => onChange({ cancellationReason: event.target.value })} /></label>
+          <>
+            <label>Motivo do cancelamento<input required value={operation.cancellationReason} onChange={(event) => onChange({ cancellationReason: event.target.value })} /></label>
+            <div className="operation-presets" aria-label="Atalhos de cancelamento">
+              {CANCELLATION_PRESETS.map((preset) => (
+                <button key={preset} className="button ghost" type="button" onClick={() => onChange({ cancellationReason: appendPreset(operation.cancellationReason, preset) })}>
+                  {preset}
+                </button>
+              ))}
+            </div>
+          </>
         ) : null}
         {operation.requiresReplacement && operation.mode !== "postpone" ? (
           <fieldset className="replacement-fields">
@@ -63,6 +109,11 @@ export function ActionOperationForm({ operation, error, onChange, onSubmit, onCa
             <p className="form-hint">Sugestão preenchida automaticamente. Ajuste se o combinado com o cliente for diferente.</p>
             <label>Ação<input required value={operation.nextTitle} onChange={(event) => onChange({ nextTitle: event.target.value })} /></label>
             <label>Vencimento<input required type="datetime-local" value={operation.nextDueAt} onChange={(event) => onChange({ nextDueAt: event.target.value })} /></label>
+            <div className="operation-presets" aria-label="Atalhos da nova proxima acao">
+              <button className="button ghost" type="button" onClick={() => onChange({ nextDueAt: nextBusinessDateTime(1, 9) })}>Amanhã 09:00</button>
+              <button className="button ghost" type="button" onClick={() => onChange({ nextDueAt: nextBusinessDateTime(2, 9) })}>+2 dias</button>
+              <button className="button ghost" type="button" onClick={() => onChange({ nextDueAt: nextBusinessDateTime(7, 9) })}>+7 dias</button>
+            </div>
             <label>Categoria
               <select value={operation.nextCategory} onChange={(event) => onChange({ nextCategory: event.target.value as NextAction["category"] })}>
                 <option value="commercial">Comercial</option>

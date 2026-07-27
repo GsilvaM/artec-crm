@@ -2414,6 +2414,20 @@
     font-weight: 900;
   }
 
+  .operation-presets {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .operation-presets .button {
+    min-height: 32px;
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+
   .form-hint {
     margin: 0;
     color: #66748a;

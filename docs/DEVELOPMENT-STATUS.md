@@ -35,7 +35,7 @@ Pendencias:
 
 ### 2. Fortalecer Proximas Acoes
 
-Estado: funcional, precisa refinamento de fluxo.
+Estado: implementado em fluxo principal, pendente homologacao real.
 
 Evidencia:
 
@@ -43,12 +43,13 @@ Evidencia:
 - Operacoes: `src/features/next-actions/useActionOperation.ts`.
 - E2E: `e2e/next-actions.spec.ts`.
 - Quando uma acao e a proxima acao atual de uma oportunidade ativa, o formulario sugere automaticamente uma nova acao e vencimento ao concluir/cancelar.
+- `src/features/next-actions/ActionOperationForm.tsx` agora traz atalhos de resultado, cancelamento e vencimento para reduzir digitacao no follow-up diario.
+- `e2e/next-actions.spec.ts` cobre a presenca dos atalhos de resultado no fluxo de conclusao.
 
 Pendencias:
 
-- Melhorar rapidez do fluxo concluir/reagendar/cancelar.
-- Garantir criacao de proxima acao no mesmo fluxo quando aplicavel.
-- Validar sem scroll global/overflow depois do novo design system.
+- Rodar E2E com usuario real para validar concluir/reagendar/cancelar com dados conectados.
+- Validar sem scroll global/overflow depois do novo design system em ambiente autenticado.
 
 ### 3. Melhorar Cadastro Rapido
 

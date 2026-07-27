@@ -26,6 +26,12 @@ test("gestor sees the Proximas Acoes operational board with filters", async ({ p
   ]);
   await expect(page.getByLabel("Categoria")).toHaveValue("support");
 
+  await page.getByRole("button", { name: "Concluir" }).first().click();
+  await expect(page.getByLabel("Atalhos de resultado")).toBeVisible();
+  await page.getByLabel("Atalhos de resultado").getByRole("button", { name: "Cliente respondeu" }).click();
+  await expect(page.getByLabel("Resultado")).toHaveValue("Cliente respondeu");
+  await page.getByRole("button", { name: "Cancelar" }).last().click();
+
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow, `Proximas Acoes nao deve ter overflow horizontal (scrollWidth - innerWidth = ${overflow})`).toBeLessThanOrEqual(1);
 });
