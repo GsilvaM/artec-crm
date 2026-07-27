@@ -315,6 +315,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
   const nextActionState = getNextActionState(opportunity, currentNextAction);
   const latestQuote = quotes[0] ?? null;
   const latestActivity = activities[0] ?? null;
+  const decisionState = getOpportunityDecisionState(opportunity, currentNextAction, latestQuote, openVisits);
   const opportunitySignals = [
     { label: "Etapa", value: opportunity.etapaNome },
     { label: "Orcamento", value: latestQuote ? `${formatMoney(latestQuote.valor)} - ${formatQuoteStatus(latestQuote.status)}` : "Sem orcamento" },
@@ -336,7 +337,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
 
-      <section className="panel opportunity-control-panel" aria-label="Resumo da oportunidade">
+      <section id="resumo-oportunidade" className="panel opportunity-control-panel" aria-label="Resumo da oportunidade">
         <div className={`opportunity-next-action-card ${nextActionState.tone}`}>
           <div className="opportunity-next-action-icon">
             <CalendarClock aria-hidden="true" />
@@ -348,6 +349,15 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
           </div>
           <span className={`badge ${nextActionState.badgeClass}`}>{nextActionState.badge}</span>
         </div>
+
+        <section className={`opportunity-decision-panel ${decisionState.tone}`} aria-label="Proxima decisao da oportunidade">
+          <div>
+            <span>{decisionState.label}</span>
+            <strong>{decisionState.title}</strong>
+            <p>{decisionState.detail}</p>
+          </div>
+          <a className="button secondary" href={decisionState.href}>{decisionState.actionLabel}</a>
+        </section>
 
         <aside className="opportunity-health-panel" aria-label="Higiene da oportunidade">
           <header>
@@ -486,7 +496,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
         </form>
       ) : null}
 
-      <section className="opportunity-structure" aria-label="Estrutura tecnica da oportunidade">
+      <section id="estrutura-tecnica" className="opportunity-structure" aria-label="Estrutura tecnica da oportunidade">
         <header>
           <div>
             <h2>Visita tecnica e equipamentos</h2>
@@ -644,9 +654,11 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
         </div>
       </section>
 
-      <QuotesPanel opportunity={opportunity} quotes={quotes} onCreate={handleCreateQuote} onUpdateStatus={handleUpdateQuoteStatus} />
+      <div id="orcamentos">
+        <QuotesPanel opportunity={opportunity} quotes={quotes} onCreate={handleCreateQuote} onUpdateStatus={handleUpdateQuoteStatus} />
+      </div>
 
-      <section className="data-section timeline-section">
+      <section id="linha-do-tempo" className="data-section timeline-section">
         <h2>Linha do tempo</h2>
         <form className="admin-inline-form" onSubmit={handleRegisterActivity}>
           <label>Registrar atividade<input value={activityDescription} onChange={(event) => setActivityDescription(event.target.value)} placeholder="Descreva o que aconteceu" /></label>
@@ -693,6 +705,90 @@ function formatAddressLine(address: Address): string {
 function formatEquipmentTitle(equipment: Equipment): string {
   const title = [equipment.brand, equipment.model].filter(Boolean).join(" ");
   return title || equipment.environment || formatEquipmentType(equipment.type);
+}
+
+function getOpportunityDecisionState(
+  opportunity: Opportunity,
+  currentNextAction: NextAction | null,
+  latestQuote: Quote | null,
+  openVisits: Visit[],
+): {
+  label: string;
+  title: string;
+  detail: string;
+  actionLabel: string;
+  href: string;
+  tone: string;
+} {
+  const title = currentNextAction?.title ?? opportunity.proximaAcao;
+  const dueAt = currentNextAction?.dueAt ?? opportunity.proximaAcaoEm;
+  const isActive = opportunity.status === "ativa";
+  const dueTime = dueAt ? new Date(dueAt).getTime() : Number.NaN;
+
+  if (isActive && (!title || !dueAt)) {
+    return {
+      label: "Decisao agora",
+      title: "Definir follow-up",
+      detail: "A oportunidade esta ativa, mas sem compromisso claro para o cliente.",
+      actionLabel: "Registrar atividade",
+      href: "#linha-do-tempo",
+      tone: "is-danger",
+    };
+  }
+
+  if (isActive && Number.isFinite(dueTime) && dueTime < Date.now()) {
+    return {
+      label: "Decisao agora",
+      title: "Resolver acao vencida",
+      detail: `${title} estava previsto para ${formatDateTime(dueAt!)}.`,
+      actionLabel: "Concluir ou reagendar",
+      href: "#resumo-oportunidade",
+      tone: "is-danger",
+    };
+  }
+
+  if (openVisits.length > 0) {
+    const nextVisit = [...openVisits].sort((left, right) => left.scheduledStartAt.localeCompare(right.scheduledStartAt))[0];
+    return {
+      label: "Proxima decisao",
+      title: "Acompanhar visita tecnica",
+      detail: `${nextVisit.objective} - ${formatDateTime(nextVisit.scheduledStartAt)}.`,
+      actionLabel: "Ver visitas",
+      href: "#estrutura-tecnica",
+      tone: "is-warning",
+    };
+  }
+
+  if (latestQuote && ["enviado", "revisado"].includes(latestQuote.status)) {
+    return {
+      label: "Proxima decisao",
+      title: "Cobrar retorno do orcamento",
+      detail: `Versao ${latestQuote.versao} em ${formatQuoteStatus(latestQuote.status)} no valor de ${formatMoney(latestQuote.valor)}.`,
+      actionLabel: "Ver orcamentos",
+      href: "#orcamentos",
+      tone: "is-today",
+    };
+  }
+
+  if (latestQuote?.status === "aprovado" || opportunity.status === "ganha") {
+    return {
+      label: "Proxima decisao",
+      title: "Preparar execucao",
+      detail: "Orcamento aprovado. Confirme pagamento, agenda e previsao de execucao.",
+      actionLabel: "Ver orcamentos",
+      href: "#orcamentos",
+      tone: "is-ok",
+    };
+  }
+
+  return {
+    label: "Proxima decisao",
+    title: "Registrar proximo avanço",
+    detail: "Atualize visita, orcamento ou atividade conforme a conversa com o cliente.",
+    actionLabel: "Registrar atividade",
+    href: "#linha-do-tempo",
+    tone: "is-ok",
+  };
 }
 
 function getNextActionState(opportunity: Opportunity, currentNextAction: NextAction | null): {

@@ -13,6 +13,7 @@ test("opens an opportunity detail page from the list and sees its summary and ti
   await page.waitForURL(/\/oportunidades\/[0-9a-f-]+$/);
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText(title.trim());
+  await expect(page.getByLabel("Proxima decisao da oportunidade")).toBeVisible();
   await expect(page.getByLabel("Estrutura tecnica da oportunidade")).toBeVisible();
   await expect(page.getByText("Linha do tempo")).toBeVisible();
 });

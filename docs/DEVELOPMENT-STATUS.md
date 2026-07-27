@@ -70,17 +70,18 @@ Pendencias:
 
 ### 4. Aprimorar Ficha da Oportunidade
 
-Estado: em melhoria incremental.
+Estado: implementado em fluxo principal, pendente homologacao real.
 
 Evidencia:
 
 - Tela: `src/features/opportunities/OportunidadePage.tsx`.
 - E2E: `e2e/opportunity-detail.spec.ts`.
 - Topo da ficha agora destaca proxima acao com estado operacional, mostra higiene da oportunidade e preserva atalhos de concluir/reagendar, aprovar, perder e arquivar.
+- A ficha agora calcula uma "Proxima decisao" baseada em acao vencida/ausente, visita aberta, orcamento enviado/revisado ou aprovacao, apontando para o bloco correto.
+- `e2e/opportunity-detail.spec.ts` verifica a presenca do painel de proxima decisao.
 
 Pendencias:
 
-- Melhorar acesso a visitas, orcamentos, historico e aprovacao/perda.
 - Validar visual autenticado em desktop/mobile e ajustar densidade dos blocos inferiores.
 
 ### 5. Aprimorar Ficha do Cliente
