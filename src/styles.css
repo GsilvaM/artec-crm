@@ -1280,6 +1280,64 @@
     line-height: 1.2;
   }
 
+  .customer-decision-panel {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid #dfe6f0;
+    border-radius: 8px;
+    background: #ffffff;
+  }
+
+  .customer-decision-panel.is-danger {
+    border-color: #ffd3d3;
+    background: #fff5f5;
+  }
+
+  .customer-decision-panel.is-warning {
+    border-color: #ffe3a8;
+    background: #fff8e7;
+  }
+
+  .customer-decision-panel.is-today {
+    border-color: #d8e5ff;
+    background: #f3f7ff;
+  }
+
+  .customer-decision-panel.is-ok {
+    border-color: #cbeedc;
+    background: #f2fbf6;
+  }
+
+  .customer-decision-panel span {
+    color: #66748a;
+    font-size: 12px;
+    font-weight: 850;
+  }
+
+  .customer-decision-panel strong {
+    display: block;
+    margin-top: 2px;
+    color: #142136;
+    font-size: 17px;
+    font-weight: 900;
+    line-height: 1.2;
+  }
+
+  .customer-decision-panel p {
+    margin: 4px 0 0;
+    color: #53647a;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .customer-decision-panel .button {
+    white-space: nowrap;
+  }
+
   .customer-control-actions {
     grid-column: 1 / -1;
     display: flex;
@@ -2801,12 +2859,17 @@
     }
 
     .customer-next-action-card,
-    .customer-signal-grid {
+    .customer-signal-grid,
+    .customer-decision-panel {
       grid-template-columns: 1fr;
     }
 
     .customer-next-action-card .badge {
       justify-self: start;
+    }
+
+    .customer-decision-panel .button {
+      width: fit-content;
     }
 
     .customer-control-actions {

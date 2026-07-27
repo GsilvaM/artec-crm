@@ -265,6 +265,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
   const overdueNextAction = nextUpAction ? new Date(nextUpAction.dueAt).getTime() < Date.now() : false;
   const latestActivity = activities[0] ?? null;
   const relationshipState = getRelationshipState(nextUpAction, activeOpportunities.length, supportActivities.length);
+  const decisionState = getCustomerDecisionState(customer, nextUpAction, activeOpportunities, openVisits, supportActivities);
   const customerSignals = [
     { label: "Oportunidades ativas", value: String(activeOpportunities.length) },
     { label: "Garantia/suporte", value: String(supportActivities.length) },
@@ -692,6 +693,21 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
           ))}
         </div>
 
+        <section className={`customer-decision-panel ${decisionState.tone}`} aria-label="Proxima decisao do cliente">
+          <div>
+            <span>{decisionState.label}</span>
+            <strong>{decisionState.title}</strong>
+            <p>{decisionState.detail}</p>
+          </div>
+          {decisionState.kind === "tab" ? (
+            <button className="button secondary" type="button" onClick={() => setActiveTab(decisionState.target)}>
+              {decisionState.actionLabel}
+            </button>
+          ) : (
+            <Link className="button secondary" to={decisionState.target}>{decisionState.actionLabel}</Link>
+          )}
+        </section>
+
         <div className="customer-control-actions">
           <Link className="button primary" to={`/oportunidades?clienteId=${customer.id}`}>
             <Plus aria-hidden="true" size={16} />Nova oportunidade
@@ -743,6 +759,105 @@ function getSupportActionSuggestion(category: SupportActionCategory): string {
   if (category === "warranty") return "Retornar sobre garantia";
   if (category === "after_sales") return "Acompanhar pos-venda";
   return "Retornar sobre suporte";
+}
+
+function getCustomerDecisionState(
+  customer: Customer,
+  nextAction: NextAction | null,
+  activeOpportunities: Opportunity[],
+  openVisits: Visit[],
+  supportActivities: Activity[],
+): {
+  label: string;
+  title: string;
+  detail: string;
+  actionLabel: string;
+  kind: "tab" | "link";
+  target: TabId | string;
+  tone: string;
+} {
+  if (customer.duplicatePhoneCustomerIds.length > 0) {
+    return {
+      label: "Decisao agora",
+      title: "Revisar possivel duplicidade",
+      detail: `${customer.duplicatePhoneCustomerIds.length} cadastro(s) compartilham este telefone.`,
+      actionLabel: "Ver dados",
+      kind: "tab",
+      target: "visao-geral",
+      tone: "is-warning",
+    };
+  }
+
+  if (nextAction) {
+    const dueAt = new Date(nextAction.dueAt).getTime();
+    if (Number.isFinite(dueAt) && dueAt < Date.now()) {
+      return {
+        label: "Decisao agora",
+        title: "Resolver acao vencida",
+        detail: `${nextAction.title} - ${formatDateTime(nextAction.dueAt)}.`,
+        actionLabel: "Ver acoes",
+        kind: "tab",
+        target: "proximas-acoes",
+        tone: "is-danger",
+      };
+    }
+    return {
+      label: "Proxima decisao",
+      title: "Cumprir follow-up",
+      detail: `${nextAction.title} - ${formatDateTime(nextAction.dueAt)}.`,
+      actionLabel: "Ver acoes",
+      kind: "tab",
+      target: "proximas-acoes",
+      tone: "is-today",
+    };
+  }
+
+  if (openVisits.length > 0) {
+    const nextVisit = [...openVisits].sort((left, right) => left.scheduledStartAt.localeCompare(right.scheduledStartAt))[0];
+    return {
+      label: "Proxima decisao",
+      title: "Acompanhar visita tecnica",
+      detail: `${nextVisit.objective} - ${formatDateTime(nextVisit.scheduledStartAt)}.`,
+      actionLabel: "Ver estrutura",
+      kind: "tab",
+      target: "estrutura",
+      tone: "is-warning",
+    };
+  }
+
+  if (activeOpportunities.length > 0) {
+    return {
+      label: "Decisao agora",
+      title: "Definir follow-up comercial",
+      detail: `${activeOpportunities.length} oportunidade(s) ativa(s) sem acao pendente neste cadastro.`,
+      actionLabel: "Ver oportunidades",
+      kind: "tab",
+      target: "oportunidades",
+      tone: "is-warning",
+    };
+  }
+
+  if (supportActivities.length > 0) {
+    return {
+      label: "Proxima decisao",
+      title: "Manter atendimento tecnico fora do funil",
+      detail: "Historico de garantia, suporte ou pos-venda preservado na ficha.",
+      actionLabel: "Ver suporte",
+      kind: "tab",
+      target: "garantia-suporte",
+      tone: "is-ok",
+    };
+  }
+
+  return {
+    label: "Proxima decisao",
+    title: "Qualificar nova demanda",
+    detail: "Sem urgencia aberta. Abra uma oportunidade quando houver demanda comercial.",
+    actionLabel: "Nova oportunidade",
+    kind: "link",
+    target: `/oportunidades?clienteId=${customer.id}`,
+    tone: "is-ok",
+  };
 }
 
 function getRelationshipState(nextAction: NextAction | null, activeOpportunityCount: number, supportActivityCount: number): {

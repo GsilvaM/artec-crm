@@ -86,7 +86,7 @@ Pendencias:
 
 ### 5. Aprimorar Ficha do Cliente
 
-Estado: em melhoria incremental.
+Estado: implementado em fluxo principal, pendente homologacao real.
 
 Evidencia:
 
@@ -94,10 +94,11 @@ Evidencia:
 - E2E: `e2e/customer-detail.spec.ts`.
 - Topo da ficha agora possui painel operacional com estado do relacionamento, metricas de oportunidades, garantia/suporte, equipamentos e ultima interacao.
 - A ficha oferece atalho para nova oportunidade ja com cliente selecionado e botoes para garantia/suporte e proxima acao.
+- A ficha agora calcula uma "Proxima decisao" baseada em duplicidade, acao vencida, visita aberta, oportunidade ativa sem follow-up, suporte ou nova demanda.
+- `e2e/customer-detail.spec.ts` verifica a presenca do painel de proxima decisao.
 
 Pendencias:
 
-- Refinar redundancia dos alertas antigos acima das abas.
 - Validar visual autenticado em desktop/mobile e ajustar densidade das abas inferiores.
 
 ### 6. Separar Garantia/Suporte do Funil

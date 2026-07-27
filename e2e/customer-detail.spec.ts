@@ -13,6 +13,7 @@ test("opens a customer detail page from the list and sees related opportunities 
   await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText(name.trim());
+  await expect(page.getByLabel("Proxima decisao do cliente")).toBeVisible();
 
   await page.getByRole("tab", { name: "Garantia e suporte" }).click();
   await expect(page.getByLabel("Descrição")).toBeVisible();
