@@ -2350,6 +2350,7 @@
   .auvo-inbox-facts,
   .auvo-customer-match,
   .auvo-triage-guidance,
+  .auvo-triage-checklist,
   .auvo-inbox-form {
     border: 1px solid #dfe6f0;
     border-radius: 8px;
@@ -2477,6 +2478,92 @@
     color: #53647a;
     font-size: 12px;
     font-weight: 800;
+  }
+
+  .auvo-triage-checklist {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    background: #f8fafc;
+  }
+
+  .auvo-triage-checklist header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .auvo-triage-checklist header span {
+    color: #66748a;
+    font-size: 12px;
+    font-weight: 850;
+  }
+
+  .auvo-triage-checklist header strong {
+    color: #142136;
+    font-size: 15px;
+    font-weight: 900;
+  }
+
+  .auvo-triage-checklist ol {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .auvo-triage-checklist li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #e6ebf3;
+    border-radius: 8px;
+    background: #ffffff;
+  }
+
+  .auvo-triage-step-icon {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: #eef4ff;
+    color: #2f54ae;
+  }
+
+  .auvo-triage-checklist li[data-status="done"] .auvo-triage-step-icon {
+    background: #e5f8ee;
+    color: #199060;
+  }
+
+  .auvo-triage-checklist li[data-status="attention"] .auvo-triage-step-icon {
+    background: #fff1cf;
+    color: #c77700;
+  }
+
+  .auvo-triage-checklist li[data-status="pending"] .auvo-triage-step-icon {
+    background: #eef4ff;
+    color: #2f54ae;
+  }
+
+  .auvo-triage-checklist li strong {
+    display: block;
+    color: #142136;
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  .auvo-triage-checklist li p {
+    margin: 3px 0 0;
+    color: #53647a;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.35;
   }
 
   .auvo-inbox-action-bar,

@@ -38,6 +38,7 @@ test("selecting a queue item shows its details and resolution actions in the dec
   const decisionPanel = page.locator(".auvo-decision-panel");
   await expect(decisionPanel).toBeVisible();
   await expect(decisionPanel.getByLabel("Match Cliente-Auvo")).toBeVisible();
+  await expect(decisionPanel.getByLabel("Checklist de triagem assistida")).toBeVisible();
   await expect(decisionPanel.getByLabel("Resumo dos sinais Auvo")).toBeVisible();
   await expect(decisionPanel.getByRole("button", { name: "Criar oportunidade" })).toBeVisible();
   await expect(decisionPanel.getByRole("button", { name: "Vincular a oportunidade existente" })).toBeVisible();

@@ -128,12 +128,13 @@ Evidencia:
 - Match: `server/crm/auvo-customer-match.ts`.
 - E2E: `e2e/auvo-inbox.spec.ts`.
 - Painel agora mostra recomendacao de triagem baseada em intencao, dados faltantes, revisao humana e confianca do match Cliente-Auvo.
+- Painel de decisao ganhou checklist de triagem assistida para conferir cliente, dados minimos, destino correto e registro humano antes da resolucao.
 - CSS especifico adicionado para split-view, fila, painel de decisao, match, recomendacao e formulario, mantendo comportamento mobile fila/detalhe.
+- `e2e/auvo-inbox.spec.ts` verifica a presenca do checklist no painel de decisao.
 
 Pendencias:
 
 - Validar payloads reais recentes.
-- Cobrir todos os modos de decisao em E2E.
 - Testar resolucao real dos modos criar oportunidade, garantia, suporte, pos-venda, duplicado e nao comercial.
 
 ### 8. Melhorar Relatorios Comerciais

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CircleAlert, CircleDashed } from "lucide-react";
 import { AuvoSignalSummary } from "./AuvoSignalSummary";
 import { Avatar } from "./ui/Avatar";
 import { EmptyState } from "./ui/EmptyState";
@@ -31,6 +31,12 @@ type TriageRecommendation = {
   action: ActionMode;
   tone: "strong" | "warning" | "neutral";
   blockers: string[];
+};
+
+type TriageStep = {
+  label: string;
+  detail: string;
+  status: "done" | "attention" | "pending";
 };
 
 const STATUS_LABELS: Record<AuvoInboxStatus, string> = {
@@ -277,6 +283,7 @@ function AuvoDecisionPanel({
   const suggestedCustomer = customers.find((customer) => customer.id === item.suggestedCustomerId);
   const matchPreview = buildCustomerMatchPreview(item, suggestedCustomer);
   const recommendation = buildTriageRecommendation(item, matchPreview);
+  const triageSteps = buildTriageSteps(item, matchPreview, recommendation, isResolved);
 
   return (
     <article className="auvo-decision-panel">
@@ -331,6 +338,26 @@ function AuvoDecisionPanel({
             {recommendation.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
           </ul>
         ) : null}
+      </section>
+
+      <section className="auvo-triage-checklist" aria-label="Checklist de triagem assistida">
+        <header>
+          <span>Checklist humano</span>
+          <strong>Conferir antes de resolver</strong>
+        </header>
+        <ol>
+          {triageSteps.map((step) => (
+            <li key={step.label} data-status={step.status}>
+              <span className="auvo-triage-step-icon" aria-hidden="true">
+                {step.status === "done" ? <CheckCircle2 size={16} /> : step.status === "attention" ? <CircleAlert size={16} /> : <CircleDashed size={16} />}
+              </span>
+              <span>
+                <strong>{step.label}</strong>
+                <p>{step.detail}</p>
+              </span>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <div className="auvo-inbox-summary">
@@ -578,6 +605,37 @@ function buildTriageRecommendation(item: AuvoInboxItem, match: CustomerMatchPrev
     tone: "strong",
     blockers: [],
   };
+}
+
+function buildTriageSteps(item: AuvoInboxItem, match: CustomerMatchPreview, recommendation: TriageRecommendation, isResolved: boolean): TriageStep[] {
+  const derived = item.auvoSignals.derived;
+  const missingData = derived.missingData;
+  const customerStatus: TriageStep["status"] = match.score >= 70 ? "done" : match.score >= 40 ? "attention" : "pending";
+  const dataStatus: TriageStep["status"] = missingData.length ? "attention" : "done";
+  const routingStatus: TriageStep["status"] = recommendation.blockers.length || derived.needsHumanReview ? "attention" : "done";
+
+  return [
+    {
+      label: "Identificar cliente",
+      detail: match.score >= 70 ? `${match.label} com confianca suficiente para seguir.` : match.description,
+      status: customerStatus,
+    },
+    {
+      label: "Completar dados minimos",
+      detail: missingData.length ? `Solicitar ${formatMissingDataForAction(missingData)} antes da resolucao final.` : "Nome, telefone e demanda estao suficientes para triagem.",
+      status: dataStatus,
+    },
+    {
+      label: "Escolher destino correto",
+      detail: `Sugestao atual: ${ACTION_LABELS[recommendation.action]}.`,
+      status: routingStatus,
+    },
+    {
+      label: "Registrar decisao humana",
+      detail: isResolved ? "Atendimento ja resolvido e preservado no historico." : "Use uma acao abaixo para gravar a decisao, sem classificacao automatica.",
+      status: isResolved ? "done" : "pending",
+    },
+  ];
 }
 
 function normalizeDigits(value: string | null | undefined): string {
