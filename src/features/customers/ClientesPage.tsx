@@ -104,15 +104,24 @@ export function ClientesPage({ currentUserId }: { currentUserId: string }) {
       });
       const opportunityTitle = form.opportunityTitle.trim();
       if (opportunityTitle) {
-        await createOpportunity({
-          clienteId: customer.id,
-          titulo: opportunityTitle,
-          tipoDemanda: form.tipoDemanda,
-          situacao: form.situacao.trim() || "primeiro contato",
-          proximaAcao: form.proximaAcao.trim(),
-          proximaAcaoEm: form.proximaAcaoEm,
-          responsavelId: currentUserId,
-        });
+        try {
+          await createOpportunity({
+            clienteId: customer.id,
+            titulo: opportunityTitle,
+            tipoDemanda: form.tipoDemanda,
+            situacao: form.situacao.trim() || "primeiro contato",
+            proximaAcao: form.proximaAcao.trim(),
+            proximaAcaoEm: form.proximaAcaoEm,
+            responsavelId: currentUserId,
+          });
+        } catch (opportunityError) {
+          setForm(EMPTY_FORM);
+          setShowCreateForm(false);
+          setCreatedMessage("Cliente salvo. A oportunidade nao foi criada porque a API recusou a atribuicao ou os dados comerciais.");
+          showToast(opportunityError instanceof Error ? opportunityError.message : "Cliente salvo, mas a oportunidade nao foi criada.", "error");
+          await refresh();
+          return;
+        }
       }
       setForm(EMPTY_FORM);
       setShowCreateForm(false);

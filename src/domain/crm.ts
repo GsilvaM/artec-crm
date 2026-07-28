@@ -897,11 +897,13 @@ async function apiSend<T>(path: string, method: "GET" | "POST" | "PUT" | "PATCH"
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const payload = (await response.json()) as T | { error?: { message?: string } };
+  const payload = (await response.json()) as T | { error?: { code?: string; message?: string } };
 
   if (!response.ok) {
-    const apiError = payload as { error?: { message?: string } };
-    throw new Error(apiError.error?.message ?? "Erro na API do CRM.");
+    const apiError = payload as { error?: { code?: string; message?: string } };
+    const message = apiError.error?.message ?? "Erro na API do CRM.";
+    const suffix = response.status === 403 ? " Verifique se seu usuario tem permissao para criar clientes." : "";
+    throw new Error(`${message}${suffix}`);
   }
 
   return payload as T;

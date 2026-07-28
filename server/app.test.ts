@@ -277,6 +277,20 @@ describe("CRM customers and opportunities API", () => {
     expect(response.json().customer.duplicatePhoneCustomerIds).toHaveLength(1);
   });
 
+  it.each(["vendedor", "atendimento"] as const)("allows %s to create customers", async (role) => {
+    const app = createTestServer({ membership: { userId: actorId, role, isActive: true } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/customers",
+      headers: { authorization: "Bearer valid" },
+      payload: { tipoPessoa: "fisica", nome: `Cliente ${role}`, telefone: "(11) 98888-0000" },
+    });
+    await app.close();
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().customer.nome).toBe(`Cliente ${role}`);
+  });
+
   it("paginates customers by cursor without repeating or skipping records", async () => {
     const repository = new FakeCrmRepository();
     for (let i = 0; i < 4; i += 1) {
