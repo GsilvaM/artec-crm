@@ -43,7 +43,7 @@ function defaultReplacementTitle(mode: ActionOperationMode, category: NextAction
   if (mode === "cancel") return "Definir novo encaminhamento";
   if (category === "warranty") return "Retornar sobre garantia";
   if (category === "support") return "Retornar suporte ao cliente";
-  if (category === "after_sales") return "Acompanhar pos-venda";
+  if (category === "after_sales") return "Acompanhar pós-venda";
   return "Dar continuidade ao atendimento";
 }
 

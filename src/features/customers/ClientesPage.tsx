@@ -117,8 +117,8 @@ export function ClientesPage({ currentUserId }: { currentUserId: string }) {
         } catch (opportunityError) {
           setForm(EMPTY_FORM);
           setShowCreateForm(false);
-          setCreatedMessage("Cliente salvo. A oportunidade nao foi criada porque a API recusou a atribuicao ou os dados comerciais.");
-          showToast(opportunityError instanceof Error ? opportunityError.message : "Cliente salvo, mas a oportunidade nao foi criada.", "error");
+          setCreatedMessage("Cliente salvo. A oportunidade não foi criada porque a API recusou a atribuição ou os dados comerciais.");
+          showToast(opportunityError instanceof Error ? opportunityError.message : "Cliente salvo, mas a oportunidade não foi criada.", "error");
           await refresh();
           return;
         }
@@ -244,18 +244,18 @@ export function ClientesPage({ currentUserId }: { currentUserId: string }) {
           <label>Cidade<Input value={form.cidade} onChange={(event) => setForm({ ...form, cidade: event.target.value })} /></label>
           <fieldset className="quick-opportunity-fields">
             <legend>Demanda comercial</legend>
-            <label>Título da oportunidade<Input aria-label="Titulo da oportunidade" value={form.opportunityTitle} onChange={(event) => setForm({ ...form, opportunityTitle: event.target.value })} /></label>
+            <label>Título da oportunidade<Input aria-label="Título da oportunidade" value={form.opportunityTitle} onChange={(event) => setForm({ ...form, opportunityTitle: event.target.value })} /></label>
             <label>Tipo de demanda
               <select value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
                 {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
               </select>
             </label>
-            <label>Situação<Input aria-label="Situacao" list="customer-situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} /></label>
+            <label>Situação<Input aria-label="Situação" list="customer-situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} /></label>
             <datalist id="customer-situacao-suggestions">
               {SITUACAO_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
             </datalist>
-            <label>Próxima ação<Input aria-label="Proxima acao" required={Boolean(form.opportunityTitle.trim())} value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
-            <label>Data da próxima ação<Input aria-label="Data da proxima acao" required={Boolean(form.opportunityTitle.trim())} type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
+            <label>Próxima ação<Input aria-label="Próxima ação" required={Boolean(form.opportunityTitle.trim())} value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
+            <label>Data da próxima ação<Input aria-label="Data da próxima ação" required={Boolean(form.opportunityTitle.trim())} type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
           </fieldset>
           <Button variant="primary" type="submit"><Plus aria-hidden="true" /> Salvar atendimento</Button>
         </form>

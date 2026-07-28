@@ -106,7 +106,7 @@ function NotificationPreferencesModal({ onClose }: { onClose: () => void }) {
         if (active) setPreferences(loaded);
       })
       .catch((err) => {
-        if (active) setError(err instanceof Error ? err.message : "Nao foi possivel carregar as preferencias.");
+        if (active) setError(err instanceof Error ? err.message : "Não foi possível carregar as preferências.");
       });
     return () => {
       active = false;
@@ -126,7 +126,7 @@ function NotificationPreferencesModal({ onClose }: { onClose: () => void }) {
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel salvar as preferencias.");
+      setError(err instanceof Error ? err.message : "Não foi possível salvar as preferências.");
     } finally {
       setIsSaving(false);
     }
@@ -138,14 +138,14 @@ function NotificationPreferencesModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal
-      title="Preferencias de notificacao"
+      title="Preferências de notificação"
       subtitle="Controle quais alertas entram na sua fila operacional."
       icon={<BellOff size={20} />}
       onClose={onClose}
       footer={(
         <>
           <Button variant="primary" type="button" onClick={() => void savePreferences()} disabled={!preferences || isSaving}>
-            {isSaving ? "Salvando..." : "Salvar preferencias"}
+            {isSaving ? "Salvando..." : "Salvar preferências"}
           </Button>
           <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
         </>
@@ -154,10 +154,10 @@ function NotificationPreferencesModal({ onClose }: { onClose: () => void }) {
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
       {!preferences ? <LoadingPanels /> : (
         <div className="notification-preferences-list">
-          <PreferenceToggle title="Urgentes" description="Acoes vencidas, SLA em risco e oportunidades paradas." checked={preferences.urgentEnabled} onChange={() => toggle("urgentEnabled")} />
-          <PreferenceToggle title="Atencao" description="Alertas importantes que nao travam a rotina imediata." checked={preferences.attentionEnabled} onChange={() => toggle("attentionEnabled")} />
-          <PreferenceToggle title="Integracao Auvo" description="Erros de webhook, triagem e eventos que exigem revisao." checked={preferences.integrationEnabled} onChange={() => toggle("integrationEnabled")} />
-          <PreferenceToggle title="Resumo diario" description="Receber um consolidado diario da fila comercial." checked={preferences.dailyDigestEnabled} onChange={() => toggle("dailyDigestEnabled")} />
+          <PreferenceToggle title="Urgentes" description="Ações vencidas, SLA em risco e oportunidades paradas." checked={preferences.urgentEnabled} onChange={() => toggle("urgentEnabled")} />
+          <PreferenceToggle title="Atenção" description="Alertas importantes que não travam a rotina imediata." checked={preferences.attentionEnabled} onChange={() => toggle("attentionEnabled")} />
+          <PreferenceToggle title="Integração Auvo" description="Erros de webhook, triagem e eventos que exigem revisão." checked={preferences.integrationEnabled} onChange={() => toggle("integrationEnabled")} />
+          <PreferenceToggle title="Resumo diário" description="Receber um consolidado diário da fila comercial." checked={preferences.dailyDigestEnabled} onChange={() => toggle("dailyDigestEnabled")} />
         </div>
       )}
     </Modal>

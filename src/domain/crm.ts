@@ -902,7 +902,7 @@ async function apiSend<T>(path: string, method: "GET" | "POST" | "PUT" | "PATCH"
   if (!response.ok) {
     const apiError = payload as { error?: { code?: string; message?: string } };
     const message = apiError.error?.message ?? "Erro na API do CRM.";
-    const suffix = response.status === 403 ? " Verifique se seu usuario tem permissao para criar clientes." : "";
+    const suffix = response.status === 403 ? " Verifique se seu usuário tem permissão para criar clientes." : "";
     throw new Error(`${message}${suffix}`);
   }
 

@@ -9,8 +9,8 @@ function formatOperationTitle(mode: ActionOperationState["mode"]): string {
   return "Cancelar próxima ação";
 }
 
-const COMPLETION_PRESETS = ["Cliente respondeu", "Orcamento reenviado", "Sem retorno do cliente"];
-const CANCELLATION_PRESETS = ["Cliente pediu para pausar", "Atendimento duplicado", "Nao e mais necessario"];
+const COMPLETION_PRESETS = ["Cliente respondeu", "Orçamento reenviado", "Sem retorno do cliente"];
+const CANCELLATION_PRESETS = ["Cliente pediu para pausar", "Atendimento duplicado", "Não é mais necessário"];
 
 function toDateTimeLocalValue(date: Date): string {
   const offsetMs = date.getTimezoneOffset() * 60_000;
@@ -109,7 +109,7 @@ export function ActionOperationForm({ operation, error, onChange, onSubmit, onCa
             <p className="form-hint">Sugestão preenchida automaticamente. Ajuste se o combinado com o cliente for diferente.</p>
             <label>Ação<input required value={operation.nextTitle} onChange={(event) => onChange({ nextTitle: event.target.value })} /></label>
             <label>Vencimento<input required type="datetime-local" value={operation.nextDueAt} onChange={(event) => onChange({ nextDueAt: event.target.value })} /></label>
-            <div className="operation-presets" aria-label="Atalhos da nova proxima acao">
+            <div className="operation-presets" aria-label="Atalhos da nova próxima ação">
               <button className="button ghost" type="button" onClick={() => onChange({ nextDueAt: nextBusinessDateTime(1, 9) })}>Amanhã 09:00</button>
               <button className="button ghost" type="button" onClick={() => onChange({ nextDueAt: nextBusinessDateTime(2, 9) })}>+2 dias</button>
               <button className="button ghost" type="button" onClick={() => onChange({ nextDueAt: nextBusinessDateTime(7, 9) })}>+7 dias</button>

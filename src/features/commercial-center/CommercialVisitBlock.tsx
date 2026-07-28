@@ -6,7 +6,7 @@ import type { CommercialCenterVisitItem } from "../../domain/crm";
 
 export function CommercialVisitBlock({ items }: { items: CommercialCenterVisitItem[] }) {
   if (!items.length) {
-    return <EmptyState title="Nenhuma visita proxima" text="As visitas agendadas aparecerao aqui." />;
+    return <EmptyState title="Nenhuma visita próxima" text="As visitas agendadas aparecerão aqui." />;
   }
 
   return (

@@ -61,7 +61,7 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
       const blob = await exportCommercialReport(filters);
       downloadBlob(blob, `relatorio-comercial-${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "NÃ£o foi possÃ­vel exportar o relatÃ³rio.");
+      setError(err instanceof Error ? err.message : "Não foi possível exportar o relatório.");
     } finally {
       setIsExporting(false);
     }
@@ -170,8 +170,8 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
 
       {isFilterOpen ? (
         <Modal
-          title="Filtros do relatÃ³rio"
-          subtitle="Ajuste o recorte que alimenta indicadores, funil e exportaÃ§Ã£o."
+          title="Filtros do relatório"
+          subtitle="Ajuste o recorte que alimenta indicadores, funil e exportação."
           icon={<Filter size={20} />}
           onClose={() => setIsFilterOpen(false)}
           footer={(
@@ -187,7 +187,7 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
               <input type="date" value={draftFilters.from ?? ""} onChange={(event) => setDraftFilters((current) => ({ ...current, from: event.target.value }))} />
             </label>
             <label>
-              AtÃ©
+              Até
               <input type="date" value={draftFilters.to ?? ""} onChange={(event) => setDraftFilters((current) => ({ ...current, to: event.target.value }))} />
             </label>
             <label>
@@ -199,11 +199,11 @@ export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
             </label>
             <label>
               Origem
-              <input value={draftFilters.origem ?? ""} placeholder="Ex.: Auvo, WhatsApp, indicaÃ§Ã£o" onChange={(event) => setDraftFilters((current) => ({ ...current, origem: event.target.value }))} />
+              <input value={draftFilters.origem ?? ""} placeholder="Ex.: Auvo, WhatsApp, indicação" onChange={(event) => setDraftFilters((current) => ({ ...current, origem: event.target.value }))} />
             </label>
             <label>
               Tipo de demanda
-              <input value={draftFilters.tipoDemanda ?? ""} placeholder="Ex.: instalacao" onChange={(event) => setDraftFilters((current) => ({ ...current, tipoDemanda: event.target.value }))} />
+              <input value={draftFilters.tipoDemanda ?? ""} placeholder="Ex.: instalação" onChange={(event) => setDraftFilters((current) => ({ ...current, tipoDemanda: event.target.value }))} />
             </label>
           </div>
         </Modal>

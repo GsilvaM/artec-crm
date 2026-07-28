@@ -177,10 +177,10 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
         isPrimary: addressForm.isPrimary,
       });
       setAddressForm(initialAddressForm);
-      showToast("Endereco criado.");
+      showToast("Endereço criado.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel criar o endereco.");
+      setError(err instanceof Error ? err.message : "Não foi possível criar o endereço.");
     }
   }
 
@@ -204,7 +204,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       showToast("Equipamento criado.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel criar o equipamento.");
+      setError(err instanceof Error ? err.message : "Não foi possível criar o equipamento.");
     }
   }
 
@@ -227,7 +227,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       showToast("Visita criada.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel criar a visita.");
+      setError(err instanceof Error ? err.message : "Não foi possível criar a visita.");
     }
   }
 
@@ -237,10 +237,10 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
     setError(null);
     try {
       await completeVisit(visit.id, { result: form.result.trim(), nextSteps: emptyToNull(form.nextSteps) });
-      showToast("Visita concluida.");
+      showToast("Visita concluída.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel concluir a visita.");
+      setError(err instanceof Error ? err.message : "Não foi possível concluir a visita.");
     }
   }
 
@@ -253,7 +253,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       showToast("Visita cancelada.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel cancelar a visita.");
+      setError(err instanceof Error ? err.message : "Não foi possível cancelar a visita.");
     }
   }
 
@@ -270,7 +270,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
     { label: "Oportunidades ativas", value: String(activeOpportunities.length) },
     { label: "Garantia/suporte", value: String(supportActivities.length) },
     { label: "Equipamentos", value: String(equipment.length) },
-    { label: "Ultima interacao", value: latestActivity ? formatDateTime(latestActivity.occurredAt) : "Sem historico" },
+    { label: "Última interação", value: latestActivity ? formatDateTime(latestActivity.occurredAt) : "Sem histórico" },
   ];
 
   const tabs: TabItem[] = [
@@ -285,14 +285,14 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
               <div>
                 <span>Oportunidades ativas</span>
                 <strong>{activeOpportunities.length}</strong>
-                <small>{opportunities.length} no historico</small>
+                <small>{opportunities.length} no histórico</small>
               </div>
             </article>
             <article className={`customer-overview-card ${overdueNextAction ? "customer-overview-card-danger" : ""}`}>
               <span className="customer-overview-icon"><ListChecks aria-hidden="true" size={18} /></span>
               <div>
-                <span>Proxima acao</span>
-                <strong>{nextUpAction ? formatDateTime(nextUpAction.dueAt) : "Sem pendencia"}</strong>
+                <span>Próxima ação</span>
+                <strong>{nextUpAction ? formatDateTime(nextUpAction.dueAt) : "Sem pendência"}</strong>
                 <small>{nextUpAction?.title ?? "Carteira sem follow-up aberto"}</small>
               </div>
             </article>
@@ -301,7 +301,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
               <div>
                 <span>Visitas abertas</span>
                 <strong>{openVisits.length}</strong>
-                <small>{visits.length} no historico tecnico</small>
+                <small>{visits.length} no histórico técnico</small>
               </div>
             </article>
             <article className={customer.duplicatePhoneCustomerIds.length ? "customer-overview-card customer-overview-card-warning" : "customer-overview-card"}>
@@ -309,7 +309,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
               <div>
                 <span>Qualidade do cadastro</span>
                 <strong>{customer.duplicatePhoneCustomerIds.length ? "Revisar" : "Ok"}</strong>
-                <small>{customer.duplicatePhoneCustomerIds.length ? `${customer.duplicatePhoneCustomerIds.length} possivel duplicidade` : `${equipment.length} equipamento(s)`}</small>
+                <small>{customer.duplicatePhoneCustomerIds.length ? `${customer.duplicatePhoneCustomerIds.length} possível duplicidade` : `${equipment.length} equipamento(s)`}</small>
               </div>
             </article>
           </section>
@@ -345,11 +345,11 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       label: `Estrutura (${addresses.length + equipment.length + visits.length})`,
       content: (
         <div className="customer-structure-grid">
-          <section className="customer-structure-section" aria-label="Enderecos do cliente">
+          <section className="customer-structure-section" aria-label="Endereços do cliente">
             <header>
               <span className="customer-structure-icon"><MapPin aria-hidden="true" size={18} /></span>
               <div>
-                <h2>Enderecos</h2>
+                <h2>Endereços</h2>
                 <p>{addresses.length} cadastrado(s)</p>
               </div>
             </header>
@@ -358,19 +358,19 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
               <label>Tipo
                 <select value={addressForm.kind} onChange={(event) => setAddressForm({ ...addressForm, kind: event.target.value as Address["kind"] })}>
                   <option value="service">Atendimento</option>
-                  <option value="installation">Instalacao</option>
+                  <option value="installation">Instalação</option>
                   <option value="pickup">Retirada</option>
-                  <option value="billing">Cobranca</option>
+                  <option value="billing">Cobrança</option>
                   <option value="other">Outro</option>
                 </select>
               </label>
               <label>Rua<input value={addressForm.street} onChange={(event) => setAddressForm({ ...addressForm, street: event.target.value })} /></label>
-              <label>Numero<input value={addressForm.number} onChange={(event) => setAddressForm({ ...addressForm, number: event.target.value })} /></label>
+              <label>Número<input value={addressForm.number} onChange={(event) => setAddressForm({ ...addressForm, number: event.target.value })} /></label>
               <label>Bairro<input value={addressForm.neighborhood} onChange={(event) => setAddressForm({ ...addressForm, neighborhood: event.target.value })} /></label>
               <label>Cidade<input value={addressForm.city} onChange={(event) => setAddressForm({ ...addressForm, city: event.target.value })} /></label>
-              <label className="structure-form-wide">Acesso<input value={addressForm.accessNotes} onChange={(event) => setAddressForm({ ...addressForm, accessNotes: event.target.value })} placeholder="portaria, referencia, restricoes" /></label>
+              <label className="structure-form-wide">Acesso<input value={addressForm.accessNotes} onChange={(event) => setAddressForm({ ...addressForm, accessNotes: event.target.value })} placeholder="portaria, referência, restrições" /></label>
               <label className="checkbox-row"><input type="checkbox" checked={addressForm.isPrimary} onChange={(event) => setAddressForm({ ...addressForm, isPrimary: event.target.checked })} /> Principal</label>
-              <button className="button secondary" type="submit"><Plus aria-hidden="true" size={16} /> Endereco</button>
+              <button className="button secondary" type="submit"><Plus aria-hidden="true" size={16} /> Endereço</button>
             </form>
             {addresses.length ? (
               <ul className="structure-list">
@@ -384,7 +384,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
                 ))}
               </ul>
             ) : (
-              <EmptyState title="Nenhum endereco" text="Cadastre enderecos para visitas, retirada e instalacao." />
+              <EmptyState title="Nenhum endereço" text="Cadastre endereços para visitas, retirada e instalação." />
             )}
           </section>
 
@@ -410,11 +410,11 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
               <label>Marca<input value={equipmentForm.brand} onChange={(event) => setEquipmentForm({ ...equipmentForm, brand: event.target.value })} /></label>
               <label>Modelo<input value={equipmentForm.model} onChange={(event) => setEquipmentForm({ ...equipmentForm, model: event.target.value })} /></label>
               <label>BTUs<input inputMode="numeric" value={equipmentForm.btus} onChange={(event) => setEquipmentForm({ ...equipmentForm, btus: event.target.value })} /></label>
-              <label>Tensao<input value={equipmentForm.voltage} onChange={(event) => setEquipmentForm({ ...equipmentForm, voltage: event.target.value })} placeholder="127V, 220V" /></label>
+              <label>Tensão<input value={equipmentForm.voltage} onChange={(event) => setEquipmentForm({ ...equipmentForm, voltage: event.target.value })} placeholder="127V, 220V" /></label>
               <label>Ambiente<input value={equipmentForm.environment} onChange={(event) => setEquipmentForm({ ...equipmentForm, environment: event.target.value })} placeholder="sala, quarto" /></label>
-              <label>Endereco
+              <label>Endereço
                 <select value={equipmentForm.addressId} onChange={(event) => setEquipmentForm({ ...equipmentForm, addressId: event.target.value })}>
-                  <option value="">Sem endereco</option>
+                  <option value="">Sem endereço</option>
                   {addresses.map((address) => <option value={address.id} key={address.id}>{address.label}</option>)}
                 </select>
               </label>
@@ -452,12 +452,12 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
               </div>
             </header>
             <form className="structure-form structure-form-visits" onSubmit={handleCreateVisit}>
-              <label>Objetivo<input value={visitForm.objective} onChange={(event) => setVisitForm({ ...visitForm, objective: event.target.value })} placeholder="ex: vistoria para instalacao" /></label>
-              <label>Inicio<input type="datetime-local" value={visitForm.scheduledStartAt} onChange={(event) => setVisitForm({ ...visitForm, scheduledStartAt: event.target.value })} /></label>
+              <label>Objetivo<input value={visitForm.objective} onChange={(event) => setVisitForm({ ...visitForm, objective: event.target.value })} placeholder="ex: vistoria para instalação" /></label>
+              <label>Início<input type="datetime-local" value={visitForm.scheduledStartAt} onChange={(event) => setVisitForm({ ...visitForm, scheduledStartAt: event.target.value })} /></label>
               <label>Fim<input type="datetime-local" value={visitForm.scheduledEndAt} onChange={(event) => setVisitForm({ ...visitForm, scheduledEndAt: event.target.value })} /></label>
-              <label>Endereco
+              <label>Endereço
                 <select value={visitForm.addressId} onChange={(event) => setVisitForm({ ...visitForm, addressId: event.target.value })}>
-                  <option value="">Sem endereco</option>
+                  <option value="">Sem endereço</option>
                   {addresses.map((address) => <option value={address.id} key={address.id}>{address.label}</option>)}
                 </select>
               </label>
@@ -484,13 +484,13 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
                       <div className="visit-list-main">
                         <strong>{visit.objective}</strong>
                         <span>{formatDateTime(visit.scheduledStartAt)} · {formatVisitStatus(visit.status)}</span>
-                        <small>{[addresses.find((address) => address.id === visit.addressId)?.label, opportunities.find((opportunity) => opportunity.id === visit.opportunityId)?.titulo].filter(Boolean).join(" · ") || "Sem endereco/oportunidade"}</small>
+                        <small>{[addresses.find((address) => address.id === visit.addressId)?.label, opportunities.find((opportunity) => opportunity.id === visit.opportunityId)?.titulo].filter(Boolean).join(" · ") || "Sem endereço/oportunidade"}</small>
                         {visit.result ? <p>{visit.result}</p> : null}
                       </div>
                       {!["completed", "cancelled", "no_show"].includes(visit.status) ? (
                         <div className="visit-result-controls">
                           <input value={resultForm.result} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, result: event.target.value } })} placeholder="Resultado da visita" />
-                          <input value={resultForm.nextSteps} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, nextSteps: event.target.value } })} placeholder="Proximos passos" />
+                          <input value={resultForm.nextSteps} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, nextSteps: event.target.value } })} placeholder="Próximos passos" />
                           <button className="button secondary" type="button" onClick={() => void handleCompleteVisit(visit)}><CheckCircle2 aria-hidden="true" size={16} /> Concluir</button>
                           <input value={resultForm.reason} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, reason: event.target.value } })} placeholder="Motivo do cancelamento" />
                           <button className="button ghost" type="button" onClick={() => void handleCancelVisit(visit)}><XCircle aria-hidden="true" size={16} /> Cancelar</button>
@@ -501,7 +501,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
                 })}
               </ul>
             ) : (
-              <EmptyState title="Nenhuma visita" text="Agende visitas tecnicas sem depender de texto livre em proximas acoes." />
+              <EmptyState title="Nenhuma visita" text="Agende visitas técnicas sem depender de texto livre em próximas ações." />
             )}
           </section>
         </div>
@@ -536,7 +536,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
       label: `Próximas ações (${nextActions.length})`,
       content: (
         <>
-          <form className="admin-inline-form" onSubmit={handleCreateAction} aria-label="Criar proxima acao tecnica">
+          <form className="admin-inline-form" onSubmit={handleCreateAction} aria-label="Criar próxima ação técnica">
             <label>Categoria
               <select value={actionForm.category} onChange={(event) => setActionForm({ ...actionForm, category: event.target.value as SupportActionCategory })}>
                 <option value="warranty">Garantia</option>
@@ -589,7 +589,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
             <label>Descrição<input value={activityForm.description} onChange={(event) => setActivityForm({ ...activityForm, description: event.target.value })} placeholder="Descreva o atendimento" /></label>
             <button className="button secondary" type="submit">Registrar</button>
           </form>
-          <form className="admin-inline-form support-followup-form" onSubmit={handleCreateAction} aria-label="Agendar retorno tecnico">
+          <form className="admin-inline-form support-followup-form" onSubmit={handleCreateAction} aria-label="Agendar retorno técnico">
             <label>Retorno
               <input
                 value={actionForm.title}
@@ -693,7 +693,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
           ))}
         </div>
 
-        <section className={`customer-decision-panel ${decisionState.tone}`} aria-label="Proxima decisao do cliente">
+        <section className={`customer-decision-panel ${decisionState.tone}`} aria-label="Próxima decisão do cliente">
           <div>
             <span>{decisionState.label}</span>
             <strong>{decisionState.title}</strong>
@@ -716,7 +716,7 @@ export function ClientePage({ currentUserId }: { currentUserId: string }) {
             <ShieldAlert aria-hidden="true" size={16} />Garantia/suporte
           </button>
           <button className="button secondary" type="button" onClick={() => setActiveTab("proximas-acoes")}>
-            <CalendarClock aria-hidden="true" size={16} />Nova acao
+            <CalendarClock aria-hidden="true" size={16} />Nova ação
           </button>
         </div>
       </section>
@@ -743,7 +743,7 @@ function emptyToNull(value: string): string | null {
 
 function formatAddressLine(address: Address): string {
   const street = [address.street, address.number].filter(Boolean).join(", ");
-  return [street, address.neighborhood, address.city].filter(Boolean).join(" · ") || "Endereco progressivo";
+  return [street, address.neighborhood, address.city].filter(Boolean).join(" · ") || "Endereço progressivo";
 }
 
 function formatEquipmentTitle(equipment: Equipment): string {
@@ -752,12 +752,12 @@ function formatEquipmentTitle(equipment: Equipment): string {
 }
 
 function formatCustomerLocation(customer: Customer): string {
-  return [customer.bairro, customer.cidade].filter(Boolean).join(" - ") || "Localizacao ainda nao informada";
+  return [customer.bairro, customer.cidade].filter(Boolean).join(" - ") || "Localização ainda não informada";
 }
 
 function getSupportActionSuggestion(category: SupportActionCategory): string {
   if (category === "warranty") return "Retornar sobre garantia";
-  if (category === "after_sales") return "Acompanhar pos-venda";
+  if (category === "after_sales") return "Acompanhar pós-venda";
   return "Retornar sobre suporte";
 }
 
@@ -778,8 +778,8 @@ function getCustomerDecisionState(
 } {
   if (customer.duplicatePhoneCustomerIds.length > 0) {
     return {
-      label: "Decisao agora",
-      title: "Revisar possivel duplicidade",
+      label: "Decisão agora",
+      title: "Revisar possível duplicidade",
       detail: `${customer.duplicatePhoneCustomerIds.length} cadastro(s) compartilham este telefone.`,
       actionLabel: "Ver dados",
       kind: "tab",
@@ -792,8 +792,8 @@ function getCustomerDecisionState(
     const dueAt = new Date(nextAction.dueAt).getTime();
     if (Number.isFinite(dueAt) && dueAt < Date.now()) {
       return {
-        label: "Decisao agora",
-        title: "Resolver acao vencida",
+        label: "Decisão agora",
+        title: "Resolver ação vencida",
         detail: `${nextAction.title} - ${formatDateTime(nextAction.dueAt)}.`,
         actionLabel: "Ver acoes",
         kind: "tab",
@@ -802,7 +802,7 @@ function getCustomerDecisionState(
       };
     }
     return {
-      label: "Proxima decisao",
+      label: "Próxima decisão",
       title: "Cumprir follow-up",
       detail: `${nextAction.title} - ${formatDateTime(nextAction.dueAt)}.`,
       actionLabel: "Ver acoes",
@@ -815,8 +815,8 @@ function getCustomerDecisionState(
   if (openVisits.length > 0) {
     const nextVisit = [...openVisits].sort((left, right) => left.scheduledStartAt.localeCompare(right.scheduledStartAt))[0];
     return {
-      label: "Proxima decisao",
-      title: "Acompanhar visita tecnica",
+      label: "Próxima decisão",
+      title: "Acompanhar visita técnica",
       detail: `${nextVisit.objective} - ${formatDateTime(nextVisit.scheduledStartAt)}.`,
       actionLabel: "Ver estrutura",
       kind: "tab",
@@ -827,9 +827,9 @@ function getCustomerDecisionState(
 
   if (activeOpportunities.length > 0) {
     return {
-      label: "Decisao agora",
+      label: "Decisão agora",
       title: "Definir follow-up comercial",
-      detail: `${activeOpportunities.length} oportunidade(s) ativa(s) sem acao pendente neste cadastro.`,
+      detail: `${activeOpportunities.length} oportunidade(s) ativa(s) sem ação pendente neste cadastro.`,
       actionLabel: "Ver oportunidades",
       kind: "tab",
       target: "oportunidades",
@@ -839,9 +839,9 @@ function getCustomerDecisionState(
 
   if (supportActivities.length > 0) {
     return {
-      label: "Proxima decisao",
-      title: "Manter atendimento tecnico fora do funil",
-      detail: "Historico de garantia, suporte ou pos-venda preservado na ficha.",
+      label: "Próxima decisão",
+      title: "Manter atendimento técnico fora do funil",
+      detail: "Histórico de garantia, suporte ou pós-venda preservado na ficha.",
       actionLabel: "Ver suporte",
       kind: "tab",
       target: "garantia-suporte",
@@ -850,9 +850,9 @@ function getCustomerDecisionState(
   }
 
   return {
-    label: "Proxima decisao",
+    label: "Próxima decisão",
     title: "Qualificar nova demanda",
-    detail: "Sem urgencia aberta. Abra uma oportunidade quando houver demanda comercial.",
+    detail: "Sem urgência aberta. Abra uma oportunidade quando houver demanda comercial.",
     actionLabel: "Nova oportunidade",
     kind: "link",
     target: `/oportunidades?clienteId=${customer.id}`,
@@ -872,7 +872,7 @@ function getRelationshipState(nextAction: NextAction | null, activeOpportunityCo
     const dueAt = new Date(nextAction.dueAt).getTime();
     const isOverdue = Number.isFinite(dueAt) && dueAt < Date.now();
     return {
-      label: isOverdue ? "Acao vencida" : "Proxima acao",
+      label: isOverdue ? "Ação vencida" : "Próxima ação",
       title: nextAction.title,
       detail: `${nextAction.opportunityTitle ?? "Atendimento"} - ${formatDateTime(nextAction.dueAt)}`,
       badge: isOverdue ? "vencida" : "pendente",
@@ -884,8 +884,8 @@ function getRelationshipState(nextAction: NextAction | null, activeOpportunityCo
   if (activeOpportunityCount > 0) {
     return {
       label: "Sem follow-up",
-      title: "Definir proxima acao",
-      detail: "Cliente tem oportunidade ativa sem acao pendente vinculada ao cadastro.",
+      title: "Definir próxima ação",
+      detail: "Cliente tem oportunidade ativa sem ação pendente vinculada ao cadastro.",
       badge: "revisar",
       badgeClass: "badge-alert-warning",
       tone: "is-warning",
@@ -893,9 +893,9 @@ function getRelationshipState(nextAction: NextAction | null, activeOpportunityCo
   }
 
   return {
-    label: supportActivityCount > 0 ? "Atendimento tecnico" : "Relacionamento",
-    title: supportActivityCount > 0 ? "Garantia/suporte separado do funil" : "Sem urgencia aberta",
-    detail: supportActivityCount > 0 ? "Historico tecnico preservado na ficha do cliente." : "Abra uma oportunidade quando surgir nova demanda comercial.",
+    label: supportActivityCount > 0 ? "Atendimento técnico" : "Relacionamento",
+    title: supportActivityCount > 0 ? "Garantia/suporte separado do funil" : "Sem urgência aberta",
+    detail: supportActivityCount > 0 ? "Histórico técnico preservado na ficha do cliente." : "Abra uma oportunidade quando surgir nova demanda comercial.",
     badge: "ok",
     badgeClass: "badge-positive",
     tone: "is-ok",

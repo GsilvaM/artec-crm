@@ -13,12 +13,12 @@ test("opens a customer detail page from the list and sees related opportunities 
   await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText(name.trim());
-  await expect(page.getByLabel("Proxima decisao do cliente")).toBeVisible();
+  await expect(page.getByLabel("Próxima decisão do cliente")).toBeVisible();
 
   await page.getByRole("tab", { name: "Garantia e suporte" }).click();
   await expect(page.getByLabel("Descrição")).toBeVisible();
-  await expect(page.getByRole("form", { name: "Agendar retorno tecnico" })).toBeVisible();
-  const supportCategory = await page.getByRole("form", { name: "Agendar retorno tecnico" }).getByLabel("Categoria").inputValue();
+  await expect(page.getByRole("form", { name: "Agendar retorno técnico" })).toBeVisible();
+  const supportCategory = await page.getByRole("form", { name: "Agendar retorno técnico" }).getByLabel("Categoria").inputValue();
   expect(["warranty", "support", "after_sales"]).toContain(supportCategory);
 
   await page.getByRole("tab", { name: "Linha do tempo" }).click();
@@ -73,12 +73,12 @@ test("creates address, equipment and visit from the customer structure tab and s
     await expect(page.getByRole("heading", { level: 1 })).toContainText(customerName);
     await expect(page.getByRole("tab", { name: /Estrutura/ })).toHaveAttribute("aria-selected", "true");
 
-    const addresses = page.getByLabel("Enderecos do cliente");
+    const addresses = page.getByLabel("Endereços do cliente");
     await addresses.getByLabel("Nome").fill(`Endereco ${suffix}`);
     await addresses.getByLabel("Rua").fill("Rua E2E");
-    await addresses.getByLabel("Numero").fill("123");
+    await addresses.getByLabel("Número").fill("123");
     await addresses.getByLabel("Cidade").fill("Sao Paulo");
-    await addresses.getByRole("button", { name: /Endereco/ }).click();
+    await addresses.getByRole("button", { name: /Endereço/ }).click();
     await expect(addresses.getByText(`Endereco ${suffix}`)).toBeVisible({ timeout: 15_000 });
 
     const equipment = page.getByLabel("Equipamentos do cliente");
@@ -86,14 +86,14 @@ test("creates address, equipment and visit from the customer structure tab and s
     await equipment.getByLabel("Modelo").fill(`E2E ${suffix}`);
     await equipment.getByLabel("BTUs").fill("12000");
     await equipment.getByLabel("Ambiente").fill("Sala");
-    await equipment.getByLabel("Endereco").selectOption({ label: `Endereco ${suffix}` });
+    await equipment.getByLabel("Endereço").selectOption({ label: `Endereco ${suffix}` });
     await equipment.getByRole("button", { name: /Equipamento/ }).click();
     await expect(equipment.getByText(`Daikin E2E ${suffix}`)).toBeVisible({ timeout: 15_000 });
 
     const visits = page.getByLabel("Visitas do cliente");
     await visits.getByLabel("Objetivo").fill(`Vistoria E2E ${suffix}`);
-    await visits.getByLabel("Inicio").fill("2026-08-02T10:00");
-    await visits.getByLabel("Endereco").selectOption({ label: `Endereco ${suffix}` });
+    await visits.getByLabel("Início").fill("2026-08-02T10:00");
+    await visits.getByLabel("Endereço").selectOption({ label: `Endereco ${suffix}` });
     await visits.getByRole("button", { name: /Visita/ }).click();
     await expect(visits.getByText(`Vistoria E2E ${suffix}`)).toBeVisible({ timeout: 15_000 });
 

@@ -9,7 +9,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { hasError
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("Erro nao tratado na interface:", error, info.componentStack);
+    console.error("Erro não tratado na interface:", error, info.componentStack);
   }
 
   render() {

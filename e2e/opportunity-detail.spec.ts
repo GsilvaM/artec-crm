@@ -55,8 +55,8 @@ test("opens an opportunity detail page from the list and sees its summary and ti
     await page.waitForURL(/\/oportunidades\/[0-9a-f-]+$/);
 
     await expect(page.getByRole("heading", { level: 1 })).toContainText(opportunityTitle);
-    await expect(page.getByLabel("Proxima decisao da oportunidade")).toBeVisible();
-    await expect(page.getByLabel("Estrutura tecnica da oportunidade")).toBeVisible();
+    await expect(page.getByLabel("Próxima decisão da oportunidade")).toBeVisible();
+    await expect(page.getByLabel("Estrutura técnica da oportunidade")).toBeVisible();
     await expect(page.getByText("Linha do tempo")).toBeVisible();
   } finally {
     if (opportunityId) await page.request.post(`/api/opportunities/${opportunityId}/archive`, { headers: authHeaders, timeout: 5_000 }).catch(() => undefined);
@@ -133,26 +133,26 @@ test("creates address, equipment and visit from the opportunity technical block"
     await page.goto(`/oportunidades/${opportunityId}`);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(opportunityTitle);
 
-    const structure = page.getByLabel("Estrutura tecnica da oportunidade");
-    const addresses = structure.getByLabel("Enderecos do cliente na oportunidade");
+    const structure = page.getByLabel("Estrutura técnica da oportunidade");
+    const addresses = structure.getByLabel("Endereços do cliente na oportunidade");
     await addresses.getByLabel("Nome").fill(`Local ${suffix}`);
     await addresses.getByLabel("Rua").fill("Rua Oportunidade");
     await addresses.getByLabel("Numero").fill("456");
-    await addresses.getByRole("button", { name: /Endereco/ }).click();
+    await addresses.getByRole("button", { name: /Endereço/ }).click();
     await expect(addresses.getByText(`Local ${suffix}`)).toBeVisible({ timeout: 15_000 });
 
     const equipment = structure.getByLabel("Equipamentos da oportunidade");
     await equipment.getByLabel("Marca").fill("Gree");
     await equipment.getByLabel("Modelo").fill(`Opp ${suffix}`);
     await equipment.getByLabel("BTUs").fill("18000");
-    await equipment.getByLabel("Endereco").selectOption({ label: `Local ${suffix}` });
+    await equipment.getByLabel("Endereço").selectOption({ label: `Local ${suffix}` });
     await equipment.getByRole("button", { name: /Equipamento/ }).click();
     await expect(equipment.getByText(`Gree Opp ${suffix}`)).toBeVisible({ timeout: 15_000 });
 
     const visits = structure.getByLabel("Visitas da oportunidade");
     await visits.getByLabel("Objetivo").fill(`Visita comercial ${suffix}`);
-    await visits.getByLabel("Inicio").fill("2026-08-03T11:00");
-    await visits.getByLabel("Endereco").selectOption({ label: `Local ${suffix}` });
+    await visits.getByLabel("Início").fill("2026-08-03T11:00");
+    await visits.getByLabel("Endereço").selectOption({ label: `Local ${suffix}` });
     await visits.getByRole("button", { name: /Visita/ }).click();
     await expect(visits.getByText(`Visita comercial ${suffix}`)).toBeVisible({ timeout: 15_000 });
   } finally {

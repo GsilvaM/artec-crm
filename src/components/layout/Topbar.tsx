@@ -82,7 +82,7 @@ export function Topbar({
     <TooltipProvider delayDuration={250}>
       <header className="app-topbar">
       <div className="app-topbar-mobile-actions">
-        <button type="button" onClick={onOpenMobileNav} className="app-icon-button" aria-label="Abrir menu de navegacao">
+        <button type="button" onClick={onOpenMobileNav} className="app-icon-button" aria-label="Abrir menu de navegação">
           <Menu size={20} aria-hidden="true" />
         </button>
       </div>
@@ -141,7 +141,7 @@ export function Topbar({
             <button
               ref={bellButtonRef}
               type="button"
-              aria-label="Abrir notificacoes"
+              aria-label="Abrir notificações"
               aria-expanded={notificationPanelOpen}
               onClick={() => setNotificationPanelOpen((open) => !open)}
               className="app-icon-button"
@@ -150,12 +150,12 @@ export function Topbar({
               {notifications.unreadCount > 0 ? <span>{badgeCount}</span> : null}
             </button>
           </TooltipTrigger>
-          <TooltipContent className="app-tooltip">Notificacoes</TooltipContent>
+          <TooltipContent className="app-tooltip">Notificações</TooltipContent>
         </Tooltip>
         {notificationPanelOpen ? (
-          <div role="dialog" aria-label="Notificacoes recentes" ref={notificationPanelRef} className="app-notification-popover">
+          <div role="dialog" aria-label="Notificações recentes" ref={notificationPanelRef} className="app-notification-popover">
             <header>
-              <strong>Notificacoes</strong>
+              <strong>Notificações</strong>
               <button type="button" onClick={() => void notifications.readAll()}>
                 Ler todas
               </button>

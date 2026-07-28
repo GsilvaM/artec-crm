@@ -30,17 +30,17 @@ type SidebarNavGroup = {
 
 const OPERACAO_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Central Comercial", path: "/central-comercial", icon: LayoutDashboard },
-  { label: "Proximas Acoes", path: "/proximas-acoes", icon: ListChecks },
+  { label: "Próximas Ações", path: "/proximas-acoes", icon: ListChecks },
   { label: "Funil", path: "/pipeline", icon: Workflow },
   { label: "Oportunidades", path: "/oportunidades", icon: Briefcase },
   { label: "Clientes", path: "/clientes", icon: Users },
   { label: "Caixa Auvo", path: "/caixa-auvo", icon: Inbox },
-  { label: "Notificacoes", path: "/notificacoes", icon: Bell },
+  { label: "Notificações", path: "/notificacoes", icon: Bell },
 ];
 
-const REPORTS_NAV_ITEM: SidebarNavItem = { label: "Relatorios", path: "/relatorios", icon: BarChart3 };
-const ADMIN_NAV_ITEM: SidebarNavItem = { label: "Administracao", path: "/configuracoes/administracao", icon: ShieldCheck };
-const INTEGRATIONS_NAV_ITEM: SidebarNavItem = { label: "Integracao Auvo", path: "/configuracoes/integracoes/auvo", icon: Settings2 };
+const REPORTS_NAV_ITEM: SidebarNavItem = { label: "Relatórios", path: "/relatorios", icon: BarChart3 };
+const ADMIN_NAV_ITEM: SidebarNavItem = { label: "Administração", path: "/configuracoes/administracao", icon: ShieldCheck };
+const INTEGRATIONS_NAV_ITEM: SidebarNavItem = { label: "Integração Auvo", path: "/configuracoes/integracoes/auvo", icon: Settings2 };
 
 export function Sidebar({
   canViewReports,
@@ -69,8 +69,8 @@ export function Sidebar({
   ];
 
   const groups: SidebarNavGroup[] = [
-    { label: "Operacao", items: operationItems },
-    ...(managementItems.length ? [{ label: "Gestao", items: managementItems }] : []),
+    { label: "Operação", items: operationItems },
+    ...(managementItems.length ? [{ label: "Gestão", items: managementItems }] : []),
   ];
   const isRootPath = location.pathname === "/";
 
@@ -102,7 +102,7 @@ export function Sidebar({
       {isMobileOpen ? (
         <div className="app-sidebar-drawer">
           <div className="app-sidebar-backdrop" role="presentation" onClick={onCloseMobile} />
-          <aside className="app-sidebar app-sidebar-mobile" aria-label="Navegacao principal">
+          <aside className="app-sidebar app-sidebar-mobile" aria-label="Navegação principal">
             <SidebarInner
               collapsed={false}
               onToggle={onCloseMobile}
@@ -148,7 +148,7 @@ function SidebarInner({
         ) : null}
       </div>
 
-      <nav ref={navRef as React.RefObject<HTMLElement>} className="app-sidebar-nav" aria-label={mobile ? undefined : "Navegacao principal"}>
+      <nav ref={navRef as React.RefObject<HTMLElement>} className="app-sidebar-nav" aria-label={mobile ? undefined : "Navegação principal"}>
         {groups.map((group) => (
           <NavGroup key={group.label} group={group} collapsed={collapsed} isItemActive={isItemActive} onNavigate={onNavigate} />
         ))}

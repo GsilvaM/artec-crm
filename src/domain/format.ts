@@ -45,9 +45,9 @@ export function formatActivityType(type: string): string {
 
 const ADDRESS_KIND_LABELS: Record<string, string> = {
   service: "Atendimento",
-  billing: "Cobranca",
+  billing: "Cobrança",
   pickup: "Retirada",
-  installation: "Instalacao",
+  installation: "Instalação",
   other: "Outro",
 };
 
@@ -70,7 +70,7 @@ export function formatEquipmentType(type: string): string {
 
 const VISIT_STATUS_LABELS: Record<string, string> = {
   draft: "Rascunho",
-  awaiting_confirmation: "Aguardando confirmacao",
+  awaiting_confirmation: "Aguardando confirmação",
   confirmed: "Confirmada",
   completed: "Concluida",
   cancelled: "Cancelada",

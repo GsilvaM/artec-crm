@@ -37,7 +37,7 @@ for (const viewport of VIEWPORTS) {
 
       for (const target of PAGES) {
         if (isMobileLayout) {
-          await page.getByRole("button", { name: "Abrir menu de navegacao" }).click();
+          await page.getByRole("button", { name: "Abrir menu de navegação" }).click();
           await expect(page.getByRole("link", { name: target.linkName })).toBeVisible();
         }
 

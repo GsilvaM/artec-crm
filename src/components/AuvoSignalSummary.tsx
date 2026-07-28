@@ -135,7 +135,7 @@ function formatMissingData(values: AuvoParsedSignals["derived"]["missingData"]):
     nome: "nome",
     telefone: "telefone",
     tipo_demanda: "tipo de demanda",
-    endereco: "endereco",
+    endereco: "endereço",
     equipamento: "equipamento",
   };
   return values.map((value) => labels[value]).join(", ");

@@ -60,11 +60,11 @@ test("creates a customer with commercial demand and sees the opportunity on the 
   const customerForm = page.locator("form", { has: page.getByRole("heading", { name: "Novo cliente" }) });
   await customerForm.getByLabel("Nome").fill(customerName);
   await customerForm.getByLabel("Telefone").fill("11999990000");
-  await customerForm.getByLabel("Titulo da oportunidade").fill(opportunityTitle);
+  await customerForm.getByLabel("Título da oportunidade").fill(opportunityTitle);
   await customerForm.getByLabel("Tipo de demanda").selectOption("instalacao");
-  await customerForm.getByLabel("Situacao").fill("em andamento");
-  await customerForm.getByLabel("Proxima acao", { exact: true }).fill("Ligar para o cliente");
-  await customerForm.getByLabel("Data da proxima acao").fill("2026-08-01T10:00");
+  await customerForm.getByLabel("Situação").fill("em andamento");
+  await customerForm.getByLabel("Próxima ação", { exact: true }).fill("Ligar para o cliente");
+  await customerForm.getByLabel("Data da próxima ação").fill("2026-08-01T10:00");
   await customerForm.getByRole("button", { name: /Salvar atendimento/i }).click();
   await expect(page.locator("#clientes-section").getByText(customerName)).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(".customer-created-alert")).toContainText(`Oportunidade "${opportunityTitle}" criada`, { timeout: 15_000 });

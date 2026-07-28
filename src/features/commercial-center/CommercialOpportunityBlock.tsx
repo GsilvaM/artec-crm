@@ -7,7 +7,7 @@ import type { CommercialCenterOpportunityItem } from "../../domain/crm";
 export function CommercialOpportunityBlock({
   items,
   emptyText,
-  emptyHint = "A Central nao encontrou pendencias neste bloco.",
+  emptyHint = "A Central não encontrou pendências neste bloco.",
   onOpen,
   showBudget = false,
 }: {
@@ -34,13 +34,13 @@ export function CommercialOpportunityBlock({
             <small>
               <span className="work-list-meta-text">
                 {item.situation} - {item.daysOpen} {item.daysOpen === 1 ? "dia" : "dias"}
-                {item.nextActionDueAt ? ` - proxima acao ${formatDateTime(item.nextActionDueAt)}` : ""}
+                {item.nextActionDueAt ? ` - próxima ação ${formatDateTime(item.nextActionDueAt)}` : ""}
               </span>
             </small>
           </div>
           <div className="work-list-due">
             <strong>{showBudget && item.budgetValue !== null ? formatMoney(item.budgetValue) : `${item.daysOpen}d`}</strong>
-            <span>{showBudget ? "valor orcado" : "no funil"}</span>
+            <span>{showBudget ? "valor orçado" : "no funil"}</span>
           </div>
           <Avatar name={item.customerName} size="sm" />
           <div className="quick-actions">

@@ -229,10 +229,10 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
         accessNotes: emptyToNull(addressForm.accessNotes),
       });
       setAddressForm(initialAddressForm);
-      showToast("Endereco criado.");
+      showToast("Endereço criado.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel criar o endereco.");
+      setError(err instanceof Error ? err.message : "Não foi possível criar o endereço.");
     }
   }
 
@@ -256,7 +256,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
       showToast("Equipamento vinculado.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel criar o equipamento.");
+      setError(err instanceof Error ? err.message : "Não foi possível criar o equipamento.");
     }
   }
 
@@ -279,7 +279,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
       showToast("Visita criada.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel criar a visita.");
+      setError(err instanceof Error ? err.message : "Não foi possível criar a visita.");
     }
   }
 
@@ -289,10 +289,10 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
     setError(null);
     try {
       await completeVisit(visit.id, { result: form.result.trim(), nextSteps: emptyToNull(form.nextSteps) });
-      showToast("Visita concluida.");
+      showToast("Visita concluída.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel concluir a visita.");
+      setError(err instanceof Error ? err.message : "Não foi possível concluir a visita.");
     }
   }
 
@@ -305,7 +305,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
       showToast("Visita cancelada.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel cancelar a visita.");
+      setError(err instanceof Error ? err.message : "Não foi possível cancelar a visita.");
     }
   }
 
@@ -318,9 +318,9 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
   const decisionState = getOpportunityDecisionState(opportunity, currentNextAction, latestQuote, openVisits);
   const opportunitySignals = [
     { label: "Etapa", value: opportunity.etapaNome },
-    { label: "Orcamento", value: latestQuote ? `${formatMoney(latestQuote.valor)} - ${formatQuoteStatus(latestQuote.status)}` : "Sem orcamento" },
+    { label: "Orçamento", value: latestQuote ? `${formatMoney(latestQuote.valor)} - ${formatQuoteStatus(latestQuote.status)}` : "Sem orçamento" },
     { label: "Visitas abertas", value: String(openVisits.length) },
-    { label: "Ultima interacao", value: latestActivity ? formatDateTime(latestActivity.occurredAt) : "Sem historico" },
+    { label: "Última interação", value: latestActivity ? formatDateTime(latestActivity.occurredAt) : "Sem histórico" },
   ];
 
   return (
@@ -350,7 +350,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
           <span className={`badge ${nextActionState.badgeClass}`}>{nextActionState.badge}</span>
         </div>
 
-        <section className={`opportunity-decision-panel ${decisionState.tone}`} aria-label="Proxima decisao da oportunidade">
+        <section className={`opportunity-decision-panel ${decisionState.tone}`} aria-label="Próxima decisão da oportunidade">
           <div>
             <span>{decisionState.label}</span>
             <strong>{decisionState.title}</strong>
@@ -425,7 +425,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
               signals={opportunity.auvoSignals}
               compact
               title="Sinais Auvo no contexto comercial"
-              description="Leitura operacional usada como apoio para prioridade, abordagem e proxima acao."
+              description="Leitura operacional usada como apoio para prioridade, abordagem e próxima ação."
             />
           </div>
         ) : null}
@@ -496,32 +496,32 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
         </form>
       ) : null}
 
-      <section id="estrutura-tecnica" className="opportunity-structure" aria-label="Estrutura tecnica da oportunidade">
+      <section id="estrutura-tecnica" className="opportunity-structure" aria-label="Estrutura técnica da oportunidade">
         <header>
           <div>
-            <h2>Visita tecnica e equipamentos</h2>
-            <p>Endereco, aparelhos e agenda vinculados ao contexto comercial.</p>
+            <h2>Visita técnica e equipamentos</h2>
+            <p>Endereço, aparelhos e agenda vinculados ao contexto comercial.</p>
           </div>
           <span className="badge badge-informative">{openVisits.length} visita(s) aberta(s)</span>
         </header>
 
         <div className="customer-structure-grid">
-          <section className="customer-structure-section" aria-label="Enderecos do cliente na oportunidade">
+          <section className="customer-structure-section" aria-label="Endereços do cliente na oportunidade">
             <header>
               <span className="customer-structure-icon"><MapPin aria-hidden="true" size={18} /></span>
               <div>
-                <h2>Enderecos do cliente</h2>
-                <p>{addresses.length} disponivel(is)</p>
+                <h2>Endereços do cliente</h2>
+                <p>{addresses.length} disponível(is)</p>
               </div>
             </header>
             <form className="structure-form" onSubmit={handleCreateAddress}>
-              <label>Nome<input value={addressForm.label} onChange={(event) => setAddressForm({ ...addressForm, label: event.target.value })} placeholder="ex: Local da instalacao" /></label>
+              <label>Nome<input value={addressForm.label} onChange={(event) => setAddressForm({ ...addressForm, label: event.target.value })} placeholder="ex: Local da instalação" /></label>
               <label>Tipo
                 <select value={addressForm.kind} onChange={(event) => setAddressForm({ ...addressForm, kind: event.target.value as Address["kind"] })}>
                   <option value="service">Atendimento</option>
-                  <option value="installation">Instalacao</option>
+                  <option value="installation">Instalação</option>
                   <option value="pickup">Retirada</option>
-                  <option value="billing">Cobranca</option>
+                  <option value="billing">Cobrança</option>
                   <option value="other">Outro</option>
                 </select>
               </label>
@@ -530,7 +530,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
               <label>Bairro<input value={addressForm.neighborhood} onChange={(event) => setAddressForm({ ...addressForm, neighborhood: event.target.value })} /></label>
               <label>Cidade<input value={addressForm.city} onChange={(event) => setAddressForm({ ...addressForm, city: event.target.value })} /></label>
               <label className="structure-form-wide">Acesso<input value={addressForm.accessNotes} onChange={(event) => setAddressForm({ ...addressForm, accessNotes: event.target.value })} /></label>
-              <button className="button secondary" type="submit"><Plus aria-hidden="true" size={16} /> Endereco</button>
+              <button className="button secondary" type="submit"><Plus aria-hidden="true" size={16} /> Endereço</button>
             </form>
             {addresses.length ? (
               <ul className="structure-list">
@@ -543,7 +543,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
                 ))}
               </ul>
             ) : (
-              <EmptyState title="Nenhum endereco" text="Cadastre o local de visita, retirada ou instalacao." />
+              <EmptyState title="Nenhum endereço" text="Cadastre o local de visita, retirada ou instalação." />
             )}
           </section>
 
@@ -569,11 +569,11 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
               <label>Marca<input value={equipmentForm.brand} onChange={(event) => setEquipmentForm({ ...equipmentForm, brand: event.target.value })} /></label>
               <label>Modelo<input value={equipmentForm.model} onChange={(event) => setEquipmentForm({ ...equipmentForm, model: event.target.value })} /></label>
               <label>BTUs<input inputMode="numeric" value={equipmentForm.btus} onChange={(event) => setEquipmentForm({ ...equipmentForm, btus: event.target.value })} /></label>
-              <label>Tensao<input value={equipmentForm.voltage} onChange={(event) => setEquipmentForm({ ...equipmentForm, voltage: event.target.value })} /></label>
+              <label>Tensão<input value={equipmentForm.voltage} onChange={(event) => setEquipmentForm({ ...equipmentForm, voltage: event.target.value })} /></label>
               <label>Ambiente<input value={equipmentForm.environment} onChange={(event) => setEquipmentForm({ ...equipmentForm, environment: event.target.value })} /></label>
-              <label>Endereco
+              <label>Endereço
                 <select value={equipmentForm.addressId} onChange={(event) => setEquipmentForm({ ...equipmentForm, addressId: event.target.value })}>
-                  <option value="">Sem endereco</option>
+                  <option value="">Sem endereço</option>
                   {addresses.map((address) => <option value={address.id} key={address.id}>{address.label}</option>)}
                 </select>
               </label>
@@ -605,12 +605,12 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
               </div>
             </header>
             <form className="structure-form structure-form-visits" onSubmit={handleCreateVisit}>
-              <label>Objetivo<input value={visitForm.objective} onChange={(event) => setVisitForm({ ...visitForm, objective: event.target.value })} placeholder="ex: vistoria para orcamento" /></label>
-              <label>Inicio<input type="datetime-local" value={visitForm.scheduledStartAt} onChange={(event) => setVisitForm({ ...visitForm, scheduledStartAt: event.target.value })} /></label>
+              <label>Objetivo<input value={visitForm.objective} onChange={(event) => setVisitForm({ ...visitForm, objective: event.target.value })} placeholder="ex: vistoria para orçamento" /></label>
+              <label>Início<input type="datetime-local" value={visitForm.scheduledStartAt} onChange={(event) => setVisitForm({ ...visitForm, scheduledStartAt: event.target.value })} /></label>
               <label>Fim<input type="datetime-local" value={visitForm.scheduledEndAt} onChange={(event) => setVisitForm({ ...visitForm, scheduledEndAt: event.target.value })} /></label>
-              <label>Endereco
+              <label>Endereço
                 <select value={visitForm.addressId} onChange={(event) => setVisitForm({ ...visitForm, addressId: event.target.value })}>
-                  <option value="">Sem endereco</option>
+                  <option value="">Sem endereço</option>
                   {addresses.map((address) => <option value={address.id} key={address.id}>{address.label}</option>)}
                 </select>
               </label>
@@ -631,13 +631,13 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
                       <div className="visit-list-main">
                         <strong>{visit.objective}</strong>
                         <span>{formatDateTime(visit.scheduledStartAt)} · {formatVisitStatus(visit.status)}</span>
-                        <small>{addresses.find((address) => address.id === visit.addressId)?.label ?? "Sem endereco"}</small>
+                        <small>{addresses.find((address) => address.id === visit.addressId)?.label ?? "Sem endereço"}</small>
                         {visit.result ? <p>{visit.result}</p> : null}
                       </div>
                       {!["completed", "cancelled", "no_show"].includes(visit.status) ? (
                         <div className="visit-result-controls">
                           <input value={resultForm.result} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, result: event.target.value } })} placeholder="Resultado da visita" />
-                          <input value={resultForm.nextSteps} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, nextSteps: event.target.value } })} placeholder="Proximos passos" />
+                          <input value={resultForm.nextSteps} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, nextSteps: event.target.value } })} placeholder="Próximos passos" />
                           <button className="button secondary" type="button" onClick={() => void handleCompleteVisit(visit)}><CheckCircle2 aria-hidden="true" size={16} /> Concluir</button>
                           <input value={resultForm.reason} onChange={(event) => setVisitResultForms({ ...visitResultForms, [visit.id]: { ...resultForm, reason: event.target.value } })} placeholder="Motivo do cancelamento" />
                           <button className="button ghost" type="button" onClick={() => void handleCancelVisit(visit)}><XCircle aria-hidden="true" size={16} /> Cancelar</button>
@@ -648,7 +648,7 @@ export function OportunidadePage({ currentUserId, canManageUsers }: { currentUse
                 })}
               </ul>
             ) : (
-              <EmptyState title="Nenhuma visita" text="Agende uma visita tecnica para tirar medidas, confirmar acesso ou validar instalacao." />
+              <EmptyState title="Nenhuma visita" text="Agende uma visita técnica para tirar medidas, confirmar acesso ou validar instalação." />
             )}
           </section>
         </div>
@@ -699,7 +699,7 @@ function emptyToNull(value: string): string | null {
 
 function formatAddressLine(address: Address): string {
   const street = [address.street, address.number].filter(Boolean).join(", ");
-  return [street, address.neighborhood, address.city].filter(Boolean).join(" · ") || "Endereco progressivo";
+  return [street, address.neighborhood, address.city].filter(Boolean).join(" · ") || "Endereço progressivo";
 }
 
 function formatEquipmentTitle(equipment: Equipment): string {
@@ -727,9 +727,9 @@ function getOpportunityDecisionState(
 
   if (isActive && (!title || !dueAt)) {
     return {
-      label: "Decisao agora",
+      label: "Decisão agora",
       title: "Definir follow-up",
-      detail: "A oportunidade esta ativa, mas sem compromisso claro para o cliente.",
+      detail: "A oportunidade está ativa, mas sem compromisso claro para o cliente.",
       actionLabel: "Registrar atividade",
       href: "#linha-do-tempo",
       tone: "is-danger",
@@ -738,8 +738,8 @@ function getOpportunityDecisionState(
 
   if (isActive && Number.isFinite(dueTime) && dueTime < Date.now()) {
     return {
-      label: "Decisao agora",
-      title: "Resolver acao vencida",
+      label: "Decisão agora",
+      title: "Resolver ação vencida",
       detail: `${title} estava previsto para ${formatDateTime(dueAt!)}.`,
       actionLabel: "Concluir ou reagendar",
       href: "#resumo-oportunidade",
@@ -750,8 +750,8 @@ function getOpportunityDecisionState(
   if (openVisits.length > 0) {
     const nextVisit = [...openVisits].sort((left, right) => left.scheduledStartAt.localeCompare(right.scheduledStartAt))[0];
     return {
-      label: "Proxima decisao",
-      title: "Acompanhar visita tecnica",
+      label: "Próxima decisão",
+      title: "Acompanhar visita técnica",
       detail: `${nextVisit.objective} - ${formatDateTime(nextVisit.scheduledStartAt)}.`,
       actionLabel: "Ver visitas",
       href: "#estrutura-tecnica",
@@ -761,10 +761,10 @@ function getOpportunityDecisionState(
 
   if (latestQuote && ["enviado", "revisado"].includes(latestQuote.status)) {
     return {
-      label: "Proxima decisao",
-      title: "Cobrar retorno do orcamento",
-      detail: `Versao ${latestQuote.versao} em ${formatQuoteStatus(latestQuote.status)} no valor de ${formatMoney(latestQuote.valor)}.`,
-      actionLabel: "Ver orcamentos",
+      label: "Próxima decisão",
+      title: "Cobrar retorno do orçamento",
+      detail: `Versão ${latestQuote.versao} em ${formatQuoteStatus(latestQuote.status)} no valor de ${formatMoney(latestQuote.valor)}.`,
+      actionLabel: "Ver orçamentos",
       href: "#orcamentos",
       tone: "is-today",
     };
@@ -772,19 +772,19 @@ function getOpportunityDecisionState(
 
   if (latestQuote?.status === "aprovado" || opportunity.status === "ganha") {
     return {
-      label: "Proxima decisao",
-      title: "Preparar execucao",
-      detail: "Orcamento aprovado. Confirme pagamento, agenda e previsao de execucao.",
-      actionLabel: "Ver orcamentos",
+      label: "Próxima decisão",
+      title: "Preparar execução",
+      detail: "Orçamento aprovado. Confirme pagamento, agenda e previsão de execução.",
+      actionLabel: "Ver orçamentos",
       href: "#orcamentos",
       tone: "is-ok",
     };
   }
 
   return {
-    label: "Proxima decisao",
-    title: "Registrar proximo avanço",
-    detail: "Atualize visita, orcamento ou atividade conforme a conversa com o cliente.",
+    label: "Próxima decisão",
+    title: "Registrar próximo avanço",
+    detail: "Atualize visita, orçamento ou atividade conforme a conversa com o cliente.",
     actionLabel: "Registrar atividade",
     href: "#linha-do-tempo",
     tone: "is-ok",
@@ -804,8 +804,8 @@ function getNextActionState(opportunity: Opportunity, currentNextAction: NextAct
   if (!title || !dueAt) {
     if (opportunity.status !== "ativa") {
       return {
-        label: "Proxima acao",
-        title: "Sem acao pendente",
+        label: "Próxima ação",
+        title: "Sem ação pendente",
         detail: `Oportunidade ${formatOpportunityStatus(opportunity.status).toLowerCase()}.`,
         badge: "fechada",
         badgeClass: "badge-neutral",
@@ -813,10 +813,10 @@ function getNextActionState(opportunity: Opportunity, currentNextAction: NextAct
       };
     }
     return {
-      label: "Proxima acao",
-      title: "Definir proxima acao",
-      detail: "Esta oportunidade esta ativa sem um compromisso comercial claro.",
-      badge: "sem acao",
+      label: "Próxima ação",
+      title: "Definir próxima ação",
+      detail: "Esta oportunidade está ativa sem um compromisso comercial claro.",
+      badge: "sem ação",
       badgeClass: "badge-alert-danger",
       tone: "is-danger",
     };
@@ -826,7 +826,7 @@ function getNextActionState(opportunity: Opportunity, currentNextAction: NextAct
   const dueTime = dueDate.getTime();
   if (!Number.isFinite(dueTime)) {
     return {
-      label: "Proxima acao",
+      label: "Próxima ação",
       title,
       detail: "Prazo cadastrado precisa ser revisado.",
       badge: "revisar",
@@ -841,12 +841,12 @@ function getNextActionState(opportunity: Opportunity, currentNextAction: NextAct
   const detail = formatDateTime(dueAt);
 
   if (dueTime < now.getTime()) {
-    return { label: "Acao vencida", title, detail, badge: "vencida", badgeClass: "badge-alert-danger", tone: "is-danger" };
+    return { label: "Ação vencida", title, detail, badge: "vencida", badgeClass: "badge-alert-danger", tone: "is-danger" };
   }
   if (dueTime < startOfTomorrow) {
-    return { label: "Acao para hoje", title, detail, badge: "hoje", badgeClass: "badge-informative", tone: "is-today" };
+    return { label: "Ação para hoje", title, detail, badge: "hoje", badgeClass: "badge-informative", tone: "is-today" };
   }
-  return { label: "Proxima acao", title, detail, badge: "agendada", badgeClass: "badge-positive", tone: "is-ok" };
+  return { label: "Próxima ação", title, detail, badge: "agendada", badgeClass: "badge-positive", tone: "is-ok" };
 }
 
 function formatQuoteStatus(status: QuoteStatus): string {

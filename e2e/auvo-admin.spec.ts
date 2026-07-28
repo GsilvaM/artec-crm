@@ -7,7 +7,7 @@ test("gestor sees the Auvo technical integration panel reconstructed from the de
   await page.waitForURL(/\/configuracoes\/integracoes\/auvo$/);
 
   await expect(page.getByRole("heading", { name: "Integração Auvo", level: 1 })).toBeVisible();
-  await expect(page.getByLabel("Integração Auvo")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Integração Auvo" })).toBeVisible();
   await expect(page.getByLabel("Status técnico Auvo")).toBeVisible();
   await expect(page.getByText("Fila recente")).toBeVisible();
   await expect(page.getByText("Endpoint do webhook")).toBeVisible();

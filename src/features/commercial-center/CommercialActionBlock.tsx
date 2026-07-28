@@ -23,7 +23,7 @@ const CATEGORY_ICON = {
 export function CommercialActionBlock({
   items,
   emptyText,
-  emptyHint = "Nada exige acao imediata neste bloco.",
+  emptyHint = "Nada exige ação imediata neste bloco.",
   onAction,
 }: {
   items: CommercialCenterActionItem[];
