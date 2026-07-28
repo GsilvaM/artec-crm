@@ -97,7 +97,7 @@ export function App() {
       <AuthShell>
         <p className="text-xs font-bold uppercase tracking-wide text-brand">Artec CRM</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-content-primary">Acesse o Artec CRM</h1>
-        <p className="auth-demo-copy mt-2 text-sm leading-relaxed text-content-secondary">Use suas credenciais para entrar. Qualquer e-mail e senha com 4+ caracteres funcionam nesta versao de demonstracao.</p>
+        <p className="auth-demo-copy mt-2 text-sm leading-relaxed text-content-secondary">Use suas credenciais corporativas para acessar o painel comercial.</p>
         <p className="mt-1 text-sm text-content-secondary">Organize clientes, oportunidades e follow-up comercial em um só lugar.</p>
         <LoginForm email={email} password={password} isSubmitting={isSubmitting} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={handleLogin} />
       </AuthShell>
