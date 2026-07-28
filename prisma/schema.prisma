@@ -361,6 +361,18 @@ model Notification {
   @@schema("crm")
 }
 
+model NotificationPreference {
+  userId             String   @id @map("user_id") @db.Uuid
+  urgentEnabled      Boolean  @default(true) @map("urgent_enabled")
+  attentionEnabled   Boolean  @default(true) @map("attention_enabled")
+  integrationEnabled Boolean  @default(true) @map("integration_enabled")
+  dailyDigestEnabled Boolean  @default(false) @map("daily_digest_enabled")
+  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("notification_preferences")
+  @@schema("crm")
+}
+
 model AuvoWebhookEvent {
   id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   provider             String    @default("auvo") @db.Text

@@ -66,10 +66,10 @@ test("creates a customer with commercial demand and sees the opportunity on the 
   await customerForm.getByLabel("Proxima acao", { exact: true }).fill("Ligar para o cliente");
   await customerForm.getByLabel("Data da proxima acao").fill("2026-08-01T10:00");
   await customerForm.getByRole("button", { name: /Salvar atendimento/i }).click();
-  await expect(page.locator("#clientes-section .customer-card").filter({ hasText: customerName })).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator("#clientes-section").getByText(customerName)).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(".customer-created-alert")).toContainText(`Oportunidade "${opportunityTitle}" criada`, { timeout: 15_000 });
 
-  await page.getByRole("link", { name: "Oportunidades" }).click();
+  await page.getByRole("link", { name: "Oportunidades", exact: true }).click();
   await page.waitForURL(/\/oportunidades$/);
   await expect(page.locator("#oportunidades-section").getByText(opportunityTitle)).toBeVisible({ timeout: 15_000 });
 

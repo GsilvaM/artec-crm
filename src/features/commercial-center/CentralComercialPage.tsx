@@ -5,6 +5,7 @@ import { Drawer } from "../../components/ui/Drawer";
 import { Tabs } from "../../components/ui/Tabs";
 import { NotificationList } from "../../components/ui/NotificationList";
 import { Card, CardContent } from "../../components/ui/card";
+import { QuickOpportunityModal } from "../../components/QuickOpportunityModal";
 import { formatDateTime, formatMoney } from "../../domain/format";
 import {
   loadCommercialCenter,
@@ -44,6 +45,7 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [isQuickOpportunityOpen, setIsQuickOpportunityOpen] = useState(false);
   const [queueTab, setQueueTab] = useState<"overdue" | "today">("overdue");
   const [hygieneTab, setHygieneTab] = useState<"without-action" | "stalled">("without-action");
   const navigate = useNavigate();
@@ -137,10 +139,10 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
             <RefreshCw aria-hidden="true" />
             Atualizar
           </button>
-          <Link className="button primary" to="/oportunidades">
+          <button className="button primary" type="button" onClick={() => setIsQuickOpportunityOpen(true)}>
             <Plus aria-hidden="true" />
             Nova oportunidade
-          </Link>
+          </button>
         </div>
       </section>
 
@@ -153,6 +155,14 @@ export function CentralComercialPage({ currentUserId }: { currentUserId: string 
           onChange={actionOperation.update}
           onSubmit={() => void actionOperation.submit()}
           onCancel={actionOperation.close}
+        />
+      ) : null}
+
+      {isQuickOpportunityOpen ? (
+        <QuickOpportunityModal
+          currentUserId={currentUserId}
+          onClose={() => setIsQuickOpportunityOpen(false)}
+          onCreated={() => refresh()}
         />
       ) : null}
 

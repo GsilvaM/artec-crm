@@ -11,6 +11,6 @@ test("rejects an incorrect password without crashing the app", async ({ page }) 
   await page.goto("/");
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill("senha-incorreta-e2e-nao-existe");
-  await page.getByRole("button", { name: /Entrar no CRM/i }).click();
+  await page.getByRole("button", { name: /^Entrar(?: no CRM)?$/i }).click();
   await expect(page.getByText("Erro ao entrar")).toBeVisible({ timeout: 15_000 });
 });

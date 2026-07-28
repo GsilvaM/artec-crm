@@ -343,6 +343,22 @@ export type NotificationListRecord = {
   nextCursor: string | null;
 };
 
+export type NotificationPreferenceRecord = {
+  userId: string;
+  urgentEnabled: boolean;
+  attentionEnabled: boolean;
+  integrationEnabled: boolean;
+  dailyDigestEnabled: boolean;
+  updatedAt: string;
+};
+
+export type UpdateNotificationPreferencesInput = {
+  urgentEnabled: boolean;
+  attentionEnabled: boolean;
+  integrationEnabled: boolean;
+  dailyDigestEnabled: boolean;
+};
+
 export type NotificationReconcileResult = {
   generated: number;
   updated: number;
@@ -500,11 +516,24 @@ export type AuvoInboxItemRecord = {
   updatedAt: string;
 };
 
+export type ResolveAuvoCustomerInput = {
+  clienteId?: string;
+  customer?: {
+    tipoPessoa?: "fisica" | "juridica";
+    nome: string;
+    telefone?: string | null;
+    email?: string | null;
+    empresa?: string | null;
+    cidade?: string | null;
+    observacoes?: string | null;
+  };
+};
+
 export type ResolveAuvoInboxItemInput =
-  | { action: "create_opportunity"; clienteId: string; titulo: string; tipoDemanda: string; origem?: string | null; situacao: string; proximaAcao: string; proximaAcaoEm: string; responsavelId: string }
+  | ({ action: "create_opportunity"; titulo: string; tipoDemanda: string; origem?: string | null; situacao: string; proximaAcao: string; proximaAcaoEm: string; responsavelId: string } & ResolveAuvoCustomerInput)
   | { action: "link_opportunity"; opportunityId: string }
-  | { action: "warranty" | "support" | "after_sales"; clienteId: string; description: string }
-  | { action: "customer_only"; clienteId: string }
+  | ({ action: "warranty" | "support" | "after_sales"; description: string } & ResolveAuvoCustomerInput)
+  | ({ action: "customer_only" } & ResolveAuvoCustomerInput)
   | { action: "not_commercial" | "duplicate"; reason?: string | null };
 
 export type GlobalSearchResult = {
@@ -793,6 +822,8 @@ export type CrmDataRepository = {
   ): Promise<NextActionRecord[]>;
   getCommercialCenter(actor: Actor, filters: CommercialCenterFilters): Promise<CommercialCenterRecord>;
   listNotifications(actor: Actor, filters: NotificationFilters): Promise<NotificationListRecord>;
+  getNotificationPreferences(actor: Actor): Promise<NotificationPreferenceRecord>;
+  updateNotificationPreferences(actor: Actor, input: UpdateNotificationPreferencesInput): Promise<NotificationPreferenceRecord>;
   getUnreadNotificationsCount(actor: Actor): Promise<{ count: number }>;
   markNotificationRead(actor: Actor, id: string): Promise<NotificationRecord | null>;
   markAllNotificationsRead(actor: Actor): Promise<{ updated: number }>;

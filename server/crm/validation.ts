@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ApiError } from "../errors.js";
+import type { ResolveAuvoInboxItemInput } from "./types.js";
 
 const emptyToNull = z
   .string()
@@ -315,6 +316,13 @@ export const notificationSnoozeSchema = z.object({
   snoozedUntil: z.string().trim().min(1, "Informe quando a notificacao deve reaparecer."),
 });
 
+export const notificationPreferencesSchema = z.object({
+  urgentEnabled: z.boolean(),
+  attentionEnabled: z.boolean(),
+  integrationEnabled: z.boolean(),
+  dailyDigestEnabled: z.boolean(),
+});
+
 export const auvoWebhookEventQuerySchema = z.object({
   status: auvoWebhookStatusSchema.optional(),
   eventType: optionalText,
@@ -363,10 +371,27 @@ export const quoteUpdateSchema = z
     message: "Informe ao menos um campo para atualizar.",
   });
 
-export const resolveAuvoInboxItemSchema = z.discriminatedUnion("action", [
+const auvoCustomerReferenceSchema = z
+  .object({
+    clienteId: uuid.optional(),
+    customer: customerCreateSchema.pick({
+      tipoPessoa: true,
+      nome: true,
+      telefone: true,
+      email: true,
+      empresa: true,
+      cidade: true,
+      observacoes: true,
+    }).optional(),
+  })
+  .refine((value) => Boolean(value.clienteId) !== Boolean(value.customer), {
+    message: "Informe um cliente existente ou os dados para cadastrar um novo cliente.",
+    path: ["clienteId"],
+  });
+
+export const resolveAuvoInboxItemSchema: z.ZodType<ResolveAuvoInboxItemInput> = z.union([
   z.object({
     action: z.literal("create_opportunity"),
-    clienteId: uuid,
     titulo: z.string().trim().min(2, "Informe o titulo da oportunidade."),
     tipoDemanda: tipoDemandaSchema,
     origem: optionalText,
@@ -374,30 +399,26 @@ export const resolveAuvoInboxItemSchema = z.discriminatedUnion("action", [
     proximaAcao: z.string().trim().min(2, "Informe a proxima acao."),
     proximaAcaoEm: z.string().trim().min(1, "Informe a data da proxima acao."),
     responsavelId: uuid,
-  }),
+  }).and(auvoCustomerReferenceSchema),
   z.object({
     action: z.literal("link_opportunity"),
     opportunityId: uuid,
   }),
   z.object({
     action: z.literal("warranty"),
-    clienteId: uuid,
     description: z.string().trim().min(2, "Informe a descricao."),
-  }),
+  }).and(auvoCustomerReferenceSchema),
   z.object({
     action: z.literal("support"),
-    clienteId: uuid,
     description: z.string().trim().min(2, "Informe a descricao."),
-  }),
+  }).and(auvoCustomerReferenceSchema),
   z.object({
     action: z.literal("after_sales"),
-    clienteId: uuid,
     description: z.string().trim().min(2, "Informe a descricao."),
-  }),
+  }).and(auvoCustomerReferenceSchema),
   z.object({
     action: z.literal("customer_only"),
-    clienteId: uuid,
-  }),
+  }).and(auvoCustomerReferenceSchema),
   z.object({
     action: z.literal("not_commercial"),
     reason: optionalText,

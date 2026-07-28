@@ -121,7 +121,7 @@ export function App() {
     >
       <Routes>
         <Route path="central-comercial" element={<CentralComercialPage currentUserId={authState.user.id} />} />
-        <Route path="pipeline" element={<PipelinePage />} />
+        <Route path="pipeline" element={<PipelinePage currentUserId={authState.user.id} />} />
         <Route path="proximas-acoes" element={<ProximasAcoesPage currentUserId={authState.user.id} />} />
         <Route path="oportunidades/:id" element={<OportunidadePage currentUserId={authState.user.id} canManageUsers={canManageUsers} />} />
         <Route path="oportunidades" element={<OportunidadesPage currentUserId={authState.user.id} />} />

@@ -1,37 +1,50 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarClock, CircleDollarSign, Plus, Search, UserRound } from "lucide-react";
+import { Clock, Filter, Plus, Search } from "lucide-react";
 import { Avatar } from "../../components/ui/Avatar";
-import { formatDateTime, formatMoney, formatOpportunityStatus, opportunityStatusBadgeClass } from "../../domain/format";
-import { createOpportunity, loadCustomersPage, loadOpportunitiesPage, SITUACAO_SUGGESTIONS, TIPO_DEMANDA_OPTIONS, type Customer, type Opportunity } from "../../domain/crm";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { DataTable, type DataTableColumn } from "../../components/ui/DataTable";
+import { Input } from "../../components/ui/input";
+import { useToast } from "../../components/ui/Toast";
+import { QuickOpportunityModal } from "../../components/QuickOpportunityModal";
+import { formatDateTime, formatMoney } from "../../domain/format";
+import {
+  loadOpportunitiesPage,
+  loadPipelineStages,
+  updateOpportunity,
+  type Opportunity,
+  type PipelineStage,
+} from "../../domain/crm";
 
-const EMPTY_FORM = { clienteId: "", titulo: "", tipoDemanda: "instalacao", situacao: "em andamento", proximaAcao: "", proximaAcaoEm: "" };
+type OpportunityTab = "all" | "mine" | "late" | "withoutNextAction";
 
 export function OportunidadesPage({ currentUserId }: { currentUserId: string }) {
   const [searchParams] = useSearchParams();
+  const { showToast } = useToast();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [stages, setStages] = useState<PipelineStage[]>([]);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<OpportunityTab>("all");
+  const [etapaFilter, setEtapaFilter] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const preselectedCustomerId = searchParams.get("clienteId") ?? "";
 
   async function refresh() {
     setIsLoading(true);
     setError(null);
     try {
-      const [page, customersPage] = await Promise.all([loadOpportunitiesPage(search), loadCustomersPage()]);
+      const [page, stageList] = await Promise.all([loadOpportunitiesPage(search), loadPipelineStages()]);
       setOpportunities(page.opportunities);
       setNextCursor(page.nextCursor);
-      setCustomers(customersPage.customers);
-      setForm((current) => ({ ...current, clienteId: current.clienteId || preselectedCustomerId || customersPage.customers[0]?.id || "" }));
-      if (preselectedCustomerId) setShowCreateForm(true);
+      setStages(stageList);
+      if (preselectedCustomerId) setShowCreateModal(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar as oportunidades.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar as oportunidades.");
     } finally {
       setIsLoading(false);
     }
@@ -50,192 +63,180 @@ export function OportunidadesPage({ currentUserId }: { currentUserId: string }) 
       setOpportunities((current) => [...current, ...page.opportunities]);
       setNextCursor(page.nextCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar mais oportunidades.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar mais oportunidades.");
     } finally {
       setIsLoadingMore(false);
     }
   }
 
-  async function handleCreate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
+  async function handleMoveStage(opportunityId: string, etapaId: string) {
+    const previous = opportunities.find((opportunity) => opportunity.id === opportunityId);
+    if (!previous || previous.etapaId === etapaId) return;
+    const stageName = stages.find((stage) => stage.id === etapaId)?.nome;
+    setOpportunities((current) => current.map((opportunity) => (opportunity.id === opportunityId ? { ...opportunity, etapaId, etapaNome: stageName ?? opportunity.etapaNome } : opportunity)));
     try {
-      await createOpportunity({ ...form, responsavelId: currentUserId });
-      setForm((current) => ({ ...EMPTY_FORM, clienteId: current.clienteId || customers[0]?.id || "" }));
-      setShowCreateForm(false);
-      await refresh();
+      await updateOpportunity(opportunityId, { etapaId });
+      showToast(stageName ? `Oportunidade movida para ${stageName}.` : "Etapa atualizada.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel salvar a oportunidade.");
+      setOpportunities((current) => current.map((opportunity) => (opportunity.id === opportunityId ? previous : opportunity)));
+      showToast(err instanceof Error ? err.message : "Não foi possível mover a oportunidade.", "error");
     }
   }
 
   const visibleOpportunities = opportunities.filter((opportunity) => !opportunity.archivedAt);
-  const activeCount = visibleOpportunities.filter((opportunity) => opportunity.status === "ativa").length;
-  const wonValue = visibleOpportunities.reduce((total, opportunity) => total + (opportunity.valorAprovado ?? 0), 0);
-  const withoutNextActionCount = visibleOpportunities.filter((opportunity) => !opportunity.proximaAcao || !opportunity.proximaAcaoEm).length;
-  const opportunityLanes = useMemo(() => groupOpportunitiesByStage(visibleOpportunities), [visibleOpportunities]);
+  const lateCount = visibleOpportunities.filter(isOpportunityOverdue).length;
+  const filteredOpportunities = useMemo(
+    () => visibleOpportunities.filter((opportunity) => {
+      if (etapaFilter && opportunity.etapaId !== etapaFilter) return false;
+      if (activeTab === "mine" && opportunity.responsavelId !== currentUserId) return false;
+      if (activeTab === "late" && !isOpportunityOverdue(opportunity)) return false;
+      if (activeTab === "withoutNextAction" && (opportunity.proximaAcao && opportunity.proximaAcaoEm)) return false;
+      return true;
+    }),
+    [activeTab, currentUserId, etapaFilter, visibleOpportunities],
+  );
+  const orderedStages = useMemo(() => [...stages].sort((a, b) => a.ordem - b.ordem), [stages]);
+
+  const columns: DataTableColumn<Opportunity>[] = [
+    {
+      key: "oportunidade",
+      header: "Oportunidade",
+      render: (opportunity) => (
+        <span className="design-table-stack">
+          <Link className="design-table-title" to={`/oportunidades/${opportunity.id}`}>{opportunity.titulo}</Link>
+          <small>{opportunity.clienteNome}</small>
+        </span>
+      ),
+    },
+    {
+      key: "etapa",
+      header: "Etapa",
+      render: (opportunity) => <Badge tone={stageBadgeTone(opportunity.etapaNome)}>{opportunity.etapaNome}</Badge>,
+    },
+    {
+      key: "valor",
+      header: "Valor",
+      render: (opportunity) => <strong className="design-table-money">{formatOpportunityValue(opportunity)}</strong>,
+    },
+    {
+      key: "proxima-acao",
+      header: "Próxima ação",
+      render: (opportunity) =>
+        opportunity.proximaAcao && opportunity.proximaAcaoEm ? (
+          <span className={isOpportunityOverdue(opportunity) ? "design-table-danger" : "design-table-muted"}>
+            <Clock size={13} aria-hidden="true" /> {opportunity.proximaAcao} · {formatDateTime(opportunity.proximaAcaoEm)}
+          </span>
+        ) : (
+          <span className="design-table-danger">Sem próxima ação</span>
+        ),
+    },
+    {
+      key: "dias",
+      header: "Dias parada",
+      render: (opportunity) => <span className="design-table-muted">{daysStopped(opportunity)}d</span>,
+    },
+    {
+      key: "responsavel",
+      header: "Responsável",
+      render: (opportunity) => (
+        <span className="design-table-owner">
+          <Avatar name={opportunity.clienteNome} size="sm" /> {opportunity.responsavelId === currentUserId ? "Ana Ribeiro" : `Usuário ${opportunity.responsavelId.slice(0, 4)}`}
+        </span>
+      ),
+    },
+    {
+      key: "acoes",
+      header: "",
+      className: "actions-cell",
+      render: (opportunity) => (
+        <select aria-label={`Mover ${opportunity.titulo} para outra etapa`} value={opportunity.etapaId} onChange={(event) => void handleMoveStage(opportunity.id, event.target.value)}>
+          {orderedStages.filter((stage) => !stage.isTerminal || stage.id === opportunity.etapaId).map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
+        </select>
+      ),
+    },
+  ];
 
   return (
     <>
-      <section id="oportunidades" className="page-heading opportunities-heading">
+      <section id="oportunidades" className="page-heading design-page-heading">
         <div>
-          <p className="eyebrow">Cadastro</p>
           <h1>Oportunidades</h1>
+          <p>{visibleOpportunities.length} no total · {lateCount} com atraso</p>
         </div>
-        <button className="button primary" type="button" onClick={() => setShowCreateForm((open) => !open)}>
-          <Plus aria-hidden="true" />{showCreateForm ? "Fechar criacao" : "Nova oportunidade"}
-        </button>
+        <Button variant="primary" type="button" onClick={() => setShowCreateModal(true)}>
+          <Plus aria-hidden="true" /> Nova oportunidade
+        </Button>
       </section>
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
 
-      {showCreateForm ? (
-        <form className="panel compact-form opportunity-create-form" onSubmit={handleCreate}>
-          <h2>Nova oportunidade</h2>
-          <label>Cliente
-            <select required value={form.clienteId} onChange={(event) => setForm({ ...form, clienteId: event.target.value })}>
-              <option value="">Selecione</option>
-              {customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.nome}</option>)}
-            </select>
-          </label>
-          <label>Titulo<input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
-          <label>Tipo de demanda
-            <select required value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
-              {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
-            </select>
-          </label>
-          <label>Situacao
-            <input required list="situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} />
-          </label>
-          <datalist id="situacao-suggestions">
-            {SITUACAO_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
-          </datalist>
-          <label>Proxima acao<input required value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
-          <label>Data da proxima acao<input required type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
-          <button className="button primary" type="submit" disabled={!customers.length}><Plus aria-hidden="true" />Salvar oportunidade</button>
-        </form>
+      {showCreateModal ? (
+        <QuickOpportunityModal
+          currentUserId={currentUserId}
+          preselectedCustomerId={preselectedCustomerId}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => refresh()}
+        />
       ) : null}
 
-      <section id="oportunidades-section" className="data-section opportunities-board-page">
-        <section className="opportunities-summary" aria-label="Resumo da carteira de oportunidades">
-          <article>
-            <span>Ativas</span>
-            <strong>{activeCount}</strong>
-          </article>
-          <article>
-            <span>Valor aprovado</span>
-            <strong>{formatMoney(wonValue)}</strong>
-          </article>
-          <article className={withoutNextActionCount ? "opportunities-summary-warning" : ""}>
-            <span>Sem proxima acao</span>
-            <strong>{withoutNextActionCount}</strong>
-          </article>
-        </section>
-
-        <div className="pipeline-section-header opportunities-section-header">
-          <h2>Board de oportunidades</h2>
-          <label className="search-box">
-            <Search aria-hidden="true" />
-            <input
-              type="search"
-              placeholder="Filtrar por titulo ou cliente"
-              aria-label="Filtrar oportunidades"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") void refresh();
-              }}
-            />
+      <section id="oportunidades-section" className="data-section design-list-page">
+        <div className="design-list-toolbar">
+          <div className="design-tabs" role="group" aria-label="Filtrar oportunidades">
+            <button type="button" className={activeTab === "all" ? "active" : ""} onClick={() => setActiveTab("all")}>Todas</button>
+            <button type="button" className={activeTab === "mine" ? "active" : ""} onClick={() => setActiveTab("mine")}>Minhas</button>
+            <button type="button" className={activeTab === "late" ? "active" : ""} onClick={() => setActiveTab("late")}>Com atraso</button>
+            <button type="button" className={activeTab === "withoutNextAction" ? "active" : ""} onClick={() => setActiveTab("withoutNextAction")}>Sem próxima ação</button>
+          </div>
+          <label className="design-search-field">
+            <Search size={17} aria-hidden="true" />
+            <Input type="search" placeholder="Buscar" aria-label="Filtrar oportunidades" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void refresh(); }} />
           </label>
+          <select className="design-filter-select" value={etapaFilter} onChange={(event) => setEtapaFilter(event.target.value)} aria-label="Filtrar por etapa">
+            <option value="">Todas as etapas</option>
+            {orderedStages.map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
+          </select>
+          <Button variant="secondary" type="button"><Filter size={16} aria-hidden="true" /> Mais filtros</Button>
         </div>
 
-        <div className="opportunities-board" aria-busy={isLoading}>
-          {isLoading ? (
-            <p className="quotes-empty">Carregando oportunidades...</p>
-          ) : opportunityLanes.length ? (
-            <>
-              <section className="opportunity-kanban" aria-label="Board operacional de oportunidades">
-                {opportunityLanes.map((lane) => (
-                  <article key={lane.stage} className="opportunity-lane">
-                    <header>
-                      <div>
-                        <h3>{lane.stage}</h3>
-                        <p>{lane.items.length} oportunidades nesta etapa</p>
-                      </div>
-                      <strong>{lane.items.length}</strong>
-                    </header>
-                    <div className="opportunity-lane-scroll">
-                      <ul className="opportunity-card-list">
-                        {lane.items.map((opportunity) => (
-                          <li key={opportunity.id} className={!opportunity.proximaAcao || !opportunity.proximaAcaoEm ? "opportunity-card opportunity-card-warning" : "opportunity-card"}>
-                            <div className="opportunity-card-main">
-                              <div>
-                                <Link className="opportunity-card-title" to={`/oportunidades/${opportunity.id}`}>{opportunity.titulo}</Link>
-                                <span>{opportunity.situacao}</span>
-                              </div>
-                              <span className={`badge ${opportunityStatusBadgeClass(opportunity.status)}`}>{formatOpportunityStatus(opportunity.status)}</span>
-                            </div>
-
-                            <div className="opportunity-card-client">
-                              <Avatar name={opportunity.clienteNome} size="sm" />
-                              <span><UserRound aria-hidden="true" size={14} /> {opportunity.clienteNome}</span>
-                            </div>
-
-                            <div className="opportunity-card-facts">
-                              <span><CalendarClock aria-hidden="true" size={14} /> {formatNextAction(opportunity)}</span>
-                              <span><CircleDollarSign aria-hidden="true" size={14} /> {formatOpportunityValue(opportunity)}</span>
-                            </div>
-
-                            <div className="opportunity-card-footer">
-                              <span>{formatDemandType(opportunity.tipoDemanda)}</span>
-                              <Link className="button secondary" to={`/oportunidades/${opportunity.id}`}>Abrir oportunidade</Link>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </article>
-                ))}
-              </section>
-              {nextCursor !== null ? (
-                <button className="button secondary" type="button" disabled={isLoadingMore} onClick={() => void handleLoadMore()}>
-                  {isLoadingMore ? "Carregando..." : "Carregar mais oportunidades"}
-                </button>
-              ) : null}
-            </>
-          ) : (
-            <div className="empty-state">
-              <h3>Nenhuma oportunidade cadastrada</h3>
-              <p>Crie uma oportunidade com responsavel, proxima acao e data.</p>
-            </div>
-          )}
-        </div>
+        <DataTable
+          columns={columns}
+          rows={filteredOpportunities}
+          rowKey={(opportunity) => opportunity.id}
+          isLoading={isLoading}
+          emptyTitle="Nenhuma oportunidade cadastrada"
+          emptyText="Crie uma oportunidade com responsável, próxima ação e data."
+          hasMore={nextCursor !== null}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={() => void handleLoadMore()}
+          loadMoreLabel="Carregar mais oportunidades"
+        />
       </section>
     </>
   );
 }
 
-function groupOpportunitiesByStage(opportunities: Opportunity[]): Array<{ stage: string; items: Opportunity[] }> {
-  const map = new Map<string, Opportunity[]>();
-  for (const opportunity of opportunities) {
-    const stage = opportunity.etapaNome || "Sem etapa";
-    map.set(stage, [...(map.get(stage) ?? []), opportunity]);
-  }
-  return Array.from(map.entries()).map(([stage, items]) => ({ stage, items }));
+function isOpportunityOverdue(opportunity: Opportunity): boolean {
+  if (opportunity.status !== "ativa" || !opportunity.proximaAcaoEm) return false;
+  return new Date(opportunity.proximaAcaoEm).getTime() < Date.now();
 }
 
-function formatNextAction(opportunity: Opportunity): string {
-  if (!opportunity.proximaAcao || !opportunity.proximaAcaoEm) return "Sem proxima acao";
-  return `${opportunity.proximaAcao} - ${formatDateTime(opportunity.proximaAcaoEm)}`;
+function daysStopped(opportunity: Opportunity): number {
+  const date = new Date(opportunity.proximaAcaoEm ?? opportunity.dataEntrada);
+  return Math.max(0, Math.round((Date.now() - date.getTime()) / 86_400_000));
 }
 
 function formatOpportunityValue(opportunity: Opportunity): string {
-  if (opportunity.valorAprovado) return `Aprovado ${formatMoney(opportunity.valorAprovado)}`;
-  if (opportunity.valorOrcamento) return `Orcado ${formatMoney(opportunity.valorOrcamento)}`;
-  if (opportunity.valorEstimado) return `Estimado ${formatMoney(opportunity.valorEstimado)}`;
-  return "Sem valor";
+  if (opportunity.valorAprovado) return formatMoney(opportunity.valorAprovado);
+  if (opportunity.valorOrcamento) return formatMoney(opportunity.valorOrcamento);
+  if (opportunity.valorEstimado) return formatMoney(opportunity.valorEstimado);
+  return "—";
 }
 
-function formatDemandType(value: string): string {
-  return TIPO_DEMANDA_OPTIONS.find((option) => option.value === value)?.label ?? value;
+function stageBadgeTone(stageName: string): "positive" | "warning" | "informative" | "purple" | "neutral" {
+  const normalized = stageName.toLowerCase();
+  if (normalized.includes("aprov")) return "positive";
+  if (normalized.includes("orçamento") || normalized.includes("orcamento") || normalized.includes("negocia")) return "warning";
+  if (normalized.includes("visita")) return "purple";
+  if (normalized.includes("atendimento")) return "informative";
+  return "informative";
 }

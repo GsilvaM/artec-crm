@@ -1,17 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Filter, LayoutGrid, List, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingPanels } from "../../components/ui/Skeleton";
 import { useToast } from "../../components/ui/Toast";
 import { PipelineBoard } from "../../components/PipelineBoard";
+import { QuickOpportunityModal } from "../../components/QuickOpportunityModal";
+import { formatMoney } from "../../domain/format";
 import { loadCrmSnapshot, updateOpportunity, type CrmSnapshot } from "../../domain/crm";
 
-export function PipelinePage() {
+export function PipelinePage({ currentUserId }: { currentUserId: string }) {
   const [snapshot, setSnapshot] = useState<CrmSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mobileStageId, setMobileStageId] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [isQuickOpportunityOpen, setIsQuickOpportunityOpen] = useState(false);
+  const [showOnlyStalled, setShowOnlyStalled] = useState(false);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -71,22 +77,38 @@ export function PipelinePage() {
     [snapshot],
   );
   const orderedStages = useMemo(() => [...(snapshot?.stages ?? [])].sort((a, b) => a.ordem - b.ordem), [snapshot]);
+  const activeOpportunities = (snapshot?.opportunities ?? []).filter((opportunity) => opportunity.status === "ativa" && !opportunity.archivedAt);
+  const boardOpportunities = (snapshot?.opportunities ?? []).filter((opportunity) => !showOnlyStalled || stalledIds.has(opportunity.id));
+  const pipelineValue = activeOpportunities.reduce((total, opportunity) => total + (opportunity.valorAprovado ?? opportunity.valorOrcamento ?? opportunity.valorEstimado ?? 0), 0);
 
   return (
     <>
-      <section className="page-heading">
+      <section className="page-heading design-page-heading">
         <div>
-          <p className="eyebrow">Funil comercial</p>
-          <h1>Oportunidades por etapa</h1>
+          <h1>Funil Comercial</h1>
+          <p>{activeOpportunities.length} oportunidades ativas · {formatMoney(pipelineValue)} em pipeline</p>
         </div>
-        <button className="button secondary" type="button" onClick={() => void refresh()} disabled={isLoading}>
-          <RefreshCw aria-hidden="true" />
-          Atualizar
-        </button>
+        <div className="pipeline-heading-actions">
+          <div className="design-segmented" aria-label="Modo de visualização do funil">
+            <button type="button" className="active"><LayoutGrid size={16} aria-hidden="true" /> Kanban</button>
+            <button type="button" onClick={() => navigate("/oportunidades")}><List size={16} aria-hidden="true" /> Lista</button>
+          </div>
+          <Button variant="secondary" type="button" onClick={() => setShowFilters((open) => !open)}><Filter size={16} aria-hidden="true" /> Filtros</Button>
+          <Button variant="primary" type="button" onClick={() => setIsQuickOpportunityOpen(true)}><Plus size={16} aria-hidden="true" /> Nova oportunidade</Button>
+        </div>
       </section>
 
       <section className="data-section pipeline-page" aria-label="Board operacional do funil">
         {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
+
+        {showFilters ? (
+          <div className="pipeline-filter-row">
+            <label>
+              <input type="checkbox" checked={showOnlyStalled} onChange={(event) => setShowOnlyStalled(event.target.checked)} />
+              Somente oportunidades paradas
+            </label>
+          </div>
+        ) : null}
 
         {orderedStages.length ? (
           <div className="pipeline-mobile-tabs segmented-control" aria-label="Selecionar etapa no mobile">
@@ -108,16 +130,26 @@ export function PipelinePage() {
         ) : orderedStages.length ? (
           <PipelineBoard
             stages={orderedStages}
-            opportunities={snapshot.opportunities}
+            opportunities={boardOpportunities}
             stalledOpportunityIds={stalledIds}
             mobileActiveStageId={mobileStageId}
             onMoveStage={handleMoveStage}
+            currentUserId={currentUserId}
+            onAssignToMe={(id) => updateOpportunity(id, { responsavelId: currentUserId }).then(refresh)}
             onOpenOpportunity={(id) => navigate(`/oportunidades/${id}`)}
           />
         ) : (
           <EmptyState title="Nenhuma etapa configurada" text="Configure as etapas do funil para visualizar o quadro." />
         )}
       </section>
+
+      {isQuickOpportunityOpen ? (
+        <QuickOpportunityModal
+          currentUserId={currentUserId}
+          onClose={() => setIsQuickOpportunityOpen(false)}
+          onCreated={() => refresh()}
+        />
+      ) : null}
     </>
   );
 }

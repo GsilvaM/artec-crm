@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { useEscapeKey, useOverlayScrollLockAndFocusRestore } from "./useOverlayBehavior";
+import { PencilLine } from "lucide-react";
+import { Modal } from "./Modal";
 
 export function PromptDialog({ title, label, defaultValue = "", confirmLabel = "Salvar", cancelLabel = "Cancelar", onConfirm, onCancel }: {
   title: string;
@@ -13,11 +14,7 @@ export function PromptDialog({ title, label, defaultValue = "", confirmLabel = "
   const [value, setValue] = useState(defaultValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useOverlayScrollLockAndFocusRestore(true);
-  useEscapeKey(true, onCancel);
-
   useEffect(() => {
-    inputRef.current?.focus();
     inputRef.current?.select();
   }, []);
 
@@ -28,25 +25,24 @@ export function PromptDialog({ title, label, defaultValue = "", confirmLabel = "
   }
 
   return (
-    <div className="confirm-dialog-backdrop" role="presentation" onClick={onCancel}>
-      <form
-        className="confirm-dialog panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="prompt-dialog-title"
-        onClick={(event) => event.stopPropagation()}
-        onSubmit={handleSubmit}
-      >
-        <h3 id="prompt-dialog-title">{title}</h3>
+    <Modal
+      title={title}
+      icon={<PencilLine size={20} />}
+      initialFocusRef={inputRef}
+      onClose={onCancel}
+      footer={(
+        <>
+          <button className="button primary" type="submit" form="prompt-dialog-form" disabled={!value.trim()}>{confirmLabel}</button>
+          <button className="button secondary" type="button" onClick={onCancel}>{cancelLabel}</button>
+        </>
+      )}
+    >
+      <form id="prompt-dialog-form" className="modal-form" onSubmit={handleSubmit}>
         <label>
           {label}
           <input ref={inputRef} value={value} onChange={(event) => setValue(event.target.value)} />
         </label>
-        <div className="form-actions">
-          <button className="button primary" type="submit">{confirmLabel}</button>
-          <button className="button secondary" type="button" onClick={onCancel}>{cancelLabel}</button>
-        </div>
       </form>
-    </div>
+    </Modal>
   );
 }

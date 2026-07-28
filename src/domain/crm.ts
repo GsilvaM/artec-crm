@@ -272,11 +272,24 @@ export type AuvoInboxItem = {
 };
 
 export type ResolveAuvoInboxItemPayload =
-  | { action: "create_opportunity"; clienteId: string; titulo: string; tipoDemanda: string; origem?: string; situacao: string; proximaAcao: string; proximaAcaoEm: string; responsavelId: string }
+  | ({ action: "create_opportunity"; titulo: string; tipoDemanda: string; origem?: string; situacao: string; proximaAcao: string; proximaAcaoEm: string; responsavelId: string } & ResolveAuvoCustomerPayload)
   | { action: "link_opportunity"; opportunityId: string }
-  | { action: "warranty" | "support" | "after_sales"; clienteId: string; description: string }
-  | { action: "customer_only"; clienteId: string }
+  | ({ action: "warranty" | "support" | "after_sales"; description: string } & ResolveAuvoCustomerPayload)
+  | ({ action: "customer_only" } & ResolveAuvoCustomerPayload)
   | { action: "not_commercial" | "duplicate"; reason?: string };
+
+export type ResolveAuvoCustomerPayload = {
+  clienteId?: string;
+  customer?: {
+    tipoPessoa?: "fisica" | "juridica";
+    nome: string;
+    telefone?: string | null;
+    email?: string | null;
+    empresa?: string | null;
+    cidade?: string | null;
+    observacoes?: string | null;
+  };
+};
 
 export type GlobalSearchResult = {
   customers: Customer[];
@@ -435,6 +448,15 @@ export type NotificationFilters = {
   to?: string;
   limit?: string;
   cursor?: string;
+};
+
+export type NotificationPreferences = {
+  userId: string;
+  urgentEnabled: boolean;
+  attentionEnabled: boolean;
+  integrationEnabled: boolean;
+  dailyDigestEnabled: boolean;
+  updatedAt: string;
 };
 
 export type AuvoWebhookStatus = "received" | "processing" | "processed" | "ignored" | "failed";
@@ -765,6 +787,14 @@ export async function snoozeNotification(id: string, snoozedUntil: string): Prom
   return (await apiSend<{ notification: Notification }>(`/api/notifications/${id}/snooze`, "POST", { snoozedUntil })).notification;
 }
 
+export async function loadNotificationPreferences(): Promise<NotificationPreferences> {
+  return (await apiGet<{ preferences: NotificationPreferences }>("/api/notifications/preferences")).preferences;
+}
+
+export async function updateNotificationPreferences(payload: Omit<NotificationPreferences, "userId" | "updatedAt">): Promise<NotificationPreferences> {
+  return (await apiSend<{ preferences: NotificationPreferences }>("/api/notifications/preferences", "PUT", payload)).preferences;
+}
+
 export async function loadAuvoIntegrationStatus(): Promise<AuvoIntegrationStatus> {
   return apiGet<AuvoIntegrationStatus>("/api/integrations/auvo/status");
 }
@@ -837,6 +867,10 @@ export async function loadCommercialReport(filters: CommercialReportFilters = {}
   return (await apiGet<{ report: CommercialReport }>(`/api/reports/commercial${toQueryString(filters)}`)).report;
 }
 
+export async function exportCommercialReport(filters: CommercialReportFilters = {}): Promise<Blob> {
+  return apiDownload(`/api/reports/commercial/export${toQueryString(filters)}`);
+}
+
 export async function loadOpportunityQuotes(opportunityId: string): Promise<Quote[]> {
   return (await apiGet<{ quotes: Quote[] }>(`/api/opportunities/${opportunityId}/quotes`)).quotes;
 }
@@ -853,7 +887,7 @@ async function apiGet<T>(path: string): Promise<T> {
   return apiSend<T>(path, "GET");
 }
 
-async function apiSend<T>(path: string, method: "GET" | "POST" | "PATCH", body?: unknown): Promise<T> {
+async function apiSend<T>(path: string, method: "GET" | "POST" | "PUT" | "PATCH", body?: unknown): Promise<T> {
   const token = await readAccessToken();
   const response = await fetch(`${import.meta.env.VITE_CRM_API_URL ?? ""}${path}`, {
     method,
@@ -871,6 +905,28 @@ async function apiSend<T>(path: string, method: "GET" | "POST" | "PATCH", body?:
   }
 
   return payload as T;
+}
+
+async function apiDownload(path: string): Promise<Blob> {
+  const token = await readAccessToken();
+  const response = await fetch(`${import.meta.env.VITE_CRM_API_URL ?? ""}${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    let message = "Erro na API do CRM.";
+    try {
+      const payload = (await response.json()) as { error?: { message?: string } };
+      message = payload.error?.message ?? message;
+    } catch {
+      message = response.statusText || message;
+    }
+    throw new Error(message);
+  }
+
+  return response.blob();
 }
 
 async function readAccessToken(): Promise<string> {

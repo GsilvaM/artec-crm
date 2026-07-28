@@ -40,6 +40,7 @@ import type {
   MembershipCandidateRecord,
   NotificationFilters,
   NotificationListRecord,
+  NotificationPreferenceRecord,
   NotificationRecord,
   NotificationReconcileResult,
   NextActionRecord,
@@ -926,6 +927,19 @@ describe("CRM activities and next actions API", () => {
     expect(invalidFilter.statusCode).toBe(400);
   });
 
+  it("exports commercial report as csv through backend", async () => {
+    const repository = new FakeCrmRepository();
+    await repository.createOpportunity({ id: actorId, role: "gestor" }, makeCreateOpportunityInput());
+    const app = createTestServer({ crmRepository: repository });
+    const response = await app.inject({ method: "GET", url: "/api/reports/commercial/export", headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/csv");
+    expect(response.body).toContain("Relatorio comercial");
+    expect(response.body).toContain("Oportunidades criadas");
+  });
+
   it("keeps seller scope in commercial center", async () => {
     const repository = new FakeCrmRepository();
     await repository.createNextAction({ id: actorId, role: "gestor" }, { customerId, responsibleUserId: actorId, title: "Acao propria", dueAt: "2026-07-19T13:00:00.000Z" });
@@ -1017,6 +1031,26 @@ describe("CRM activities and next actions API", () => {
     expect(read.json().notification.status).toBe("read");
     expect(snooze.json().notification.snoozedUntil).toBe("2026-07-21T10:00:00.000Z");
     expect(archive.json().notification.status).toBe("archived");
+  });
+
+  it("persists notification preferences per authenticated user", async () => {
+    const repository = new FakeCrmRepository();
+    const app = createTestServer({ crmRepository: repository });
+    const defaults = await app.inject({ method: "GET", url: "/api/notifications/preferences", headers: { authorization: "Bearer valid" } });
+    const saved = await app.inject({
+      method: "PUT",
+      url: "/api/notifications/preferences",
+      headers: { authorization: "Bearer valid" },
+      payload: { urgentEnabled: true, attentionEnabled: false, integrationEnabled: true, dailyDigestEnabled: true },
+    });
+    const reloaded = await app.inject({ method: "GET", url: "/api/notifications/preferences", headers: { authorization: "Bearer valid" } });
+    await app.close();
+
+    expect(defaults.statusCode).toBe(200);
+    expect(defaults.json().preferences.urgentEnabled).toBe(true);
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().preferences.attentionEnabled).toBe(false);
+    expect(reloaded.json().preferences.dailyDigestEnabled).toBe(true);
   });
 
   it("does not allow accessing another user's notification", async () => {
@@ -1129,6 +1163,28 @@ describe("CRM activities and next actions API", () => {
         createdAt: now2,
         updatedAt: now2,
       },
+      {
+        id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        externalServiceId: "session-3",
+        status: "novo",
+        suggestedCustomerId: null,
+        title: "Atendimento - Cliente Novo Auvo",
+        contactName: "Cliente Novo Auvo",
+        phoneNormalized: "5527999991111",
+        auvoContactId: "contact-new",
+        email: "novo-auvo@example.com",
+        channelType: "whatsapp",
+        auvoSignals: defaultAuvoSignals({ channelType: "whatsapp" }),
+        resolution: null,
+        resolvedOpportunityId: null,
+        resolvedCustomerId: null,
+        resolvedBy: null,
+        resolvedAt: null,
+        discardReason: null,
+        lastEventId: null,
+        createdAt: now2,
+        updatedAt: now2,
+      },
     );
 
     const sellerApp = createTestServer({ membership: { userId: actorId, role: "vendedor", isActive: true }, crmRepository: repository });
@@ -1164,16 +1220,34 @@ describe("CRM activities and next actions API", () => {
       headers: { authorization: "Bearer valid" },
       payload: { action: "duplicate", reason: "Mesmo contato ja atendido em outro item" },
     });
+    const createdWithCustomer = await app.inject({
+      method: "POST",
+      url: "/api/auvo-inbox/cccccccc-cccc-4ccc-8ccc-cccccccccccc/resolve",
+      headers: { authorization: "Bearer valid" },
+      payload: {
+        action: "create_opportunity",
+        customer: { nome: "Cliente Novo Auvo", telefone: "5527999991111", email: "novo-auvo@example.com" },
+        titulo: "Instalacao para cliente novo via Auvo",
+        tipoDemanda: "instalacao",
+        situacao: "em andamento",
+        proximaAcao: "Confirmar dados do cliente",
+        proximaAcaoEm: "2026-08-01T10:00:00.000Z",
+        responsavelId: actorId,
+      },
+    });
     await app.close();
 
     expect(denied.statusCode).toBe(403);
-    expect(listed.json().items).toHaveLength(2);
+    expect(listed.json().items).toHaveLength(3);
     expect(resolved.statusCode).toBe(200);
     expect(resolved.json().item).toMatchObject({ status: "processado", resolution: "opportunity_created" });
     expect(resolved.json().item.resolvedOpportunityId).toBeTruthy();
     expect(alreadyResolved.statusCode).toBe(409);
     expect(discarded.statusCode).toBe(200);
     expect(discarded.json().item).toMatchObject({ status: "descartado", resolution: "duplicate", discardReason: "Mesmo contato ja atendido em outro item" });
+    expect(createdWithCustomer.statusCode).toBe(200);
+    expect(createdWithCustomer.json().item).toMatchObject({ status: "processado", resolution: "opportunity_created" });
+    expect(createdWithCustomer.json().item.resolvedCustomerId).not.toBe(customerId);
   });
 
   it("automatically creates an Auvo inbox item from a SESSION_NEW webhook and suggests a customer match by phone", async () => {
@@ -1435,6 +1509,7 @@ class FakeCrmRepository implements CrmDataRepository {
   private visits: VisitRecord[] = [];
   private nextActions: NextActionRecord[] = [];
   notifications: NotificationRecord[] = [];
+  notificationPreferences = new Map<string, NotificationPreferenceRecord>();
   auvoEvents: AuvoWebhookEventRecord[] = [];
   private stages: PipelineStageRecord[] = [
     { id: stageId, nome: "Novo lead", ordem: 1, isTerminal: false },
@@ -2015,16 +2090,18 @@ class FakeCrmRepository implements CrmDataRepository {
       case "customer_only":
         item.status = "processado";
         item.resolution = "customer_only";
-        item.resolvedCustomerId = input.clienteId;
+        item.resolvedCustomerId = this.resolveAuvoCustomerInput(input);
         break;
       case "warranty":
       case "support":
-      case "after_sales":
-        await this.createActivity(actor, { customerId: input.clienteId, type: input.action, description: input.description, source: "system" });
+      case "after_sales": {
+        const resolvedCustomerId = this.resolveAuvoCustomerInput(input);
+        await this.createActivity(actor, { customerId: resolvedCustomerId, type: input.action, description: input.description, source: "system" });
         item.status = "processado";
         item.resolution = `${input.action}_registered`;
-        item.resolvedCustomerId = input.clienteId;
+        item.resolvedCustomerId = resolvedCustomerId;
         break;
+      }
       case "link_opportunity": {
         const opportunity = await this.getOpportunity(actor, input.opportunityId);
         if (!opportunity) throw new ApiError(422, "bad_request", "Oportunidade informada nao existe.");
@@ -2035,8 +2112,9 @@ class FakeCrmRepository implements CrmDataRepository {
         break;
       }
       case "create_opportunity": {
+        const resolvedCustomerId = this.resolveAuvoCustomerInput(input);
         const opportunity = await this.createOpportunity(actor, {
-          clienteId: input.clienteId,
+          clienteId: resolvedCustomerId,
           titulo: input.titulo,
           tipoDemanda: input.tipoDemanda,
           origem: input.origem ?? "Auvo",
@@ -2048,13 +2126,33 @@ class FakeCrmRepository implements CrmDataRepository {
         item.status = "processado";
         item.resolution = "opportunity_created";
         item.resolvedOpportunityId = opportunity.id;
-        item.resolvedCustomerId = input.clienteId;
+        item.resolvedCustomerId = resolvedCustomerId;
         break;
       }
     }
     item.resolvedBy = actor.id;
     item.resolvedAt = now;
     return item;
+  }
+
+  private resolveAuvoCustomerInput(input: ResolveAuvoInboxItemInput): string {
+    if ("clienteId" in input && input.clienteId) return input.clienteId;
+    if (!("customer" in input) || !input.customer) throw new ApiError(422, "bad_request", "Informe o cliente para concluir a triagem.");
+    const customerInput = input.customer;
+    const existing = this.customers.find((customer) =>
+      Boolean(customerInput.email && customer.email === customerInput.email) ||
+      Boolean(customerInput.telefone && customer.telefone === customerInput.telefone),
+    );
+    if (existing) return existing.id;
+    const customer = makeCustomer({
+      id: randomUUID(),
+      nome: customerInput.nome,
+      telefone: customerInput.telefone ?? null,
+      email: customerInput.email ?? null,
+      cidade: customerInput.cidade ?? null,
+    });
+    this.customers.push(customer);
+    return customer.id;
   }
 
   async listNotifications(actor: Actor, filters: NotificationFilters): Promise<NotificationListRecord> {
@@ -2068,6 +2166,20 @@ class FakeCrmRepository implements CrmDataRepository {
     });
     const limit = filters.limit ?? 20;
     return { notifications: filtered.slice(0, limit), nextCursor: filtered.length > limit ? filtered[limit - 1]?.id ?? null : null };
+  }
+
+  async getNotificationPreferences(actor: Actor): Promise<NotificationPreferenceRecord> {
+    const existing = this.notificationPreferences.get(actor.id);
+    if (existing) return existing;
+    const preferences = makeNotificationPreferences(actor.id);
+    this.notificationPreferences.set(actor.id, preferences);
+    return preferences;
+  }
+
+  async updateNotificationPreferences(actor: Actor, input: Omit<NotificationPreferenceRecord, "userId" | "updatedAt">): Promise<NotificationPreferenceRecord> {
+    const preferences = { userId: actor.id, ...input, updatedAt: now };
+    this.notificationPreferences.set(actor.id, preferences);
+    return preferences;
   }
 
   async getUnreadNotificationsCount(actor: Actor): Promise<{ count: number }> {
@@ -2841,6 +2953,17 @@ function makeNotification(overrides: Partial<NotificationRecord>): NotificationR
     metadata: overrides.metadata ?? {},
     createdAt: overrides.createdAt ?? now,
     updatedAt: overrides.updatedAt ?? now,
+  };
+}
+
+function makeNotificationPreferences(userId: string): NotificationPreferenceRecord {
+  return {
+    userId,
+    urgentEnabled: true,
+    attentionEnabled: true,
+    integrationEnabled: true,
+    dailyDigestEnabled: false,
+    updatedAt: now,
   };
 }
 

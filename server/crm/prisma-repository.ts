@@ -39,6 +39,7 @@ import type {
   MembershipCandidateRecord,
   NotificationFilters,
   NotificationListRecord,
+  NotificationPreferenceRecord,
   NotificationRecord,
   NotificationReconcileResult,
   NextActionPriority,
@@ -60,6 +61,7 @@ import type {
   UpdateCustomerInput,
   UpdateEquipmentInput,
   UpdateNextActionInput,
+  UpdateNotificationPreferencesInput,
   UpdateOpportunityInput,
   UpdatePipelineStageInput,
   UpdateVisitInput,
@@ -89,8 +91,10 @@ function clampAuvoBackfillLimit(limit: number | undefined): number {
 
 type PrismaExecutor = Pick<
   CrmPrismaClient,
-  "activity" | "customer" | "lossReason" | "nextAction" | "notification" | "opportunity" | "pipelineStage" | "userMembership"
+  "activity" | "customer" | "lossReason" | "nextAction" | "notification" | "notificationPreference" | "opportunity" | "pipelineStage" | "userMembership"
 >;
+
+type AuvoResolutionExecutor = Pick<CrmPrismaClient, "activity" | "auvoInboxItem" | "customer" | "nextAction" | "opportunity">;
 
 type CustomerWithCount = Awaited<ReturnType<CrmPrismaClient["customer"]["findFirst"]>> & {
   _count?: { opportunities: number };
@@ -123,6 +127,7 @@ type NextActionWithRelations = NonNullable<Awaited<ReturnType<CrmPrismaClient["n
 };
 
 type NotificationEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["notification"]["findFirst"]>>>;
+type NotificationPreferenceEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["notificationPreference"]["findFirst"]>>>;
 type AuvoWebhookEventEntity = NonNullable<Awaited<ReturnType<CrmPrismaClient["auvoWebhookEvent"]["findFirst"]>>>;
 
 type NotificationPayload = {
@@ -1409,6 +1414,24 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     };
   }
 
+  async getNotificationPreferences(actor: Actor): Promise<NotificationPreferenceRecord> {
+    const preferences = await this.prisma.notificationPreference.upsert({
+      where: { userId: actor.id },
+      create: { userId: actor.id },
+      update: {},
+    });
+    return mapNotificationPreference(preferences);
+  }
+
+  async updateNotificationPreferences(actor: Actor, input: UpdateNotificationPreferencesInput): Promise<NotificationPreferenceRecord> {
+    const preferences = await this.prisma.notificationPreference.upsert({
+      where: { userId: actor.id },
+      create: { userId: actor.id, ...input, updatedAt: new Date() },
+      update: { ...input, updatedAt: new Date() },
+    });
+    return mapNotificationPreference(preferences);
+  }
+
   async getUnreadNotificationsCount(actor: Actor): Promise<{ count: number }> {
     const now = new Date();
     const count = await this.prisma.notification.count({
@@ -1797,29 +1820,36 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     switch (input.action) {
       case "not_commercial":
       case "duplicate": {
-        const item = await this.prisma.auvoInboxItem.update({
-          where: { id },
-          data: {
-            status: "descartado",
-            resolution: input.action,
-            discardReason: input.reason ?? null,
-            resolvedBy: actor.id,
-            resolvedAt: new Date(),
-          },
+        const item = await this.prisma.$transaction(async (tx) => {
+          await this.claimOpenAuvoInboxItem(tx, current);
+          return tx.auvoInboxItem.update({
+            where: { id },
+            data: {
+              status: "descartado",
+              resolution: input.action,
+              discardReason: input.reason ?? null,
+              resolvedBy: actor.id,
+              resolvedAt: new Date(),
+            },
+          });
         });
         return mapAuvoInboxItem(item);
       }
 
       case "customer_only": {
-        const item = await this.prisma.auvoInboxItem.update({
-          where: { id },
-          data: {
-            status: "processado",
-            resolution: "customer_only",
-            resolvedCustomerId: input.clienteId,
-            resolvedBy: actor.id,
-            resolvedAt: new Date(),
-          },
+        const item = await this.prisma.$transaction(async (tx) => {
+          await this.claimOpenAuvoInboxItem(tx, current);
+          const customerId = await this.resolveAuvoCustomer(tx, actor, current, input);
+          return tx.auvoInboxItem.update({
+            where: { id },
+            data: {
+              status: "processado",
+              resolution: "customer_only",
+              resolvedCustomerId: customerId,
+              resolvedBy: actor.id,
+              resolvedAt: new Date(),
+            },
+          });
         });
         return mapAuvoInboxItem(item);
       }
@@ -1827,22 +1857,33 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       case "warranty":
       case "support":
       case "after_sales": {
-        await this.createActivity(actor, {
-          customerId: input.clienteId,
-          type: input.action,
-          description: input.description,
-          source: "system",
-          metadata: { auvoInboxItemId: id, auvoExternalServiceId: current.externalServiceId },
-        });
-        const item = await this.prisma.auvoInboxItem.update({
-          where: { id },
-          data: {
-            status: "processado",
-            resolution: `${input.action}_registered`,
-            resolvedCustomerId: input.clienteId,
-            resolvedBy: actor.id,
-            resolvedAt: new Date(),
-          },
+        const item = await this.prisma.$transaction(async (tx) => {
+          await this.claimOpenAuvoInboxItem(tx, current);
+          const customerId = await this.resolveAuvoCustomer(tx, actor, current, input);
+          await tx.activity.create({
+            data: {
+              clienteId: customerId,
+              oportunidadeId: null,
+              tipo: input.action,
+              title: null,
+              corpo: input.description,
+              occurredAt: new Date(),
+              createdBy: actor.id,
+              updatedBy: actor.id,
+              source: "system",
+              metadata: toPrismaJson({ auvoInboxItemId: id, auvoExternalServiceId: current.externalServiceId }),
+            },
+          });
+          return tx.auvoInboxItem.update({
+            where: { id },
+            data: {
+              status: "processado",
+              resolution: `${input.action}_registered`,
+              resolvedCustomerId: customerId,
+              resolvedBy: actor.id,
+              resolvedAt: new Date(),
+            },
+          });
         });
         return mapAuvoInboxItem(item);
       }
@@ -1850,51 +1891,111 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
       case "link_opportunity": {
         const opportunity = await this.getOpportunity(actor, input.opportunityId);
         if (!opportunity) throw new ApiError(422, "bad_request", "Oportunidade informada nao existe.");
-        await this.createActivity(actor, {
-          customerId: opportunity.clienteId,
-          opportunityId: input.opportunityId,
-          type: "note",
-          description: `Atendimento Auvo vinculado a esta oportunidade (item de triagem ${id}).`,
-          source: "system",
-          metadata: { auvoInboxItemId: id, auvoExternalServiceId: current.externalServiceId },
-        });
-        const item = await this.prisma.auvoInboxItem.update({
-          where: { id },
-          data: {
-            status: "processado",
-            resolution: "linked_existing_opportunity",
-            resolvedOpportunityId: input.opportunityId,
-            resolvedCustomerId: opportunity.clienteId,
-            resolvedBy: actor.id,
-            resolvedAt: new Date(),
-          },
+        const item = await this.prisma.$transaction(async (tx) => {
+          await this.claimOpenAuvoInboxItem(tx, current);
+          await tx.activity.create({
+            data: {
+              clienteId: opportunity.clienteId,
+              oportunidadeId: input.opportunityId,
+              tipo: "note",
+              title: null,
+              corpo: `Atendimento Auvo vinculado a esta oportunidade (item de triagem ${id}).`,
+              occurredAt: new Date(),
+              createdBy: actor.id,
+              updatedBy: actor.id,
+              source: "system",
+              metadata: toPrismaJson({ auvoInboxItemId: id, auvoExternalServiceId: current.externalServiceId }),
+            },
+          });
+          return tx.auvoInboxItem.update({
+            where: { id },
+            data: {
+              status: "processado",
+              resolution: "linked_existing_opportunity",
+              resolvedOpportunityId: input.opportunityId,
+              resolvedCustomerId: opportunity.clienteId,
+              resolvedBy: actor.id,
+              resolvedAt: new Date(),
+            },
+          });
         });
         return mapAuvoInboxItem(item);
       }
 
       case "create_opportunity": {
-        const opportunity = await this.createOpportunity(actor, {
-          clienteId: input.clienteId,
-          titulo: input.titulo,
-          tipoDemanda: input.tipoDemanda,
-          origem: input.origem ?? "Auvo",
-          responsavelId: input.responsavelId,
-          situacao: input.situacao,
-          proximaAcao: input.proximaAcao,
-          proximaAcaoEm: input.proximaAcaoEm,
+        assertActiveOpportunityHasNextAction({ ...input, status: "ativa" });
+        await this.assertActiveResponsibleUser(input.responsavelId);
+        await this.assertCanAssignResponsible(actor, input.responsavelId);
+        const etapaId = await this.getFirstStageId();
+        await this.assertStageExists(etapaId);
+
+        const resolved = await this.prisma.$transaction(async (tx) => {
+          await this.claimOpenAuvoInboxItem(tx, current);
+          const customerId = await this.resolveAuvoCustomer(tx, actor, current, input);
+          const opportunity = await tx.opportunity.create({
+            data: {
+              clienteId: customerId,
+              titulo: input.titulo,
+              tipoDemanda: input.tipoDemanda,
+              origem: input.origem ?? "Auvo",
+              responsavelId: input.responsavelId,
+              etapaId,
+              situacao: input.situacao,
+              proximaAcao: input.proximaAcao,
+              proximaAcaoEm: new Date(input.proximaAcaoEm),
+              status: "ativa",
+              isTestFixture: isTestFixtureName(input.titulo),
+              createdBy: actor.id,
+              updatedBy: actor.id,
+            },
+            select: { id: true },
+          });
+          const nextAction = await tx.nextAction.create({
+            data: {
+              customerId,
+              opportunityId: opportunity.id,
+              responsibleUserId: input.responsavelId,
+              title: input.proximaAcao,
+              dueAt: new Date(input.proximaAcaoEm),
+              priority: "normal",
+              status: "pending",
+              createdBy: actor.id,
+              updatedBy: actor.id,
+            },
+            select: { id: true },
+          });
+          await tx.opportunity.update({
+            where: { id: opportunity.id },
+            data: { currentNextActionId: nextAction.id },
+          });
+          const item = await tx.auvoInboxItem.update({
+            where: { id },
+            data: {
+              status: "processado",
+              resolution: "opportunity_created",
+              resolvedOpportunityId: opportunity.id,
+              resolvedCustomerId: customerId,
+              resolvedBy: actor.id,
+              resolvedAt: new Date(),
+            },
+          });
+          return { item, opportunityId: opportunity.id, customerId };
         });
-        const item = await this.prisma.auvoInboxItem.update({
-          where: { id },
-          data: {
-            status: "processado",
-            resolution: "opportunity_created",
-            resolvedOpportunityId: opportunity.id,
-            resolvedCustomerId: input.clienteId,
-            resolvedBy: actor.id,
-            resolvedAt: new Date(),
-          },
-        });
-        return mapAuvoInboxItem(item);
+        await this.createAssignmentNotification({
+          userId: input.responsavelId,
+          type: "opportunity_assigned",
+          severity: "attention",
+          title: "Oportunidade atribuida a voce",
+          body: `${input.titulo} foi atribuida ao seu usuario.`,
+          entityType: "opportunity",
+          entityId: resolved.opportunityId,
+          customerId: resolved.customerId,
+          opportunityId: resolved.opportunityId,
+          nextActionId: null,
+          actionUrl: `/app/opportunities/${resolved.opportunityId}`,
+          dedupeKey: `opportunity-assigned:${resolved.opportunityId}:${input.responsavelId}`,
+        }, actor);
+        return mapAuvoInboxItem(resolved.item);
       }
     }
   }
@@ -2558,6 +2659,88 @@ export class PrismaCrmDataRepository implements CrmDataRepository {
     if (!customer) throw new ApiError(422, "bad_request", "Cliente informado nao existe.");
   }
 
+  private async claimOpenAuvoInboxItem(tx: AuvoResolutionExecutor, current: { id: string; status: string; updatedAt: Date }): Promise<void> {
+    const claimed = await tx.auvoInboxItem.updateMany({
+      where: {
+        id: current.id,
+        updatedAt: current.updatedAt,
+        AND: [
+          { status: current.status },
+          { status: { notIn: ["processado", "descartado"] } },
+        ],
+      },
+      data: { status: "em_analise" },
+    });
+    if (claimed.count !== 1) {
+      throw new ApiError(409, "bad_request", "Este atendimento ja foi resolvido por outra pessoa. Atualize a fila para ver o status atual.");
+    }
+  }
+
+  private async resolveAuvoCustomer(
+    tx: AuvoResolutionExecutor,
+    actor: Actor,
+    inboxItem: { auvoContactId: string | null; phoneNormalized: string | null; email: string | null; contactName: string | null; title: string },
+    input: ResolveAuvoInboxItemInput,
+  ): Promise<string> {
+    if ("clienteId" in input && input.clienteId) {
+      const customer = await tx.customer.findUnique({ where: { id: input.clienteId }, select: { id: true, archivedAt: true } });
+      if (!customer) throw new ApiError(422, "bad_request", "Cliente informado nao existe.");
+      if (customer.archivedAt) throw new ApiError(409, "bad_request", "Restaure o cliente antes de concluir a triagem.");
+      return customer.id;
+    }
+
+    if (!("customer" in input) || !input.customer) {
+      throw new ApiError(422, "bad_request", "Informe o cliente para concluir a triagem.");
+    }
+
+    const phoneNormalized = normalizePhone(input.customer.telefone) ?? inboxItem.phoneNormalized;
+    const email = input.customer.email?.trim() || inboxItem.email;
+    const auvoContactId = inboxItem.auvoContactId;
+    const dedupeSignals = [
+      ...(auvoContactId ? [{ auvoContactId }] : []),
+      ...(phoneNormalized ? [{ telefoneNormalizado: phoneNormalized }] : []),
+      ...(email ? [{ email }] : []),
+    ];
+    const existing = dedupeSignals.length
+      ? await tx.customer.findFirst({
+          where: {
+            archivedAt: null,
+            OR: dedupeSignals,
+          },
+          select: { id: true, auvoContactId: true },
+        })
+      : null;
+
+    if (existing) {
+      if (auvoContactId && !existing.auvoContactId) {
+        await tx.customer.updateMany({
+          where: { id: existing.id, auvoContactId: null },
+          data: { auvoContactId, updatedBy: actor.id },
+        });
+      }
+      return existing.id;
+    }
+
+    const created = await tx.customer.create({
+      data: {
+        tipoPessoa: input.customer.tipoPessoa ?? "fisica",
+        nome: input.customer.nome,
+        telefone: input.customer.telefone ?? inboxItem.phoneNormalized,
+        telefoneNormalizado: phoneNormalized,
+        email,
+        empresa: input.customer.empresa ?? null,
+        cidade: input.customer.cidade ?? null,
+        observacoes: input.customer.observacoes ?? `Criado pela triagem Auvo: ${inboxItem.title}`,
+        auvoContactId,
+        isTestFixture: isTestFixtureName(input.customer.nome),
+        createdBy: actor.id,
+        updatedBy: actor.id,
+      },
+      select: { id: true },
+    });
+    return created.id;
+  }
+
   private async assertCanAccessOpportunity(actor: Actor, opportunityId: string | null): Promise<void> {
     if (!opportunityId || actor.role !== "vendedor") return;
     const opportunity = await this.prisma.opportunity.findFirst({
@@ -2985,6 +3168,17 @@ function mapNotification(row: NotificationEntity): NotificationRecord {
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
     metadata: row.metadata as Record<string, unknown>,
     createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function mapNotificationPreference(row: NotificationPreferenceEntity): NotificationPreferenceRecord {
+  return {
+    userId: row.userId,
+    urgentEnabled: row.urgentEnabled,
+    attentionEnabled: row.attentionEnabled,
+    integrationEnabled: row.integrationEnabled,
+    dailyDigestEnabled: row.dailyDigestEnabled,
     updatedAt: row.updatedAt.toISOString(),
   };
 }

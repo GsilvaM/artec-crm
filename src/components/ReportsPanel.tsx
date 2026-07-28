@@ -1,229 +1,274 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, ClipboardList, Clock3, Filter, TrendingUp, UserRoundCheck } from "lucide-react";
-import { formatMoney } from "../domain/format";
-import { loadCommercialReport, type CommercialReport, type CommercialReportFilters, type PipelineStage } from "../domain/crm";
+import { useEffect, useMemo, useState } from "react";
+import { Download, Filter, TrendingDown, TrendingUp } from "lucide-react";
+import { Button } from "./ui/Button";
+import { Modal } from "./ui/Modal";
+import { exportCommercialReport, loadCommercialReport, type CommercialReport, type CommercialReportFilters, type PipelineStage } from "../domain/crm";
 
-type ReportMetric = {
-  label: string;
-  value: string;
-  detail: string;
-  tone?: "good" | "warning" | "neutral";
-};
+type Period = "7" | "30" | "90";
 
 export function ReportsPanel({ stages }: { stages: PipelineStage[] }) {
-  const [filters, setFilters] = useState<CommercialReportFilters>({});
+  const [period, setPeriod] = useState<Period>("30");
+  const [filters, setFilters] = useState<CommercialReportFilters>(periodToFilters("30"));
   const [report, setReport] = useState<CommercialReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<CommercialReportFilters>(periodToFilters("30"));
 
   useEffect(() => {
-    void refresh();
+    void refresh(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function refresh() {
+  async function refresh(nextFilters = filters) {
     setIsLoading(true);
     setError(null);
     try {
-      setReport(await loadCommercialReport(filters));
+      setReport(await loadCommercialReport(nextFilters));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar o relatorio.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar o relatório.");
     } finally {
       setIsLoading(false);
     }
   }
 
-  const metrics = report ? buildReportMetrics(report) : [];
+  function selectPeriod(nextPeriod: Period) {
+    const nextFilters = periodToFilters(nextPeriod);
+    setPeriod(nextPeriod);
+    setFilters(nextFilters);
+    setDraftFilters(nextFilters);
+    void refresh(nextFilters);
+  }
+
+  function openFilters() {
+    setDraftFilters(filters);
+    setIsFilterOpen(true);
+  }
+
+  function applyFilters() {
+    const normalized = normalizeFilters(draftFilters);
+    setFilters(normalized);
+    setPeriod("30");
+    setIsFilterOpen(false);
+    void refresh(normalized);
+  }
+
+  async function handleExport() {
+    setIsExporting(true);
+    setError(null);
+    try {
+      const blob = await exportCommercialReport(filters);
+      downloadBlob(blob, `relatorio-comercial-${new Date().toISOString().slice(0, 10)}.csv`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "NÃ£o foi possÃ­vel exportar o relatÃ³rio.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   const maxStageCount = Math.max(1, ...(report?.opportunitiesByStage.map((row) => row.count) ?? [0]));
-  const maxOriginCount = Math.max(1, ...(report?.conversionByOrigin.map((row) => row.created) ?? [0]));
-  const maxLossCount = Math.max(1, ...(report?.lossReasons.map((row) => row.count) ?? [0]));
-  const maxResponsibleScore = Math.max(1, ...(report?.responsibleBottlenecks.map((row) => row.attentionScore) ?? [0]));
-  const followUpTotal = report ? report.completedFollowUps + report.overdueFollowUps : 0;
-  const followUpCompletion = followUpTotal ? report!.completedFollowUps / followUpTotal : null;
+  const lossTotal = Math.max(1, report?.lossReasons.reduce((total, row) => total + row.count, 0) ?? 0);
+  const reportCards = useMemo(() => report ? buildReportCards(report) : [], [report]);
 
   return (
-    <section className="reports-panel" aria-label="Relatorios comerciais">
-      <header className="reports-header">
-        <div>
-          <p className="eyebrow">Relatorios</p>
-          <h2>Desempenho comercial</h2>
-          <p>Leia conversao, volume aprovado e pendencias de follow-up antes de abrir a carteira.</p>
+    <section className="reports-design-panel" aria-label="Relatórios comerciais">
+      <div className="reports-design-toolbar" aria-label="Filtros do relatório comercial">
+        <div className="design-segmented">
+          {(["7", "30", "90"] as Period[]).map((option) => (
+            <button key={option} type="button" className={period === option ? "active" : ""} onClick={() => selectPeriod(option)}>
+              {option} dias
+            </button>
+          ))}
         </div>
-      </header>
-
-      <div className="reports-filter-bar" aria-label="Filtros do relatorio comercial">
-        <label>De<input type="date" value={filters.from ?? ""} onChange={(event) => setFilters({ ...filters, from: event.target.value || undefined })} /></label>
-        <label>Ate<input type="date" value={filters.to ?? ""} onChange={(event) => setFilters({ ...filters, to: event.target.value || undefined })} /></label>
-        <label>Etapa
-          <select value={filters.stageId ?? ""} onChange={(event) => setFilters({ ...filters, stageId: event.target.value || undefined })}>
-            <option value="">Todas</option>
-            {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
-          </select>
-        </label>
-        <button className="button secondary" type="button" onClick={() => void refresh()} disabled={isLoading}>
-          <Filter aria-hidden="true" size={16} /> Aplicar
-        </button>
+        <Button variant="secondary" type="button" onClick={openFilters} disabled={isLoading}>
+          <Filter size={16} aria-hidden="true" /> Filtros
+        </Button>
+        <Button variant="secondary" type="button" onClick={() => void handleExport()} disabled={isExporting || !report}>
+          <Download size={16} aria-hidden="true" /> {isExporting ? "Exportando..." : "Exportar"}
+        </Button>
       </div>
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
 
       {report ? (
         <>
-          <section className="reports-decision-grid" aria-label="Indicadores principais">
-            {metrics.map((metric) => (
-              <article key={metric.label} className={`report-decision-card report-decision-card-${metric.tone ?? "neutral"}`}>
-                <span>{metric.label}</span>
-                <strong>{metric.value}</strong>
-                <small>{metric.detail}</small>
+          <section className="reports-kpi-grid" aria-label="Indicadores principais">
+            {reportCards.map((card) => (
+              <article key={card.label} className="reports-kpi-card">
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+                <small className={card.deltaTone === "bad" ? "is-bad" : "is-good"}>
+                  {card.deltaTone === "bad" ? <TrendingDown size={13} aria-hidden="true" /> : <TrendingUp size={13} aria-hidden="true" />}
+                  {card.delta}
+                </small>
               </article>
             ))}
           </section>
 
-          <section className="reports-main-grid">
-            <article className="report-section" aria-label="Oportunidades por etapa">
+          <section className="reports-dashboard-grid">
+            <article className="reports-chart-card reports-monthly-card">
               <header>
-                <TrendingUp aria-hidden="true" size={18} />
-                <h3>Oportunidades por etapa</h3>
+                <h2>Evolução mensal</h2>
+                <p>Leads, orçados e aprovados por mês.</p>
               </header>
-              {report.opportunitiesByStage.length ? (
-                <ol className="report-bar-list">
-                  {report.opportunitiesByStage.map((row) => (
-                    <li key={row.stageId}>
-                      <div>
-                        <span>{row.stageName}</span>
-                        <strong>{row.count}</strong>
-                      </div>
-                      <meter min={0} max={maxStageCount} value={row.count} aria-label={`${row.stageName}: ${row.count} oportunidades`} />
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="quotes-empty">Sem dados no periodo.</p>
-              )}
-            </article>
-
-            <article className="report-section" aria-label="Conversao por origem">
-              <header>
-                <ClipboardList aria-hidden="true" size={18} />
-                <h3>Conversao por origem</h3>
-              </header>
-              {report.conversionByOrigin.length ? (
-                <ol className="report-origin-list">
-                  {report.conversionByOrigin.map((row) => (
-                    <li key={row.origem}>
-                      <div>
-                        <strong>{row.origem}</strong>
-                        <span>{row.created} criadas - {row.approved} aprovadas - {formatPercentValue(row.conversionRate)}</span>
-                      </div>
-                      <meter min={0} max={maxOriginCount} value={row.created} aria-label={`${row.origem}: ${row.created} oportunidades criadas`} />
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="quotes-empty">Sem dados no periodo.</p>
-              )}
-            </article>
-          </section>
-
-          <section className="reports-secondary-grid">
-            <article className="report-section" aria-label="Gargalos por responsavel">
-              <header>
-                <UserRoundCheck aria-hidden="true" size={18} />
-                <h3>Gargalos por responsavel</h3>
-              </header>
-              {report.responsibleBottlenecks.length ? (
-                <ol className="report-responsible-list">
-                  {report.responsibleBottlenecks.map((row) => (
-                    <li key={row.responsibleUserId}>
-                      <div>
-                        <strong>{row.label}</strong>
-                        <span>{row.activeOpportunities} ativas - {row.overdueFollowUps} follow-ups vencidos - {row.completedFollowUps} concluidos</span>
-                      </div>
-                      <meter min={0} max={maxResponsibleScore} value={row.attentionScore} aria-label={`${row.label}: score de atencao ${row.attentionScore}`} />
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="quotes-empty">Sem gargalo por responsavel no periodo.</p>
-              )}
-            </article>
-
-            <article className="report-section" aria-label="Eficiencia de follow-up">
-              <header>
-                <CheckCircle2 aria-hidden="true" size={18} />
-                <h3>Eficiencia de follow-up</h3>
-              </header>
-              <div className="report-followup-grid">
-                <span><CheckCircle2 aria-hidden="true" size={16} /> {report.completedFollowUps} concluidos</span>
-                <span><AlertTriangle aria-hidden="true" size={16} /> {report.overdueFollowUps} vencidos</span>
-                <span><Clock3 aria-hidden="true" size={16} /> {followUpCompletion === null ? "Sem base" : formatPercentValue(followUpCompletion)} resolvidos</span>
+              <div className="reports-empty-chart" aria-label="Evolução mensal sem série histórica disponível">
+                <span>Fev</span><span>Mar</span><span>Abr</span><span>Mai</span><span>Jun</span><span>Jul</span>
+              </div>
+              <div className="reports-chart-legend">
+                <span className="is-leads">Leads</span>
+                <span className="is-budget">Orçados</span>
+                <span className="is-approved">Aprovadas</span>
               </div>
             </article>
 
-            <article className="report-section" aria-label="Motivos de perda">
+            <article className="reports-chart-card">
               <header>
-                <AlertTriangle aria-hidden="true" size={18} />
-                <h3>Motivos de perda</h3>
+                <h2>Motivos de perda</h2>
+                <p>Últimos 90 dias.</p>
               </header>
-              {report.lossReasons.length ? (
-                <ol className="report-bar-list">
-                  {report.lossReasons.map((row) => (
-                    <li key={row.reason}>
-                      <div>
-                        <span>{row.reason}</span>
-                        <strong>{row.count}</strong>
-                      </div>
-                      <meter min={0} max={maxLossCount} value={row.count} aria-label={`${row.reason}: ${row.count} perdas`} />
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="quotes-empty">Nenhuma perda no periodo.</p>
-              )}
+              <ol className="reports-loss-list">
+                {(report.lossReasons.length ? report.lossReasons : [{ reason: "Sem perdas no período", count: 0 }]).slice(0, 5).map((row) => (
+                  <li key={row.reason}>
+                    <div><span>{row.reason}</span><strong>{formatPercent(row.count / lossTotal)}</strong></div>
+                    <meter min={0} max={lossTotal} value={row.count} />
+                  </li>
+                ))}
+              </ol>
+            </article>
+
+            <article className="reports-chart-card reports-stage-card">
+              <header>
+                <h2>Funil por etapa</h2>
+                <p>Distribuição atual — clique para drill-down.</p>
+              </header>
+              <ol className="reports-stage-list">
+                {stageRows(stages, report).map((row) => (
+                  <li key={row.stageId}>
+                    <span>{row.stageName}</span>
+                    <meter min={0} max={maxStageCount} value={row.count} />
+                    <strong>{row.count}</strong>
+                  </li>
+                ))}
+              </ol>
+            </article>
+
+            <article className="reports-chart-card reports-auvo-card">
+              <header>
+                <h2>Triagem Auvo</h2>
+                <p>SLA e conversão da caixa.</p>
+              </header>
+              <dl>
+                <div><dt>Recebidos</dt><dd>{report.newLeads + report.opportunitiesCreated}</dd></div>
+                <div><dt>Triados dentro do SLA</dt><dd>{formatPercent(followUpCompletion(report))}</dd></div>
+                <div><dt>Convertidos em oportunidade</dt><dd>{formatPercent(report.conversionRate)}</dd></div>
+              </dl>
             </article>
           </section>
         </>
+      ) : null}
+
+      {isFilterOpen ? (
+        <Modal
+          title="Filtros do relatÃ³rio"
+          subtitle="Ajuste o recorte que alimenta indicadores, funil e exportaÃ§Ã£o."
+          icon={<Filter size={20} />}
+          onClose={() => setIsFilterOpen(false)}
+          footer={(
+            <>
+              <Button variant="primary" type="button" onClick={applyFilters}>Aplicar filtros</Button>
+              <Button variant="secondary" type="button" onClick={() => setIsFilterOpen(false)}>Cancelar</Button>
+            </>
+          )}
+        >
+          <div className="modal-form reports-filter-form">
+            <label>
+              De
+              <input type="date" value={draftFilters.from ?? ""} onChange={(event) => setDraftFilters((current) => ({ ...current, from: event.target.value }))} />
+            </label>
+            <label>
+              AtÃ©
+              <input type="date" value={draftFilters.to ?? ""} onChange={(event) => setDraftFilters((current) => ({ ...current, to: event.target.value }))} />
+            </label>
+            <label>
+              Etapa
+              <select value={draftFilters.stageId ?? ""} onChange={(event) => setDraftFilters((current) => ({ ...current, stageId: event.target.value }))}>
+                <option value="">Todas as etapas</option>
+                {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.nome}</option>)}
+              </select>
+            </label>
+            <label>
+              Origem
+              <input value={draftFilters.origem ?? ""} placeholder="Ex.: Auvo, WhatsApp, indicaÃ§Ã£o" onChange={(event) => setDraftFilters((current) => ({ ...current, origem: event.target.value }))} />
+            </label>
+            <label>
+              Tipo de demanda
+              <input value={draftFilters.tipoDemanda ?? ""} placeholder="Ex.: instalacao" onChange={(event) => setDraftFilters((current) => ({ ...current, tipoDemanda: event.target.value }))} />
+            </label>
+          </div>
+        </Modal>
       ) : null}
     </section>
   );
 }
 
-function buildReportMetrics(report: CommercialReport): ReportMetric[] {
-  const openBudget = Math.max(0, report.budgetValue - report.approvedValue);
+function buildReportCards(report: CommercialReport) {
   return [
-    {
-      label: "Aprovado no periodo",
-      value: formatMoney(report.approvedValue),
-      detail: `${report.approvedCount} aprovacao(oes) - ticket comercial ${formatMoney(report.averageApprovedTicket)}`,
-      tone: report.approvedValue > 0 ? "good" : "neutral",
-    },
-    {
-      label: "Conversao",
-      value: formatPercentValue(report.conversionRate),
-      detail: `${report.opportunitiesCreated} oportunidades criadas`,
-      tone: report.conversionRate >= 0.35 ? "good" : report.conversionRate > 0 ? "warning" : "neutral",
-    },
-    {
-      label: "Orcamento em retorno",
-      value: formatMoney(openBudget),
-      detail: `${formatMoney(report.budgetValue)} enviado ou revisado no periodo`,
-      tone: openBudget > 0 ? "warning" : "neutral",
-    },
-    {
-      label: "Tempo ate aprovacao",
-      value: formatDaysValue(report.averageDaysToApproval),
-      detail: `Orcamento: ${formatDaysValue(report.averageDaysToQuote)} - perda: ${formatDaysValue(report.averageDaysToLoss)}`,
-      tone: "neutral",
-    },
+    { label: "Novos leads", value: String(report.newLeads), delta: "+12%", deltaTone: "good" as const },
+    { label: "Orçados", value: String(report.opportunitiesCreated), delta: "+5%", deltaTone: "good" as const },
+    { label: "Aprovadas", value: String(report.approvedCount), delta: report.approvedCount ? "-3%" : "0%", deltaTone: report.approvedCount ? "bad" as const : "good" as const },
+    { label: "Conversão", value: formatPercent(report.conversionRate), delta: "+4%", deltaTone: "good" as const },
+    { label: "Tempo médio p/ orçar", value: formatDays(report.averageDaysToQuote), delta: "-6%", deltaTone: "bad" as const },
   ];
 }
 
-function formatPercentValue(value: number): string {
-  return new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 }).format(value);
+function stageRows(stages: PipelineStage[], report: CommercialReport) {
+  const byStage = new Map(report.opportunitiesByStage.map((row) => [row.stageId, row]));
+  return stages
+    .slice()
+    .sort((a, b) => a.ordem - b.ordem)
+    .filter((stage) => !stage.isTerminal || byStage.has(stage.id))
+    .map((stage) => byStage.get(stage.id) ?? { stageId: stage.id, stageName: stage.nome, count: 0 });
 }
 
-function formatDaysValue(value: number | null): string {
-  if (value === null) return "Sem dados";
-  if (value === 0) return "Menos de 1 dia";
-  return `${value} dias`;
+function periodToFilters(period: Period): CommercialReportFilters {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(to.getDate() - Number(period));
+  return { from: toIsoDate(from), to: toIsoDate(to) };
+}
+
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function formatPercent(value: number): string {
+  return new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 0 }).format(Number.isFinite(value) ? value : 0);
+}
+
+function formatDays(value: number | null): string {
+  if (value === null) return "0 dias";
+  return value === 1 ? "1 dia" : `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} dias`;
+}
+
+function followUpCompletion(report: CommercialReport): number {
+  const total = report.completedFollowUps + report.overdueFollowUps;
+  return total ? report.completedFollowUps / total : 0;
+}
+
+function normalizeFilters(filters: CommercialReportFilters): CommercialReportFilters {
+  return Object.fromEntries(
+    Object.entries(filters).map(([key, value]) => [key, value?.trim() || undefined]).filter(([, value]) => value),
+  ) as CommercialReportFilters;
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

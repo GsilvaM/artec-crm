@@ -65,6 +65,7 @@ export const ModelName = {
   NextAction: 'NextAction',
   AuditLog: 'AuditLog',
   Notification: 'Notification',
+  NotificationPreference: 'NotificationPreference',
   AuvoWebhookEvent: 'AuvoWebhookEvent',
   AuvoInboxItem: 'AuvoInboxItem',
   AuvoContactSignal: 'AuvoContactSignal',
@@ -373,6 +374,18 @@ export const NotificationScalarFieldEnum = {
 } as const
 
 export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
+
+
+export const NotificationPreferenceScalarFieldEnum = {
+  userId: 'userId',
+  urgentEnabled: 'urgentEnabled',
+  attentionEnabled: 'attentionEnabled',
+  integrationEnabled: 'integrationEnabled',
+  dailyDigestEnabled: 'dailyDigestEnabled',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NotificationPreferenceScalarFieldEnum = (typeof NotificationPreferenceScalarFieldEnum)[keyof typeof NotificationPreferenceScalarFieldEnum]
 
 
 export const AuvoWebhookEventScalarFieldEnum = {

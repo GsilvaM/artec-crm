@@ -13,11 +13,11 @@ test.describe("Navegacao por teclado e gerenciamento de foco", () => {
 
   test("painel de notificacoes recebe foco ao abrir e devolve foco ao fechar com Escape", async ({ page }) => {
     await loginAsHomologationGestor(page);
-    const bellButton = page.getByRole("button", { name: "Abrir notificações" });
+    const bellButton = page.getByRole("button", { name: /Abrir notifica[cç][oõ]es/i });
     await bellButton.click();
     await expect(bellButton).toHaveAttribute("aria-expanded", "true");
 
-    const panel = page.getByRole("dialog", { name: "Notificações recentes" });
+    const panel = page.getByRole("dialog", { name: /Notifica[cç][oõ]es recentes/i });
     await expect(panel).toBeVisible();
 
     await page.keyboard.press("Escape");
@@ -44,10 +44,10 @@ test.describe("Navegacao por teclado e gerenciamento de foco", () => {
     await loginAsHomologationGestor(page);
     await page.getByRole("link", { name: "Clientes" }).click();
     await page.waitForURL(/\/clientes$/);
-    await page.locator("#clientes-section .customer-card").first().getByRole("link", { name: "Abrir cliente" }).click();
+    await page.locator("#clientes-section tbody a").first().click();
     await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
 
-    const firstTab = page.getByRole("tab", { name: "Visão geral" });
+    const firstTab = page.getByRole("tab", { name: /Vis[aã]o geral/i });
     await expect(firstTab).toHaveAttribute("aria-selected", "true");
     await firstTab.focus();
 
@@ -61,10 +61,10 @@ test.describe("Navegacao por teclado e gerenciamento de foco", () => {
     await loginAsHomologationGestor(page);
     await page.getByRole("link", { name: "Clientes" }).click();
     await page.waitForURL(/\/clientes$/);
-    await page.locator("#clientes-section .customer-card").first().getByRole("link", { name: "Abrir cliente" }).click();
+    await page.locator("#clientes-section tbody a").first().click();
     await page.waitForURL(/\/clientes\/[0-9a-f-]+$/);
 
-    const archiveButton = page.locator(".page-heading").getByRole("button", { name: "Arquivar" });
+    const archiveButton = page.getByRole("button", { name: "Arquivar" }).first();
     await archiveButton.click();
 
     const dialog = page.getByRole("alertdialog");

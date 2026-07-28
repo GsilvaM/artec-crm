@@ -19,10 +19,10 @@ export function RelatoriosPage() {
 
   return (
     <>
-      <section className="page-heading">
+      <section className="page-heading design-page-heading">
         <div>
-          <p className="eyebrow">Gestão</p>
-          <h1>Relatórios comerciais</h1>
+          <h1>Relatórios</h1>
+          <p>Indicadores comerciais — sem receita, faturamento ou DRE.</p>
         </div>
       </section>
 

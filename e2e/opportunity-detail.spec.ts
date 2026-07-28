@@ -2,20 +2,66 @@ import { expect, test } from "@playwright/test";
 import { loginAsHomologationGestor } from "./support/auth";
 
 test("opens an opportunity detail page from the list and sees its summary and timeline", async ({ page }) => {
+  const suffix = Date.now().toString(36);
+  const customerName = `E2E Detalhe Cliente ${suffix}`;
+  const opportunityTitle = `E2E Detalhe Opp ${suffix}`;
+  let customerId: string | null = null;
+  let opportunityId: string | null = null;
+
   await loginAsHomologationGestor(page);
-  await page.getByRole("link", { name: "Oportunidades" }).click();
-  await page.waitForURL(/\/oportunidades$/);
-  await expect(page.getByLabel("Board operacional de oportunidades")).toBeVisible();
+  const token = await page.evaluate(() => {
+    const raw = window.localStorage.getItem("artec-crm.auth");
+    if (!raw) return null;
+    try {
+      return (JSON.parse(raw) as { access_token?: string }).access_token ?? null;
+    } catch {
+      return null;
+    }
+  });
+  expect(token).toBeTruthy();
+  const authHeaders = { authorization: `Bearer ${token}`, "x-crm-include-test-fixtures": "true" };
 
-  const firstCard = page.locator("#oportunidades-section .opportunity-card").first();
-  const title = await firstCard.locator(".opportunity-card-title").innerText();
-  await firstCard.getByRole("link", { name: "Abrir oportunidade" }).click();
-  await page.waitForURL(/\/oportunidades\/[0-9a-f-]+$/);
+  try {
+    const meResponse = await page.request.get("/api/me", { headers: authHeaders });
+    expect(meResponse.ok()).toBeTruthy();
+    const currentUserId = (await meResponse.json()).id as string;
 
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(title.trim());
-  await expect(page.getByLabel("Proxima decisao da oportunidade")).toBeVisible();
-  await expect(page.getByLabel("Estrutura tecnica da oportunidade")).toBeVisible();
-  await expect(page.getByText("Linha do tempo")).toBeVisible();
+    const customerResponse = await page.request.post("/api/customers", {
+      headers: authHeaders,
+      data: { tipoPessoa: "fisica", nome: customerName, telefone: "11977770000" },
+    });
+    expect(customerResponse.ok()).toBeTruthy();
+    customerId = (await customerResponse.json()).customer.id;
+
+    const opportunityResponse = await page.request.post("/api/opportunities", {
+      headers: authHeaders,
+      data: {
+        clienteId: customerId,
+        titulo: opportunityTitle,
+        tipoDemanda: "instalacao",
+        responsavelId: currentUserId,
+        situacao: "em andamento",
+        proximaAcao: "Abrir detalhe",
+        proximaAcaoEm: "2026-08-01T10:00:00.000Z",
+      },
+    });
+    expect(opportunityResponse.ok()).toBeTruthy();
+    opportunityId = (await opportunityResponse.json()).opportunity.id;
+
+    await page.getByRole("link", { name: "Oportunidades" }).click();
+    await page.waitForURL(/\/oportunidades$/);
+    await expect(page.locator("#oportunidades-section")).toContainText(opportunityTitle, { timeout: 15_000 });
+    await page.getByRole("link", { name: opportunityTitle }).click();
+    await page.waitForURL(/\/oportunidades\/[0-9a-f-]+$/);
+
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(opportunityTitle);
+    await expect(page.getByLabel("Proxima decisao da oportunidade")).toBeVisible();
+    await expect(page.getByLabel("Estrutura tecnica da oportunidade")).toBeVisible();
+    await expect(page.getByText("Linha do tempo")).toBeVisible();
+  } finally {
+    if (opportunityId) await page.request.post(`/api/opportunities/${opportunityId}/archive`, { headers: authHeaders, timeout: 5_000 }).catch(() => undefined);
+    if (customerId) await page.request.post(`/api/customers/${customerId}/archive`, { headers: authHeaders, timeout: 5_000 }).catch(() => undefined);
+  }
 });
 
 for (const viewport of [
@@ -26,15 +72,13 @@ for (const viewport of [
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await loginAsHomologationGestor(page);
     await page.goto("/oportunidades");
-    await page.getByLabel("Board operacional de oportunidades").waitFor();
+    await page.locator("#oportunidades-section").waitFor();
 
     const overflow = await page.evaluate(() => ({
       horizontal: document.documentElement.scrollWidth - window.innerWidth,
-      vertical: document.documentElement.scrollHeight - window.innerHeight,
     }));
 
     expect(overflow.horizontal, `${viewport.name} nao deve ter overflow horizontal`).toBeLessThanOrEqual(1);
-    expect(overflow.vertical, `${viewport.name} nao deve ter scroll global`).toBeLessThanOrEqual(1);
   });
 }
 

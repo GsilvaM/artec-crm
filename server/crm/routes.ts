@@ -25,6 +25,7 @@ import {
   nextActionCreateSchema,
   nextActionUpdateSchema,
   notificationQuerySchema,
+  notificationPreferencesSchema,
   notificationSnoozeSchema,
   opportunityCreateSchema,
   opportunityUpdateSchema,
@@ -92,6 +93,14 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
     return repository.getUnreadNotificationsCount(getActor(request));
   });
 
+  app.get("/api/notifications/preferences", { preHandler: [guards.authenticate, guards.requirePermission("notifications:read")] }, async (request) => {
+    return { preferences: await repository.getNotificationPreferences(getActor(request)) };
+  });
+
+  app.put("/api/notifications/preferences", { preHandler: [guards.authenticate, guards.requirePermission("notifications:write")] }, async (request) => {
+    return { preferences: await repository.updateNotificationPreferences(getActor(request), parseBody(notificationPreferencesSchema, request.body)) };
+  });
+
   app.post("/api/notifications/:id/read", { preHandler: [guards.authenticate, guards.requirePermission("notifications:write")] }, async (request) => {
     const notification = await repository.markNotificationRead(getActor(request), readIdParam(request));
     if (!notification) throw new ApiError(404, "not_found", "Notificacao nao encontrada.");
@@ -151,6 +160,22 @@ export function registerCrmRoutes(app: FastifyInstance, dependencies: ServerDepe
         tipoDemanda: query.tipoDemanda ?? undefined,
       }),
     };
+  });
+
+  app.get("/api/reports/commercial/export", { preHandler: [guards.authenticate, guards.requirePermission("reports:read")] }, async (request, reply) => {
+    const query = parseBody(commercialReportQuerySchema, request.query);
+    const report = await repository.getCommercialReport(getActor(request), {
+      ...query,
+      from: query.from ?? undefined,
+      to: query.to ?? undefined,
+      origem: query.origem ?? undefined,
+      tipoDemanda: query.tipoDemanda ?? undefined,
+    });
+    const csv = commercialReportToCsv(report);
+    return reply
+      .header("content-type", "text/csv; charset=utf-8")
+      .header("content-disposition", `attachment; filename="relatorio-comercial-${new Date().toISOString().slice(0, 10)}.csv"`)
+      .send(csv);
   });
 
   app.get("/api/commercial-center", { preHandler: [guards.authenticate, guards.requirePermission("next_actions:read")] }, async (request) => {
@@ -532,4 +557,39 @@ function readUserIdParam(request: FastifyRequest): string {
     throw new ApiError(400, "bad_request", "ID de usuario invalido.");
   }
   return params.userId;
+}
+
+function commercialReportToCsv(report: Awaited<ReturnType<ServerDependencies["crmRepository"]["getCommercialReport"]>>): string {
+  const rows: string[][] = [
+    ["Relatorio comercial", report.generatedAt],
+    ["Indicador", "Valor"],
+    ["Novos leads", String(report.newLeads)],
+    ["Oportunidades criadas", String(report.opportunitiesCreated)],
+    ["Valor orcado", String(report.budgetValue)],
+    ["Valor aprovado", String(report.approvedValue)],
+    ["Aprovadas", String(report.approvedCount)],
+    ["Ticket medio aprovado", String(report.averageApprovedTicket)],
+    ["Conversao", String(report.conversionRate)],
+    ["Follow-ups vencidos", String(report.overdueFollowUps)],
+    ["Follow-ups concluidos", String(report.completedFollowUps)],
+    [],
+    ["Funil por etapa", "Quantidade"],
+    ...report.opportunitiesByStage.map((row) => [row.stageName, String(row.count)]),
+    [],
+    ["Conversao por origem", "Criadas", "Aprovadas", "Conversao"],
+    ...report.conversionByOrigin.map((row) => [row.origem, String(row.created), String(row.approved), String(row.conversionRate)]),
+    [],
+    ["Motivos de perda", "Quantidade"],
+    ...report.lossReasons.map((row) => [row.reason, String(row.count)]),
+    [],
+    ["Gargalos por responsavel", "Ativas", "Follow-ups vencidos", "Follow-ups concluidos", "Score"],
+    ...report.responsibleBottlenecks.map((row) => [row.label, String(row.activeOpportunities), String(row.overdueFollowUps), String(row.completedFollowUps), String(row.attentionScore)]),
+  ];
+
+  return `\uFEFF${rows.map((row) => row.map(csvCell).join(";")).join("\r\n")}\r\n`;
+}
+
+function csvCell(value: string): string {
+  if (!/[;"\r\n]/.test(value)) return value;
+  return `"${value.replace(/"/g, '""')}"`;
 }

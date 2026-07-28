@@ -21,10 +21,10 @@ export function AdministracaoPage({ currentUserId }: { currentUserId: string }) 
 
   return (
     <>
-      <section className="page-heading">
+      <section className="page-heading design-page-heading">
         <div>
-          <p className="eyebrow">Gestão</p>
           <h1>Administração</h1>
+          <p>Configurações do CRM · alterações são auditadas.</p>
         </div>
       </section>
 

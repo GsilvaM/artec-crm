@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Gauge, Lightbulb } from "lucide-react";
+import { AlertTriangle, Lightbulb } from "lucide-react";
 import { formatDateTime } from "../domain/format";
 import type { AuvoParsedSignals } from "../domain/crm";
 
@@ -14,13 +14,20 @@ export function AuvoSignalSummary({ signals, compact = false, title = "Leitura d
   const derived = signals.derived;
   const details = [
     signals.origin ? ["Origem", signals.origin] : null,
-    signals.classification ? ["Classificacao", signals.classification] : null,
+    signals.classification ? ["Classificação", signals.classification] : null,
     signals.departmentName ? ["Departamento", signals.departmentName] : null,
     signals.agentName ? ["Atendente", signals.agentName] : null,
-    signals.lastInteractionAt ? ["Ultima interacao", formatDateTime(signals.lastInteractionAt)] : null,
+    signals.lastInteractionAt ? ["Última interação", formatDateTime(signals.lastInteractionAt)] : null,
   ].filter(Boolean) as Array<[string, string]>;
   const shouldShowDetails = showDetails ?? !compact;
   const compactContext = compact ? details.slice(0, 3) : [];
+  const readingDetails = [
+    ["Tipo", formatDerivedIntent(derived.intent)],
+    ["Confiança", `${derived.confidence}%`],
+    ["Prioridade", formatDerivedUrgency(derived.urgency)],
+    ["Situação", formatSlaState(derived.slaState)],
+    ["Dados pendentes", derived.missingData.length ? formatMissingData(derived.missingData) : "Sem pendências"],
+  ];
 
   return (
     <section
@@ -43,12 +50,14 @@ export function AuvoSignalSummary({ signals, compact = false, title = "Leitura d
         <span className={`badge ${urgencyBadgeClass(derived.urgency)}`}>{formatDerivedUrgency(derived.urgency)}</span>
       </header>
 
-      <div className="auvo-signal-summary-strip">
-        <span><Lightbulb aria-hidden="true" size={14} /> {formatDerivedIntent(derived.intent)}</span>
-        <span><CheckCircle2 aria-hidden="true" size={14} /> {formatSuggestedAction(derived.suggestedAction)}</span>
-        <span><Gauge aria-hidden="true" size={14} /> {derived.confidence}% confianca</span>
-        <span>{formatSlaState(derived.slaState)}</span>
-      </div>
+      <dl className="auvo-signal-summary-strip">
+        {readingDetails.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
 
       {derived.missingData.length ? (
         <p className="auvo-signal-summary-warning">Dados faltantes: {formatMissingData(derived.missingData)}</p>
@@ -70,7 +79,7 @@ export function AuvoSignalSummary({ signals, compact = false, title = "Leitura d
           ))}
           {signals.lastMessageText ? (
             <div className="auvo-signal-summary-wide">
-              <dt>Ultima mensagem</dt>
+              <dt>Última mensagem</dt>
               <dd>{signals.lastMessageText}</dd>
             </div>
           ) : null}
@@ -88,13 +97,13 @@ export function AuvoSignalSummary({ signals, compact = false, title = "Leitura d
 
 function formatDerivedIntent(intent: AuvoParsedSignals["derived"]["intent"]): string {
   const labels: Record<AuvoParsedSignals["derived"]["intent"], string> = {
-    instalacao: "Instalacao",
-    manutencao: "Manutencao",
-    higienizacao: "Higienizacao",
+    instalacao: "Instalação",
+    manutencao: "Manutenção",
+    higienizacao: "Higienização",
     garantia: "Garantia",
     suporte: "Suporte",
     pos_venda: "Pos-venda",
-    orcamento: "Orcamento",
+    orcamento: "Orçamento",
     outro: "Indefinida",
   };
   return labels[intent];
@@ -108,18 +117,6 @@ function urgencyBadgeClass(urgency: AuvoParsedSignals["derived"]["urgency"]): st
   if (urgency === "alta") return "badge-alert-warning";
   if (urgency === "baixa") return "badge-positive";
   return "badge-informative";
-}
-
-function formatSuggestedAction(action: AuvoParsedSignals["derived"]["suggestedAction"]): string {
-  const labels: Record<AuvoParsedSignals["derived"]["suggestedAction"], string> = {
-    create_opportunity: "Criar oportunidade",
-    link_customer: "Vincular cliente",
-    request_missing_data: "Pedir dados",
-    register_support: "Registrar suporte",
-    register_warranty: "Registrar garantia",
-    human_review: "Revisar manualmente",
-  };
-  return labels[action];
 }
 
 function formatSlaState(state: AuvoParsedSignals["derived"]["slaState"]): string {

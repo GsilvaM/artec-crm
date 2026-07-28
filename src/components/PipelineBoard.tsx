@@ -1,17 +1,19 @@
 import { useState, type DragEvent } from "react";
-import { Clock } from "lucide-react";
+import { Clock, MoreHorizontal, UserCheck } from "lucide-react";
 import { Avatar } from "./ui/Avatar";
-import { formatDateTime, formatMoney, formatOpportunityStatus, opportunityStatusBadgeClass } from "../domain/format";
+import { formatDateTime, formatMoney } from "../domain/format";
 import type { Opportunity, PipelineStage } from "../domain/crm";
 
 const DRAG_DATA_TYPE = "application/x-artec-opportunity-id";
 
-export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mobileActiveStageId, onMoveStage, onOpenOpportunity }: {
+export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mobileActiveStageId, currentUserId, onMoveStage, onAssignToMe, onOpenOpportunity }: {
   stages: PipelineStage[];
   opportunities: Opportunity[];
   stalledOpportunityIds: Set<string>;
   mobileActiveStageId: string | null;
+  currentUserId: string;
   onMoveStage: (opportunityId: string, stageId: string) => void | Promise<void>;
+  onAssignToMe: (opportunityId: string) => void | Promise<void>;
   onOpenOpportunity: (id: string) => void;
 }) {
   const orderedStages = [...stages].sort((a, b) => a.ordem - b.ordem);
@@ -63,9 +65,11 @@ export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mo
                     movableStages={movableStages}
                     isStalled={stalledOpportunityIds.has(opportunity.id)}
                     isDragging={draggingOpportunityId === opportunity.id}
+                    currentUserId={currentUserId}
                     onDragStart={() => setDraggingOpportunityId(opportunity.id)}
                     onDragEnd={() => setDraggingOpportunityId(null)}
                     onMoveStage={onMoveStage}
+                    onAssignToMe={onAssignToMe}
                     onOpenOpportunity={onOpenOpportunity}
                   />
                 ))
@@ -80,15 +84,17 @@ export function PipelineBoard({ stages, opportunities, stalledOpportunityIds, mo
   );
 }
 
-function PipelineCard({ opportunity, stage, movableStages, isStalled, isDragging, onDragStart, onDragEnd, onMoveStage, onOpenOpportunity }: {
+function PipelineCard({ opportunity, stage, movableStages, isStalled, isDragging, currentUserId, onDragStart, onDragEnd, onMoveStage, onAssignToMe, onOpenOpportunity }: {
   opportunity: Opportunity;
   stage: PipelineStage;
   movableStages: PipelineStage[];
   isStalled: boolean;
   isDragging: boolean;
+  currentUserId: string;
   onDragStart: () => void;
   onDragEnd: () => void;
   onMoveStage: (opportunityId: string, stageId: string) => void | Promise<void>;
+  onAssignToMe: (opportunityId: string) => void | Promise<void>;
   onOpenOpportunity: (id: string) => void;
 }) {
   const isActive = opportunity.status === "ativa";
@@ -97,8 +103,9 @@ function PipelineCard({ opportunity, stage, movableStages, isStalled, isDragging
 
   return (
     <article
-      className={`pipeline-card${isActive ? " pipeline-card-draggable" : ""}${isDragging ? " pipeline-card-dragging" : ""}`}
+      className={`pipeline-card pipeline-stage-tone-${stageTone(stage.nome)}${isActive ? " pipeline-card-draggable" : ""}${isDragging ? " pipeline-card-dragging" : ""}`}
       draggable={isActive}
+      onClick={() => onOpenOpportunity(opportunity.id)}
       onDragStart={(event: DragEvent<HTMLElement>) => {
         if (!isActive) {
           event.preventDefault();
@@ -111,19 +118,14 @@ function PipelineCard({ opportunity, stage, movableStages, isStalled, isDragging
       onDragEnd={onDragEnd}
     >
       <header>
-        <Avatar name={opportunity.clienteNome} size="sm" />
-        <button className="pipeline-card-open" type="button" onClick={() => onOpenOpportunity(opportunity.id)}>
+        <button className="pipeline-card-open" type="button" onClick={(event) => { event.stopPropagation(); onOpenOpportunity(opportunity.id); }}>
           {opportunity.clienteNome}
         </button>
-        <span className={`badge ${opportunityStatusBadgeClass(opportunity.status)}`}>{formatOpportunityStatus(opportunity.status)}</span>
+        <MoreHorizontal size={16} aria-hidden="true" />
       </header>
       <p className="pipeline-card-title">{opportunity.titulo}</p>
-      <dl className="pipeline-card-facts">
-        <div><dt>Tipo</dt><dd>{opportunity.tipoDemanda}</dd></div>
-        {opportunity.origem ? <div><dt>Origem</dt><dd>{opportunity.origem}</dd></div> : null}
-        {value !== null ? <div><dt>Valor</dt><dd>{formatMoney(value)}</dd></div> : null}
-        <div><dt>Situação</dt><dd>{opportunity.situacao}</dd></div>
-      </dl>
+      <span className="pipeline-card-location">{opportunity.situacao}</span>
+      {value !== null ? <strong className="pipeline-card-value">{formatMoney(value)}</strong> : null}
       {isActive && isStalled ? <span className="badge badge-alert-warning">parada</span> : null}
       <p className={`pipeline-card-next-action${overdue ? " danger-text" : ""}`}>
         {opportunity.proximaAcao ? (
@@ -137,11 +139,19 @@ function PipelineCard({ opportunity, stage, movableStages, isStalled, isDragging
         )}
       </p>
       <div className="pipeline-card-actions">
-        <button className="button secondary" type="button" onClick={() => onOpenOpportunity(opportunity.id)}>Abrir oportunidade</button>
+        <span className="pipeline-card-owner">
+          <Avatar name={opportunity.clienteNome} size="sm" />
+          {opportunity.responsavelId === currentUserId ? "Você" : `Usuário ${opportunity.responsavelId.slice(0, 4)}`}
+        </span>
+        {opportunity.responsavelId !== currentUserId ? (
+          <button className="button secondary pipeline-card-assign" type="button" onClick={(event) => { event.stopPropagation(); void onAssignToMe(opportunity.id); }}>
+            <UserCheck size={14} aria-hidden="true" /> Atribuir a mim
+          </button>
+        ) : null}
         {isActive ? (
           <label className="pipeline-card-move">
             <span className="sr-only">Mover {opportunity.titulo} para outra etapa</span>
-            <select value={stage.id} onChange={(event) => void onMoveStage(opportunity.id, event.target.value)}>
+            <select value={stage.id} onClick={(event) => event.stopPropagation()} onChange={(event) => void onMoveStage(opportunity.id, event.target.value)}>
               {movableStages.map((option) => <option key={option.id} value={option.id}>{option.nome}</option>)}
             </select>
           </label>
@@ -149,6 +159,18 @@ function PipelineCard({ opportunity, stage, movableStages, isStalled, isDragging
       </div>
     </article>
   );
+}
+
+function stageTone(stageName: string): string {
+  const normalized = stageName.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  if (normalized.includes("novo")) return "new";
+  if (normalized.includes("atendimento")) return "contact";
+  if (normalized.includes("visita")) return "visit";
+  if (normalized.includes("orcamento")) return "quote";
+  if (normalized.includes("negoci")) return "negotiation";
+  if (normalized.includes("aprov") || normalized.includes("ganho")) return "won";
+  if (normalized.includes("perd")) return "lost";
+  return "default";
 }
 
 function isOpportunityOverdue(opportunity: Opportunity): boolean {

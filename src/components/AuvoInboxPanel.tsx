@@ -1,9 +1,10 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, CircleAlert, CircleDashed } from "lucide-react";
-import { AuvoSignalSummary } from "./AuvoSignalSummary";
+import { ArrowLeft, Briefcase, Clock, FileText, Link2, MessageCircle, Phone, UserPlus, X } from "lucide-react";
 import { Avatar } from "./ui/Avatar";
-import { EmptyState } from "./ui/EmptyState";
 import { Badge } from "./ui/Badge";
+import { Button } from "./ui/Button";
+import { EmptyState } from "./ui/EmptyState";
+import { Input } from "./ui/input";
 import { formatDateTime } from "../domain/format";
 import {
   loadAuvoInboxItems,
@@ -11,71 +12,21 @@ import {
   SITUACAO_SUGGESTIONS,
   TIPO_DEMANDA_OPTIONS,
   type AuvoInboxItem,
-  type AuvoInboxStatus,
   type Customer,
+  type ResolveAuvoCustomerPayload,
   type ResolveAuvoInboxItemPayload,
 } from "../domain/crm";
 
 type ActionMode = "create_opportunity" | "link_opportunity" | "warranty" | "support" | "after_sales" | "customer_only" | "not_commercial" | "duplicate";
-type CustomerMatchPreview = {
-  score: number;
-  label: string;
-  description: string;
-  evidence: string[];
-  tone: "strong" | "medium" | "weak";
-};
-
-type TriageRecommendation = {
-  title: string;
-  description: string;
-  action: ActionMode;
-  tone: "strong" | "warning" | "neutral";
-  blockers: string[];
-};
-
-type TriageStep = {
-  label: string;
-  detail: string;
-  status: "done" | "attention" | "pending";
-};
-
-const STATUS_LABELS: Record<AuvoInboxStatus, string> = {
-  novo: "Novo",
-  em_analise: "Em análise",
-  aguardando_dados: "Aguardando dados",
-  processado: "Processado",
-  descartado: "Descartado",
-  erro_integracao: "Erro de integração",
-};
-
-const STATUS_BADGE_CLASS: Record<AuvoInboxStatus, string> = {
-  novo: "badge-informative",
-  em_analise: "badge-warning-soft",
-  aguardando_dados: "badge-warning-soft",
-  processado: "badge-positive",
-  descartado: "",
-  erro_integracao: "badge-alert-danger",
-};
-
-const ACTION_LABELS: Record<ActionMode, string> = {
-  create_opportunity: "Criar oportunidade",
-  link_opportunity: "Vincular a oportunidade existente",
-  warranty: "Registrar garantia",
-  support: "Registrar suporte",
-  after_sales: "Registrar pós-venda",
-  customer_only: "Cadastrar somente cliente",
-  not_commercial: "Marcar não comercial",
-  duplicate: "Marcar duplicado",
-};
-
-// Hierarquia de acoes por frequencia/consequencia real de uso (achado de
-// diagnostico visual: 8 botoes identicos lado a lado nao diferenciam criar
-// um registro de negocio de descartar como duplicado).
-const SECONDARY_ACTIONS: ActionMode[] = ["warranty", "support", "after_sales", "customer_only"];
-const DISMISS_ACTIONS: ActionMode[] = ["not_commercial", "duplicate"];
+type InboxTab = "pending" | "sla" | "triaged";
 
 type AuvoInboxForm = {
+  customerMode: "existing" | "new";
   clienteId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  customerCity: string;
   opportunityId: string;
   titulo: string;
   tipoDemanda: string;
@@ -87,53 +38,90 @@ type AuvoInboxForm = {
   reason: string;
 };
 
-// Caixa Auvo e a fila de triagem de atendimentos: ADR-0004 exige board/split-
-// view sem scroll global. Fila (esquerda) mostra status/prioridade/sinais de
-// cada atendimento; painel de decisao (direita) concentra leitura completa
-// (AuvoSignalSummary, match Cliente-Auvo) e as acoes humanas de resolucao —
-// o atendente nunca decide as cegas a partir so do titulo da fila.
+const ACTION_LABELS: Record<ActionMode, string> = {
+  create_opportunity: "Abrir oportunidade",
+  link_opportunity: "Vincular a cliente",
+  warranty: "Registrar garantia",
+  support: "Registrar suporte",
+  after_sales: "Registrar pós-venda",
+  customer_only: "Criar novo cliente",
+  not_commercial: "Descartar",
+  duplicate: "Descartar (spam)",
+};
+
+const TAB_LABELS: Record<InboxTab, string> = {
+  pending: "Pendentes",
+  sla: "SLA",
+  triaged: "Triadas",
+};
+
 export function AuvoInboxPanel({ customers, currentUserId }: { customers: Customer[]; currentUserId: string }) {
   const [items, setItems] = useState<AuvoInboxItem[]>([]);
-  const [statusFilter, setStatusFilter] = useState<AuvoInboxStatus | "">("novo");
+  const [activeTab, setActiveTab] = useState<InboxTab>("pending");
   const [error, setError] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [mode, setMode] = useState<ActionMode | "">("");
   const [form, setForm] = useState<AuvoInboxForm>(emptyForm());
+  const [submittingMode, setSubmittingMode] = useState<ActionMode | null>(null);
 
   useEffect(() => {
     void refresh();
-  }, [statusFilter]);
+  }, []);
 
+  const tabCounts = useMemo(() => buildTabCounts(items), [items]);
+  const visibleItems = useMemo(() => filterItemsByTab(items, activeTab), [items, activeTab]);
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
 
   async function refresh() {
     setError(null);
     try {
-      const loaded = await loadAuvoInboxItems(statusFilter || undefined);
+      const loaded = await loadAuvoInboxItems();
       setItems(loaded);
-      // Nao pre-seleciona o primeiro item: em mobile isso pularia direto para
-      // o painel de decisao, escondendo a fila atras dele. So mantem a
-      // selecao se o item ainda existir na lista recarregada.
-      setSelectedItemId((current) => (current && loaded.some((item) => item.id === current) ? current : null));
+      setSelectedItemId((current) => {
+        if (current && loaded.some((item) => item.id === current)) return current;
+        if (typeof window !== "undefined" && window.innerWidth > 820) {
+          return filterItemsByTab(loaded, activeTab)[0]?.id ?? loaded[0]?.id ?? null;
+        }
+        return null;
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar a Caixa de Entrada.");
+      setSubmittingMode(null);
+      setError(err instanceof Error ? err.message : "Não foi possível carregar a Caixa Auvo.");
     }
   }
 
   function selectItem(item: AuvoInboxItem) {
     setSelectedItemId(item.id);
     setMode("");
+    setSubmittingMode(null);
   }
 
   function backToQueue() {
     setSelectedItemId(null);
     setMode("");
+    setSubmittingMode(null);
+  }
+
+  function changeTab(tab: InboxTab) {
+    setActiveTab(tab);
+    setMode("");
+    setSelectedItemId((current) => {
+      if (current && filterItemsByTab(items, tab).some((item) => item.id === current)) return current;
+      if (typeof window !== "undefined" && window.innerWidth > 820) return filterItemsByTab(items, tab)[0]?.id ?? null;
+      return null;
+    });
   }
 
   function openAction(item: AuvoInboxItem, actionMode: ActionMode) {
+    const suggestedCustomer = customers.find((customer) => customer.id === item.suggestedCustomerId);
     setMode(actionMode);
     setForm({
+      customerMode: suggestedCustomer ? "existing" : "new",
       clienteId: item.suggestedCustomerId ?? "",
+      customerName: item.contactName ?? item.title,
+      customerPhone: item.phoneNormalized ?? "",
+      customerEmail: item.email ?? "",
+      customerCity: "",
       opportunityId: "",
       titulo: buildOpportunityTitle(item),
       tipoDemanda: inferDemandType(item),
@@ -142,24 +130,28 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
       proximaAcao: inferNextAction(item),
       proximaAcaoEm: defaultNextActionDateTime(),
       description: item.auvoSignals.derived.summary,
-      reason: "",
+      reason: actionMode === "duplicate" ? "Spam ou atendimento duplicado" : "",
     });
   }
 
   function closeAction() {
+    if (submittingMode) return;
     setMode("");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedItemId || !mode) return;
+    if (!selectedItemId || !mode || submittingMode) return;
     setError(null);
+    setSubmittingMode(mode);
 
+    const customerPayload = buildCustomerPayload(form);
     let payload: ResolveAuvoInboxItemPayload;
+
     if (mode === "create_opportunity") {
       payload = {
         action: "create_opportunity",
-        clienteId: form.clienteId,
+        ...customerPayload,
         titulo: form.titulo,
         tipoDemanda: form.tipoDemanda,
         origem: form.origem,
@@ -169,101 +161,102 @@ export function AuvoInboxPanel({ customers, currentUserId }: { customers: Custom
         responsavelId: currentUserId,
       };
     } else if (mode === "link_opportunity") {
-      payload = { action: "link_opportunity", opportunityId: form.opportunityId };
+      payload = { action: "customer_only", ...customerPayload };
     } else if (mode === "warranty" || mode === "support" || mode === "after_sales") {
-      payload = { action: mode, clienteId: form.clienteId, description: form.description };
+      payload = { action: mode, ...customerPayload, description: form.description };
     } else if (mode === "customer_only") {
-      payload = { action: "customer_only", clienteId: form.clienteId };
+      payload = { action: "customer_only", ...customerPayload };
     } else {
       payload = { action: mode, reason: form.reason || undefined };
     }
 
     try {
       await resolveAuvoInboxItem(selectedItemId, payload);
-      closeAction();
+      setSubmittingMode(null);
+      setMode("");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível resolver este item.");
+      setSubmittingMode(null);
+      setError(err instanceof Error ? err.message : "Não foi possível resolver este atendimento.");
     }
   }
 
   return (
-    <section className="panel auvo-inbox-panel auvo-split-view" aria-label="Caixa de Entrada Auvo" data-mobile-view={selectedItem ? "detail" : "queue"}>
-      <div className="auvo-queue-column">
-        <header className="auvo-queue-header">
-          <div>
-            <p className="eyebrow">Caixa de Entrada Auvo</p>
-            <h2>Fila de triagem</h2>
-          </div>
-          <div className="filter-actions">
-            {(["novo", "em_analise", "processado", "descartado"] as const).map((status) => (
-              <button key={status} className={`button ${statusFilter === status ? "secondary" : "ghost"}`} type="button" aria-pressed={statusFilter === status} onClick={() => setStatusFilter(status)}>
-                {STATUS_LABELS[status]}
-              </button>
-            ))}
-            <button className={`button ${statusFilter === "" ? "secondary" : "ghost"}`} type="button" aria-pressed={statusFilter === ""} onClick={() => setStatusFilter("")}>Todos</button>
-          </div>
-        </header>
+    <section className="auvo-inbox-panel auvo-design-shell" aria-label="Caixa de Entrada Auvo" data-mobile-view={selectedItem ? "detail" : "queue"}>
+      <aside className="auvo-design-queue" aria-label="Fila de triagem Auvo">
+        <div className="auvo-design-tabs" role="tablist" aria-label="Status da triagem Auvo">
+          {(Object.keys(TAB_LABELS) as InboxTab[]).map((tab) => (
+            <button key={tab} type="button" role="tab" aria-selected={activeTab === tab} onClick={() => changeTab(tab)}>
+              {TAB_LABELS[tab]} <span>{tabCounts[tab]}</span>
+            </button>
+          ))}
+        </div>
 
         {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}
 
-        {items.length ? (
-          <ul className="auvo-queue-list">
-            {items.map((item) => {
-              const isSelected = selectedItemId === item.id;
-              const suggestedCustomer = customers.find((customer) => customer.id === item.suggestedCustomerId);
-              const derived = item.auvoSignals.derived;
-              return (
-                <li key={item.id}>
-                  <button type="button" className="auvo-queue-item" aria-current={isSelected} onClick={() => selectItem(item)}>
-                    <Avatar name={suggestedCustomer?.nome ?? item.title} size="sm" />
-                    <span className="auvo-queue-item-body">
-                      <strong title={item.title}>{item.title}</strong>
-                      <span className="auvo-queue-item-meta">{item.channelType ?? "canal desconhecido"} • {formatDateTime(item.createdAt)}</span>
-                      <span className="auvo-queue-item-badges">
-                        <span className={`badge ${STATUS_BADGE_CLASS[item.status]}`}>{STATUS_LABELS[item.status]}</span>
-                        {derived.urgency === "alta" ? <Badge tone="alert-warning">urgente</Badge> : null}
-                        {derived.needsHumanReview ? <Badge tone="alert-danger">revisar</Badge> : null}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+        {visibleItems.length ? (
+          <ul className="auvo-design-list">
+            {visibleItems.map((item) => (
+              <li key={item.id}>
+                <QueueItem item={item} selected={selectedItemId === item.id} onSelect={() => selectItem(item)} />
+              </li>
+            ))}
           </ul>
         ) : (
-          <EmptyState title="Nenhum item nesta visualização" text="Ajuste o filtro de status para ver outros atendimentos." />
+          <EmptyState title="Nenhum atendimento" text="Não há itens nesta visualização." />
         )}
-      </div>
+      </aside>
 
-      <div className="auvo-decision-column">
+      <main className="auvo-design-detail">
         {selectedItem ? (
-          <AuvoDecisionPanel
-            key={selectedItem.id}
+          <DecisionPanel
             item={selectedItem}
             customers={customers}
             mode={mode}
             form={form}
             setForm={setForm}
+            submittingMode={submittingMode}
             onBack={backToQueue}
             onOpenAction={openAction}
             onCloseAction={closeAction}
             onSubmit={handleSubmit}
           />
         ) : (
-          <EmptyState title="Selecione um atendimento" text="Escolha um item da fila para ver os sinais Auvo, o match com o cliente e as ações de resolução." />
+          <EmptyState title="Selecione um atendimento" text="Escolha um item da fila para revisar a sessão consolidada." />
         )}
-      </div>
+      </main>
     </section>
   );
 }
 
-function AuvoDecisionPanel({
+function QueueItem({ item, selected, onSelect }: { item: AuvoInboxItem; selected: boolean; onSelect: () => void }) {
+  const derived = item.auvoSignals.derived;
+  return (
+    <button type="button" className="auvo-design-queue-item" aria-current={selected} onClick={onSelect}>
+      <span className="auvo-design-item-icon" data-tone={queueIconTone(item)}>
+        {item.phoneNormalized ? <Phone size={17} aria-hidden="true" /> : derived.intent === "outro" ? <FileText size={17} aria-hidden="true" /> : <MessageCircle size={17} aria-hidden="true" />}
+      </span>
+      <span className="auvo-design-item-copy">
+        <strong>{item.contactName ?? item.title}</strong>
+        <span>{buildQueuePreview(item)}</span>
+        <span className="auvo-design-item-badges">
+          {derived.needsHumanReview || isSlaRisk(item) ? <Badge tone={isSlaRisk(item) ? "alert-danger" : "alert-warning"}>{isSlaRisk(item) ? "SLA" : "Revisar"}</Badge> : null}
+          {item.suggestedCustomerId ? <Badge tone="positive">Match alta</Badge> : null}
+          {!item.suggestedCustomerId && item.phoneNormalized ? <Badge tone="warning">Match média</Badge> : null}
+        </span>
+      </span>
+      <small>{formatRelativeShort(item.createdAt)}</small>
+    </button>
+  );
+}
+
+function DecisionPanel({
   item,
   customers,
   mode,
   form,
   setForm,
+  submittingMode,
   onBack,
   onOpenAction,
   onCloseAction,
@@ -274,180 +267,189 @@ function AuvoDecisionPanel({
   mode: ActionMode | "";
   form: AuvoInboxForm;
   setForm: (form: AuvoInboxForm) => void;
+  submittingMode: ActionMode | null;
   onBack: () => void;
   onOpenAction: (item: AuvoInboxItem, mode: ActionMode) => void;
   onCloseAction: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
-  const isResolved = item.status === "processado" || item.status === "descartado";
   const suggestedCustomer = customers.find((customer) => customer.id === item.suggestedCustomerId);
-  const matchPreview = buildCustomerMatchPreview(item, suggestedCustomer);
-  const recommendation = buildTriageRecommendation(item, matchPreview);
-  const triageSteps = buildTriageSteps(item, matchPreview, recommendation, isResolved);
+  const isResolved = item.status === "processado" || item.status === "descartado";
 
   return (
-    <article className="auvo-decision-panel">
-      <header className="auvo-decision-header">
-        <button type="button" className="button ghost auvo-decision-back" onClick={onBack}>
-          <ArrowLeft aria-hidden="true" size={16} /> Voltar para a fila
-        </button>
-        <div className="auvo-decision-title">
-          <Avatar name={suggestedCustomer?.nome ?? item.title} size="sm" />
-          <div>
-            <strong>{item.title}</strong>
-            <span className="auvo-queue-item-meta">{item.channelType ?? "canal desconhecido"} • {formatDateTime(item.createdAt)}</span>
-          </div>
-          <span className={`badge ${STATUS_BADGE_CLASS[item.status]}`}>{STATUS_LABELS[item.status]}</span>
+    <article className="auvo-design-card">
+      <header className="auvo-design-detail-header">
+        <Button type="button" variant="ghost" className="auvo-design-back" onClick={onBack}>
+          <ArrowLeft size={16} aria-hidden="true" /> Voltar
+        </Button>
+        <span className="auvo-design-item-icon" data-tone={queueIconTone(item)}>
+          <MessageCircle size={18} aria-hidden="true" />
+        </span>
+        <div>
+          <h2>{item.contactName ?? item.title}</h2>
+          <p><Clock size={13} aria-hidden="true" /> Recebido {formatRelativeShort(item.createdAt)}</p>
         </div>
       </header>
 
-      {(item.phoneNormalized || item.resolution || item.discardReason) ? (
-        <dl className="auvo-inbox-facts">
-          {item.phoneNormalized ? <div><dt>Telefone</dt><dd>{item.phoneNormalized}</dd></div> : null}
-          {item.resolution ? <div><dt>Resolução</dt><dd>{item.resolution}</dd></div> : null}
-          {item.discardReason ? <div><dt>Motivo</dt><dd>{item.discardReason}</dd></div> : null}
-        </dl>
-      ) : null}
+      <div className="auvo-design-content">
+        <section className="auvo-session-card" aria-label="Sessão consolidada">
+          <header>
+            <strong>Sessão consolidada</strong>
+            <p>Todo o contexto agrupado antes da triagem.</p>
+          </header>
+          <div className="auvo-session-block">
+            <span>Mensagem recebida</span>
+            <p>{item.auvoSignals.lastMessageText ?? item.auvoSignals.derived.summary}</p>
+          </div>
+          <div className="auvo-session-block">
+            <span>Contexto adicional</span>
+            <p>{buildAdditionalContext(item)}</p>
+          </div>
+        </section>
 
-      <section className={`auvo-customer-match auvo-customer-match-${matchPreview.tone}`} aria-label="Match Cliente-Auvo">
-        <div>
-          <span className="auvo-customer-match-kicker">Match Cliente-Auvo</span>
-          <strong>{matchPreview.label}</strong>
-          <p>{matchPreview.description}</p>
-        </div>
-        <div className="auvo-customer-match-score" aria-label={`Confianca estimada de ${matchPreview.score}%`}>
-          <span>{matchPreview.score}%</span>
-          <small>estimado</small>
-        </div>
-        <ul className="auvo-customer-match-evidence">
-          {matchPreview.evidence.map((evidence) => <li key={evidence}>{evidence}</li>)}
-        </ul>
-      </section>
+        <section className="auvo-customer-suggestion-card" aria-label="Cliente sugerido">
+          <header>
+            <strong>Cliente sugerido</strong>
+            <p>Correlação automática - confirme antes de vincular.</p>
+          </header>
+          <div>
+            <Avatar name={suggestedCustomer?.nome ?? item.contactName ?? item.title} size="sm" />
+            <span>
+              <strong>{suggestedCustomer?.nome ?? `${item.contactName ?? item.title} - novo cliente`}</strong>
+              <small>Confiança: {suggestedCustomer ? "alta" : item.phoneNormalized ? "média" : "baixa"}</small>
+            </span>
+            <Badge tone={suggestedCustomer ? "positive" : "warning"}>{suggestedCustomer ? "alta" : "média"}</Badge>
+          </div>
+        </section>
 
-      <section className={`auvo-triage-guidance auvo-triage-guidance-${recommendation.tone}`} aria-label="Recomendacao de triagem">
-        <div>
-          <span>Recomendacao de triagem</span>
-          <strong>{recommendation.title}</strong>
-          <p>{recommendation.description}</p>
-        </div>
-        <button className="button secondary" type="button" disabled={isResolved} onClick={() => onOpenAction(item, recommendation.action)}>
-          Seguir recomendacao
-        </button>
-        {recommendation.blockers.length ? (
-          <ul>
-            {recommendation.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
-          </ul>
+        {mode ? (
+          <ActionForm
+            mode={mode}
+            customers={customers}
+            form={form}
+            setForm={setForm}
+            submittingMode={submittingMode}
+            onCloseAction={onCloseAction}
+            onSubmit={onSubmit}
+          />
         ) : null}
-      </section>
-
-      <section className="auvo-triage-checklist" aria-label="Checklist de triagem assistida">
-        <header>
-          <span>Checklist humano</span>
-          <strong>Conferir antes de resolver</strong>
-        </header>
-        <ol>
-          {triageSteps.map((step) => (
-            <li key={step.label} data-status={step.status}>
-              <span className="auvo-triage-step-icon" aria-hidden="true">
-                {step.status === "done" ? <CheckCircle2 size={16} /> : step.status === "attention" ? <CircleAlert size={16} /> : <CircleDashed size={16} />}
-              </span>
-              <span>
-                <strong>{step.label}</strong>
-                <p>{step.detail}</p>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <div className="auvo-inbox-summary">
-        <AuvoSignalSummary signals={item.auvoSignals} showDetails />
       </div>
 
       {!isResolved ? (
-        <div className="auvo-inbox-action-bar">
-          <div className="auvo-inbox-primary-actions">
-            <button className="button primary" type="button" onClick={() => onOpenAction(item, "create_opportunity")}>
-              {ACTION_LABELS.create_opportunity}
-            </button>
-            <button className="button secondary" type="button" onClick={() => onOpenAction(item, "link_opportunity")}>
-              {ACTION_LABELS.link_opportunity}
-            </button>
-            <button className="button secondary" type="button" onClick={() => onOpenAction(item, "customer_only")}>
-              {ACTION_LABELS.customer_only}
-            </button>
-          </div>
-          <div className="auvo-inbox-secondary-actions">
-            {SECONDARY_ACTIONS.filter((actionMode) => actionMode !== "customer_only").map((actionMode) => (
-              <button key={actionMode} className="button ghost" type="button" onClick={() => onOpenAction(item, actionMode)}>
-                {ACTION_LABELS[actionMode]}
-              </button>
-            ))}
-          </div>
-          <div className="auvo-inbox-dismiss-actions">
-            {DISMISS_ACTIONS.map((actionMode) => (
-              <button key={actionMode} className="button ghost muted-action" type="button" onClick={() => onOpenAction(item, actionMode)}>
-                {ACTION_LABELS[actionMode]}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {mode ? (
-        <form className="auvo-inbox-form" onSubmit={onSubmit}>
-          <h4>{ACTION_LABELS[mode]}</h4>
-          {mode === "create_opportunity" || mode === "warranty" || mode === "support" || mode === "after_sales" || mode === "customer_only" ? (
-            <label>Cliente
-              <select required value={form.clienteId} onChange={(event) => setForm({ ...form, clienteId: event.target.value })}>
-                <option value="">Selecione</option>
-                {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.nome}</option>)}
-              </select>
-            </label>
-          ) : null}
-          {mode === "create_opportunity" ? (
-            <>
-              <label>Título<input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
-              <label>Origem<input required value={form.origem} onChange={(event) => setForm({ ...form, origem: event.target.value })} /></label>
-              <label>
-                Tipo de demanda
-                <select required value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
-                  {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
-                </select>
-              </label>
-              <label>
-                Situação
-                <input required list="auvo-situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} />
-              </label>
-              <datalist id="auvo-situacao-suggestions">
-                {SITUACAO_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
-              </datalist>
-              <label>Próxima ação<input required value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
-              <label>Data da próxima ação<input required type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
-            </>
-          ) : null}
-          {mode === "link_opportunity" ? (
-            <label>ID da oportunidade<input required value={form.opportunityId} onChange={(event) => setForm({ ...form, opportunityId: event.target.value })} /></label>
-          ) : null}
-          {mode === "warranty" || mode === "support" || mode === "after_sales" ? (
-            <label>Descrição<input required value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
-          ) : null}
-          {mode === "not_commercial" || mode === "duplicate" ? (
-            <label>Motivo (opcional)<input value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} /></label>
-          ) : null}
-          <div className="form-actions">
-            <button className="button primary" type="submit">Confirmar</button>
-            <button className="button secondary" type="button" onClick={onCloseAction}>Cancelar</button>
-          </div>
-        </form>
+        <footer className="auvo-design-actions">
+          <Button variant="secondary" type="button" disabled={Boolean(submittingMode)} onClick={() => onOpenAction(item, "duplicate")}>
+            <X size={16} aria-hidden="true" /> {ACTION_LABELS.duplicate}
+          </Button>
+          <Button variant="secondary" type="button" disabled={Boolean(submittingMode)} onClick={() => onOpenAction(item, "customer_only")}>
+            <UserPlus size={16} aria-hidden="true" /> {ACTION_LABELS.customer_only}
+          </Button>
+          <Button variant="secondary" type="button" disabled={Boolean(submittingMode)} onClick={() => onOpenAction(item, "link_opportunity")}>
+            <Link2 size={16} aria-hidden="true" /> {ACTION_LABELS.link_opportunity}
+          </Button>
+          <Button variant="primary" type="button" disabled={Boolean(submittingMode)} onClick={() => onOpenAction(item, "create_opportunity")}>
+            <Briefcase size={16} aria-hidden="true" /> {ACTION_LABELS.create_opportunity}
+          </Button>
+        </footer>
       ) : null}
     </article>
   );
 }
 
+function ActionForm({
+  mode,
+  customers,
+  form,
+  setForm,
+  submittingMode,
+  onCloseAction,
+  onSubmit,
+}: {
+  mode: ActionMode;
+  customers: Customer[];
+  form: AuvoInboxForm;
+  setForm: (form: AuvoInboxForm) => void;
+  submittingMode: ActionMode | null;
+  onCloseAction: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const needsCustomer = mode === "create_opportunity" || mode === "warranty" || mode === "support" || mode === "after_sales" || mode === "customer_only" || mode === "link_opportunity";
+
+  return (
+    <form className="auvo-inbox-form auvo-design-form" onSubmit={onSubmit} aria-busy={submittingMode === mode}>
+      <header className="auvo-inbox-form-header">
+        <div>
+          <span>Resolução do atendimento</span>
+          <h4>{ACTION_LABELS[mode]}</h4>
+        </div>
+        <p>{buildActionFormHint(mode)}</p>
+      </header>
+
+      {needsCustomer ? (
+        <fieldset className="auvo-customer-choice">
+          <legend>Cliente</legend>
+          <div className="radio-row">
+            <label><input type="radio" name="auvo-customer-mode" value="existing" checked={form.customerMode === "existing"} onChange={() => setForm({ ...form, customerMode: "existing" })} /> Usar cliente existente</label>
+            <label><input type="radio" name="auvo-customer-mode" value="new" checked={form.customerMode === "new"} onChange={() => setForm({ ...form, customerMode: "new" })} /> Cadastrar novo cliente</label>
+          </div>
+          {form.customerMode === "existing" ? (
+            <label>Cliente existente
+              <select required value={form.clienteId} onChange={(event) => setForm({ ...form, clienteId: event.target.value })}>
+                <option value="">Selecione</option>
+                {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.nome}</option>)}
+              </select>
+            </label>
+          ) : (
+            <div className="auvo-new-customer-grid">
+              <label>Nome do cliente<Input required value={form.customerName} onChange={(event) => setForm({ ...form, customerName: event.target.value })} /></label>
+              <label>Telefone<Input value={form.customerPhone} onChange={(event) => setForm({ ...form, customerPhone: event.target.value })} /></label>
+              <label>E-mail<Input type="email" value={form.customerEmail} onChange={(event) => setForm({ ...form, customerEmail: event.target.value })} /></label>
+              <label>Cidade<Input value={form.customerCity} onChange={(event) => setForm({ ...form, customerCity: event.target.value })} /></label>
+            </div>
+          )}
+        </fieldset>
+      ) : null}
+
+      {mode === "create_opportunity" ? (
+        <>
+          <label>Título<Input required value={form.titulo} onChange={(event) => setForm({ ...form, titulo: event.target.value })} /></label>
+          <label>Origem<Input required value={form.origem} onChange={(event) => setForm({ ...form, origem: event.target.value })} /></label>
+          <label>Tipo de demanda
+            <select required value={form.tipoDemanda} onChange={(event) => setForm({ ...form, tipoDemanda: event.target.value })}>
+              {TIPO_DEMANDA_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label>Situação<Input required list="auvo-situacao-suggestions" value={form.situacao} onChange={(event) => setForm({ ...form, situacao: event.target.value })} /></label>
+          <datalist id="auvo-situacao-suggestions">
+            {SITUACAO_SUGGESTIONS.map((suggestion) => <option value={suggestion} key={suggestion} />)}
+          </datalist>
+          <label>Próxima ação<Input required value={form.proximaAcao} onChange={(event) => setForm({ ...form, proximaAcao: event.target.value })} /></label>
+          <label>Data da próxima ação<Input required type="datetime-local" value={form.proximaAcaoEm} onChange={(event) => setForm({ ...form, proximaAcaoEm: event.target.value })} /></label>
+        </>
+      ) : null}
+
+      {mode === "warranty" || mode === "support" || mode === "after_sales" ? (
+        <label>Descrição<Input required value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+      ) : null}
+      {mode === "not_commercial" || mode === "duplicate" ? (
+        <label>Motivo<Input required={mode === "duplicate"} value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} /></label>
+      ) : null}
+
+      <div className="form-actions">
+        <Button variant="primary" type="submit" disabled={submittingMode === mode}>{submittingMode === mode ? "Salvando..." : "Confirmar"}</Button>
+        <Button variant="secondary" type="button" disabled={submittingMode === mode} onClick={onCloseAction}>Cancelar</Button>
+      </div>
+    </form>
+  );
+}
+
 function emptyForm(): AuvoInboxForm {
   return {
+    customerMode: "new",
     clienteId: "",
+    customerName: "",
+    customerPhone: "",
+    customerEmail: "",
+    customerCity: "",
     opportunityId: "",
     titulo: "",
     tipoDemanda: "instalacao",
@@ -460,10 +462,76 @@ function emptyForm(): AuvoInboxForm {
   };
 }
 
+function buildTabCounts(items: AuvoInboxItem[]): Record<InboxTab, number> {
+  return {
+    pending: filterItemsByTab(items, "pending").length,
+    sla: filterItemsByTab(items, "sla").length,
+    triaged: filterItemsByTab(items, "triaged").length,
+  };
+}
+
+function filterItemsByTab(items: AuvoInboxItem[], tab: InboxTab): AuvoInboxItem[] {
+  return items.filter((item) => {
+    if (tab === "triaged") return item.status === "processado" || item.status === "descartado";
+    if (tab === "sla") return item.status !== "processado" && item.status !== "descartado" && isSlaRisk(item);
+    return item.status !== "processado" && item.status !== "descartado" && !isSlaRisk(item);
+  });
+}
+
+function isSlaRisk(item: AuvoInboxItem): boolean {
+  return item.auvoSignals.derived.slaState === "vencido" || item.auvoSignals.derived.slaState === "parado" || item.auvoSignals.derived.urgency === "alta";
+}
+
+function queueIconTone(item: AuvoInboxItem): "message" | "phone" | "file" {
+  if (item.phoneNormalized) return "phone";
+  if (item.auvoSignals.derived.intent === "outro") return "file";
+  return "message";
+}
+
+function buildQueuePreview(item: AuvoInboxItem): string {
+  if (item.auvoSignals.lastMessageText) return item.auvoSignals.lastMessageText.slice(0, 74);
+  if (item.phoneNormalized) return "Chamada perdida - retornar";
+  return item.auvoSignals.derived.summary;
+}
+
+function buildAdditionalContext(item: AuvoInboxItem): string {
+  const unread = item.auvoSignals.unreadCount;
+  if (unread && unread > 1) return `Contato já enviou ${unread} mensagens sobre o mesmo assunto nas últimas 24 horas.`;
+  if (item.auvoSignals.tags.length) return `Tags recebidas: ${item.auvoSignals.tags.map(String).slice(0, 3).join(", ")}.`;
+  if (item.channelType) return `Canal ${item.channelType}; revise o histórico antes de criar registros.`;
+  return "Sem contexto adicional relevante no payload recebido.";
+}
+
+function buildActionFormHint(mode: ActionMode): string {
+  const hints: Record<ActionMode, string> = {
+    create_opportunity: "Cria ou reutiliza o cliente e abre a oportunidade com próxima ação obrigatória.",
+    link_opportunity: "Use quando o atendimento deve ser preservado na ficha de um cliente existente.",
+    warranty: "Registra o contato como garantia, sem contaminar o funil comercial.",
+    support: "Registra suporte técnico na ficha do cliente.",
+    after_sales: "Registra pós-venda na ficha do cliente.",
+    customer_only: "Cria ou confirma o cliente sem abrir oportunidade comercial.",
+    not_commercial: "Encerra a triagem como atendimento fora do escopo comercial.",
+    duplicate: "Encerra como spam ou duplicado; informe o motivo para preservar auditoria.",
+  };
+  return hints[mode];
+}
+
+function buildCustomerPayload(form: AuvoInboxForm): ResolveAuvoCustomerPayload {
+  if (form.customerMode === "existing") return { clienteId: form.clienteId };
+  return {
+    customer: {
+      tipoPessoa: "fisica",
+      nome: form.customerName,
+      telefone: form.customerPhone || null,
+      email: form.customerEmail || null,
+      cidade: form.customerCity || null,
+      observacoes: "Cliente cadastrado pela triagem da Caixa Auvo.",
+    },
+  };
+}
+
 function buildOpportunityTitle(item: AuvoInboxItem): string {
-  const intent = item.auvoSignals.derived.intent;
   const label = TIPO_DEMANDA_OPTIONS.find((option) => option.value === inferDemandType(item))?.label ?? item.auvoSignals.derived.summary;
-  if (intent === "outro") return item.title;
   return `${label} - ${item.contactName ?? item.title}`.slice(0, 120);
 }
 
@@ -484,9 +552,9 @@ function inferSituation(item: AuvoInboxItem): string {
 
 function inferNextAction(item: AuvoInboxItem): string {
   const derived = item.auvoSignals.derived;
-  if (derived.missingData.length) return `Solicitar: ${formatMissingDataForAction(derived.missingData)}`;
-  if (derived.intent === "instalacao" || derived.intent === "orcamento") return "Agendar visita tecnica";
-  if (derived.intent === "higienizacao") return "Confirmar escopo da higienizacao";
+  if (derived.missingData.length) return `Solicitar dados pendentes: ${derived.missingData.join(", ")}`;
+  if (derived.intent === "instalacao" || derived.intent === "orcamento") return "Agendar visita técnica";
+  if (derived.intent === "higienizacao") return "Confirmar escopo da higienização";
   return "Revisar atendimento Auvo";
 }
 
@@ -498,161 +566,11 @@ function defaultNextActionDateTime(): string {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
-function formatMissingDataForAction(values: AuvoInboxItem["auvoSignals"]["derived"]["missingData"]): string {
-  const labels: Record<AuvoInboxItem["auvoSignals"]["derived"]["missingData"][number], string> = {
-    nome: "nome",
-    telefone: "telefone",
-    tipo_demanda: "tipo de demanda",
-    endereco: "endereco",
-    equipamento: "equipamento",
-  };
-  return values.map((value) => labels[value]).join(", ");
-}
-
-function buildCustomerMatchPreview(item: AuvoInboxItem, suggestedCustomer: Customer | undefined): CustomerMatchPreview {
-  const evidence: string[] = [];
-  const inboxPhone = normalizeDigits(item.phoneNormalized);
-  const customerPhone = normalizeDigits(suggestedCustomer?.telefoneNormalizado ?? suggestedCustomer?.telefone);
-
-  if (suggestedCustomer) {
-    let score = 78;
-    evidence.push("Cliente sugerido pelo CRM");
-    if (inboxPhone && customerPhone && inboxPhone === customerPhone) {
-      score += 14;
-      evidence.push("Telefone confere");
-    } else if (inboxPhone) {
-      evidence.push("Telefone disponivel para conferencia");
-    }
-    if (item.auvoContactId) {
-      score += 4;
-      evidence.push("Contato Auvo identificado");
-    }
-    if (item.contactName && namesLookRelated(item.contactName, suggestedCustomer.nome)) {
-      score += 4;
-      evidence.push("Nome parecido");
-    }
-
-    const boundedScore = Math.min(score, 98);
-    return {
-      score: boundedScore,
-      label: suggestedCustomer.nome,
-      description: boundedScore >= 90 ? "Vinculo forte para seguir a triagem." : "Vinculo provavel; confira antes de resolver.",
-      evidence,
-      tone: boundedScore >= 86 ? "strong" : "medium",
-    };
-  }
-
-  if (inboxPhone) {
-    return {
-      score: 42,
-      label: "Sem cliente sugerido",
-      description: "Ha telefone no atendimento, mas nenhum cliente foi vinculado ainda.",
-      evidence: ["Telefone capturado", item.auvoContactId ? "Contato Auvo identificado" : "Sem contato Auvo vinculado"],
-      tone: "weak",
-    };
-  }
-
-  return {
-    score: 18,
-    label: "Match pendente",
-    description: "Faltam dados para comparar este atendimento com a base de clientes.",
-    evidence: ["Solicitar telefone ou identificar cliente", "Revisao manual recomendada"],
-    tone: "weak",
-  };
-}
-
-function buildTriageRecommendation(item: AuvoInboxItem, match: CustomerMatchPreview): TriageRecommendation {
-  const derived = item.auvoSignals.derived;
-  const blockers = [
-    ...derived.missingData.map((value) => `Falta ${formatMissingDataForAction([value])}`),
-    ...(match.tone === "weak" ? ["Match com cliente ainda fraco"] : []),
-  ];
-
-  if (derived.suggestedAction === "register_warranty" || derived.intent === "garantia") {
-    return {
-      title: "Registrar fora do funil comercial",
-      description: "O atendimento parece garantia. Preserve o historico na ficha do cliente sem criar oportunidade comercial.",
-      action: "warranty",
-      tone: blockers.length ? "warning" : "strong",
-      blockers,
-    };
-  }
-
-  if (derived.suggestedAction === "register_support" || derived.intent === "suporte" || derived.intent === "pos_venda") {
-    return {
-      title: "Registrar atendimento tecnico",
-      description: "O sinal indica suporte ou pos-venda. Use a ficha do cliente para manter o funil comercial limpo.",
-      action: derived.intent === "pos_venda" ? "after_sales" : "support",
-      tone: blockers.length ? "warning" : "strong",
-      blockers,
-    };
-  }
-
-  if (derived.needsHumanReview || blockers.length) {
-    return {
-      title: "Revisar antes de resolver",
-      description: "Complete os dados ou confirme o cliente antes de criar oportunidade, para evitar duplicidade e follow-up errado.",
-      action: match.score >= 40 ? "customer_only" : "not_commercial",
-      tone: "warning",
-      blockers,
-    };
-  }
-
-  return {
-    title: "Criar oportunidade comercial",
-    description: "Os sinais apontam demanda comercial com dados suficientes para iniciar o acompanhamento.",
-    action: "create_opportunity",
-    tone: "strong",
-    blockers: [],
-  };
-}
-
-function buildTriageSteps(item: AuvoInboxItem, match: CustomerMatchPreview, recommendation: TriageRecommendation, isResolved: boolean): TriageStep[] {
-  const derived = item.auvoSignals.derived;
-  const missingData = derived.missingData;
-  const customerStatus: TriageStep["status"] = match.score >= 70 ? "done" : match.score >= 40 ? "attention" : "pending";
-  const dataStatus: TriageStep["status"] = missingData.length ? "attention" : "done";
-  const routingStatus: TriageStep["status"] = recommendation.blockers.length || derived.needsHumanReview ? "attention" : "done";
-
-  return [
-    {
-      label: "Identificar cliente",
-      detail: match.score >= 70 ? `${match.label} com confianca suficiente para seguir.` : match.description,
-      status: customerStatus,
-    },
-    {
-      label: "Completar dados minimos",
-      detail: missingData.length ? `Solicitar ${formatMissingDataForAction(missingData)} antes da resolucao final.` : "Nome, telefone e demanda estao suficientes para triagem.",
-      status: dataStatus,
-    },
-    {
-      label: "Escolher destino correto",
-      detail: `Sugestao atual: ${ACTION_LABELS[recommendation.action]}.`,
-      status: routingStatus,
-    },
-    {
-      label: "Registrar decisao humana",
-      detail: isResolved ? "Atendimento ja resolvido e preservado no historico." : "Use uma acao abaixo para gravar a decisao, sem classificacao automatica.",
-      status: isResolved ? "done" : "pending",
-    },
-  ];
-}
-
-function normalizeDigits(value: string | null | undefined): string {
-  return value?.replace(/\D/g, "") ?? "";
-}
-
-function namesLookRelated(left: string, right: string): boolean {
-  const leftTokens = normalizeSearchText(left).split(" ").filter((token) => token.length >= 3);
-  const rightText = normalizeSearchText(right);
-  return leftTokens.some((token) => rightText.includes(token));
-}
-
-function normalizeSearchText(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+function formatRelativeShort(value: string): string {
+  const diffMs = Date.now() - new Date(value).getTime();
+  const minutes = Math.max(1, Math.round(diffMs / 60_000));
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `há ${hours} h`;
+  return formatDateTime(value);
 }

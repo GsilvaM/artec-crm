@@ -5,17 +5,17 @@ import type { Notification } from "../../domain/crm";
 
 function formatNotificationSeverity(severity: Notification["severity"]): string {
   if (severity === "urgent") return "Urgente";
-  if (severity === "attention") return "Atencao";
+  if (severity === "attention") return "Atenção";
   return "Informativa";
 }
 
 function formatNotificationType(type: Notification["type"]): string {
   const labels: Record<Notification["type"], string> = {
-    overdue_next_action: "Acao vencida",
-    due_soon_next_action: "Acao vencendo",
+    overdue_next_action: "Ação vencida",
+    due_soon_next_action: "Ação vencendo",
     opportunity_assigned: "Nova oportunidade",
-    next_action_reassigned: "Acao redistribuida",
-    missing_next_action: "Sem proxima acao",
+    next_action_reassigned: "Ação redistribuída",
+    missing_next_action: "Sem próxima ação",
     stalled_opportunity: "Oportunidade parada",
     internal_error: "Erro interno",
   };
@@ -25,13 +25,13 @@ function formatNotificationType(type: Notification["type"]): string {
 
 export function formatNotificationStatus(status: Notification["status"] | "active"): string {
   if (status === "active") return "Pendentes";
-  if (status === "unread") return "Nao lida";
+  if (status === "unread") return "Não lida";
   if (status === "read") return "Lida";
   if (status === "archived") return "Arquivada";
   return "Resolvida";
 }
 
-export function NotificationList({ items, onRead, onArchive, onSnooze, emptyTitle = "Nenhuma notificacao pendente", emptyText = "A fila esta em dia.", compact = false }: {
+export function NotificationList({ items, onRead, onArchive, onSnooze, emptyTitle = "Nenhuma notificação pendente", emptyText = "A fila está em dia.", compact = false }: {
   items: Notification[];
   onRead: (id: string) => void | Promise<void>;
   onArchive: (id: string) => void | Promise<void>;
@@ -53,14 +53,14 @@ export function NotificationList({ items, onRead, onArchive, onSnooze, emptyTitl
               <span className={`severity ${item.severity}`}>{formatNotificationSeverity(item.severity)}</span>
               <strong>{item.title}</strong>
             </div>
-            <p>{item.body}</p>
+            <p>{formatNotificationBody(item.body)}</p>
             <div className="notification-list-meta">
               <span>{formatNotificationType(item.type)}</span>
               <span>{formatDateTime(item.createdAt)}</span>
               <span>{formatNotificationStatus(item.status)}</span>
             </div>
           </div>
-          <div className="quick-actions" aria-label={`Acoes para ${item.title}`}>
+          <div className="quick-actions" aria-label={`Ações para ${item.title}`}>
             {item.status === "unread" ? (
               <button className="icon-button" type="button" title="Marcar como lida" aria-label="Marcar como lida" onClick={() => void onRead(item.id)}>
                 <Check aria-hidden="true" size={16} />
@@ -77,4 +77,16 @@ export function NotificationList({ items, onRead, onArchive, onSnooze, emptyTitl
       ))}
     </ul>
   );
+}
+
+function formatNotificationBody(body: string): string {
+  return body
+    .replace(/\*\*/g, "")
+    .replace(/\bOrcamento\b/g, "Orçamento")
+    .replace(/\bMarco\b/g, "Março")
+    .replace(/\besta sem movimentacao\b/g, "está sem movimentação")
+    .replace(/\bsem movimentacao recente\b/g, "sem movimentação recente")
+    .replace(/\bproxima acao\b/g, "próxima ação")
+    .replace(/\bvoce\b/g, "você")
+    .replace(/\busuario\b/g, "usuário");
 }

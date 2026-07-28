@@ -1,8 +1,7 @@
 import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Avatar } from "../ui/Avatar";
-import { Button } from "../ui/Button";
 import { NotificationList } from "../ui/NotificationList";
 import { Separator } from "../ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -135,10 +134,6 @@ export function Topbar({
       </div>
 
       <div className="app-topbar-spacer" />
-
-      <Button asChild variant="primary" className="app-topbar-new">
-        <Link to="/oportunidades">+ Nova oportunidade</Link>
-      </Button>
 
       <div className="app-notification-shell">
         <Tooltip>

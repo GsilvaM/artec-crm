@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
-import { LoadingPanels } from "../../components/ui/Skeleton";
+import { PlugZap } from "lucide-react";
 import { AuvoInboxPanel } from "../../components/AuvoInboxPanel";
-import { loadCrmSnapshot, type Customer } from "../../domain/crm";
+import { LoadingPanels } from "../../components/ui/Skeleton";
+import { formatDateTime } from "../../domain/format";
+import { loadAuvoIntegrationStatus, loadCrmSnapshot, type AuvoIntegrationStatus, type Customer } from "../../domain/crm";
 
 export function CaixaAuvoPage({ currentUserId }: { currentUserId: string }) {
   const [customers, setCustomers] = useState<Customer[] | null>(null);
+  const [integrationStatus, setIntegrationStatus] = useState<AuvoIntegrationStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
       try {
-        const snapshot = await loadCrmSnapshot();
+        const [snapshot, status] = await Promise.all([loadCrmSnapshot(), loadAuvoIntegrationStatus()]);
         setCustomers(snapshot.customers.filter((customer) => !customer.archivedAt));
+        setIntegrationStatus(status);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Não foi possível carregar os clientes para triagem.");
       }
@@ -20,11 +24,15 @@ export function CaixaAuvoPage({ currentUserId }: { currentUserId: string }) {
 
   return (
     <>
-      <section className="page-heading">
+      <section className="page-heading auvo-page-heading">
         <div>
-          <p className="eyebrow">Integração Auvo</p>
-          <h1>Caixa de Entrada</h1>
+          <h1>Caixa Auvo</h1>
+          <p>Eventos recebidos aguardando triagem humana. Nada é criado automaticamente.</p>
         </div>
+        <span className="auvo-webhook-status">
+          <PlugZap size={16} aria-hidden="true" />
+          Webhook {integrationStatus?.configured ? "saudável" : "pendente"} · {integrationStatus?.lastReceivedAt ? `último ${formatDateTime(integrationStatus.lastReceivedAt)}` : "sem eventos recentes"}
+        </span>
       </section>
 
       {error ? <div className="alert danger-alert" role="alert">{error}</div> : null}

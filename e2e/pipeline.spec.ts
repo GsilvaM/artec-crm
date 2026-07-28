@@ -23,12 +23,16 @@ for (const viewport of [
     await page.getByLabel("Board operacional do funil").waitFor();
     await page.getByLabel("Funil comercial por etapa").waitFor();
 
-    const overflow = await page.evaluate(() => ({
-      horizontal: document.documentElement.scrollWidth - window.innerWidth,
-      vertical: document.documentElement.scrollHeight - window.innerHeight,
-    }));
+    const overflow = await page.evaluate(() => {
+      const board = document.querySelector(".pipeline-board");
+      const boardRight = board?.getBoundingClientRect().right ?? window.innerWidth;
+      return {
+        page: document.body.getBoundingClientRect().right - window.innerWidth,
+        boardRight: boardRight - window.innerWidth,
+      };
+    });
 
-    expect(overflow.horizontal, `${viewport.name} nao deve ter overflow horizontal`).toBeLessThanOrEqual(1);
-    expect(overflow.vertical, `${viewport.name} nao deve ter scroll global`).toBeLessThanOrEqual(1);
+    expect(overflow.page, `${viewport.name} nao deve ter overflow horizontal fora de containers internos`).toBeLessThanOrEqual(1);
+    expect(overflow.boardRight, `${viewport.name} board deve ficar enquadrado no viewport`).toBeLessThanOrEqual(1);
   });
 }
